@@ -238,10 +238,50 @@ info: ## Show system information
 check-deps: ## Check if all required dependencies are available
 	@echo "Dependency Check"
 	@echo "================"
-	@for cmd in rustc cargo go tinygo node python3 pip3; do \
-		if command -v $$cmd >/dev/null 2>&1; then \
-			echo "  ✓ $$cmd: $$($$cmd --version 2>/dev/null | head -n1)"; \
-		else \
-			echo "  ✗ $$cmd: not found"; \
-		fi; \
-	done
+	@if command -v rustc >/dev/null 2>&1; then \
+		echo "  ✓ rustc: $$(rustc --version)"; \
+	else \
+		echo "  ✗ rustc: not found"; \
+	fi
+	@if command -v cargo >/dev/null 2>&1; then \
+		echo "  ✓ cargo: $$(cargo --version)"; \
+	else \
+		echo "  ✗ cargo: not found"; \
+	fi
+	@if command -v go >/dev/null 2>&1; then \
+		echo "  ✓ go: $$(go version)"; \
+	else \
+		echo "  ✗ go: not found"; \
+	fi
+	@if command -v tinygo >/dev/null 2>&1; then \
+		echo "  ✓ tinygo: $$(tinygo version)"; \
+	else \
+		echo "  ✗ tinygo: not found"; \
+	fi
+	@if command -v node >/dev/null 2>&1; then \
+		echo "  ✓ node: $$(node --version)"; \
+	else \
+		echo "  ✗ node: not found"; \
+	fi
+	@if command -v python3 >/dev/null 2>&1; then \
+		echo "  ✓ python3: $$(python3 --version)"; \
+	else \
+		echo "  ✗ python3: not found"; \
+	fi
+	@if command -v pip3 >/dev/null 2>&1; then \
+		echo "  ✓ pip3: $$(pip3 --version | head -n1)"; \
+	else \
+		echo "  ✗ pip3: not found"; \
+	fi
+	@echo ""
+	@echo "Optional WebAssembly tools:"
+	@if command -v wasm-strip >/dev/null 2>&1; then \
+		echo "  ✓ wasm-strip: $$(wasm-strip --version 2>/dev/null || echo 'available')"; \
+	else \
+		echo "  ○ wasm-strip: not found (optional, from wabt package)"; \
+	fi
+	@if command -v wasm-opt >/dev/null 2>&1; then \
+		echo "  ✓ wasm-opt: $$(wasm-opt --version 2>/dev/null || echo 'available')"; \
+	else \
+		echo "  ○ wasm-opt: not found (optional, from binaryen package)"; \
+	fi
