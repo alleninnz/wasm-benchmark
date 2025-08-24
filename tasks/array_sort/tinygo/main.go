@@ -32,8 +32,8 @@ func runTask(paramsPtr uintptr) uint32 {
 	//    - Implement median-of-three pivot selection
 	//    - Switch to insertion sort for small subarrays (<16 elements)
 	//    - Handle duplicate values efficiently
-	// 4. Compute polynomial rolling hash of sorted results:
-	//    hash = (hash * 31 + array[i]) & 0xFFFFFFFF
+	// 4. Compute FNV-1a hash of sorted results:
+	//    hash = fnv1aHash(sortedArray)
 	// 5. Return final hash for verification
 
 	return 0 // Placeholder return value
@@ -69,9 +69,11 @@ func insertionSort(arr []int32) {
 	// More efficient than quicksort for small arrays
 }
 
-func polynomialHashArray(arr []int32) uint32 {
-	// TODO: Compute rolling hash of entire sorted array
-	// hash = (hash * 31 + arr[i]) & 0xFFFFFFFF
+func fnv1aHashI32(data []int32) uint32 {
+	// TODO: Implement FNV-1a hash for int32 array
+	// hash = 2166136261 (offset basis)
+	// for each value: convert to bytes (little-endian)
+	// for each byte: hash ^= byte; hash *= 16777619 (prime)
 	return 0
 }
 

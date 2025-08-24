@@ -259,12 +259,16 @@ tinygo build -target=wasm \
 
 ### Result Verification
 
-**Polynomial Rolling Hash** ensures correctness across languages:
+**FNV-1a Hash** ensures correctness across languages:
 ```c
-hash = (hash * 31 + value) & 0xFFFFFFFF
+hash = 2166136261;               // FNV offset basis
+for each byte:
+    hash ^= byte;
+    hash *= 16777619;            // FNV prime
 ```
 
-✅ Detects implementation errors  
+✅ Superior collision resistance  
+✅ Better data distribution (avalanche effect)  
 ✅ Language-agnostic verification  
 ✅ Prevents optimization bypass
 

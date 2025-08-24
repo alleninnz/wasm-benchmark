@@ -33,8 +33,8 @@ func runTask(paramsPtr uintptr) uint32 {
 	//    - Map to complex number c = center + scale * (x + iy)
 	//    - Iterate z = z² + c until |z| > 2 or maxIter reached
 	//    - Store iteration count for each pixel
-	// 3. Compute polynomial rolling hash of results:
-	//    hash = (hash * 31 + iterationCount) & 0xFFFFFFFF
+	// 3. Compute FNV-1a hash of results:
+	//    hash = fnv1aHash(iterationCounts)
 	// 4. Return final hash value for verification
 
 	return 0 // Placeholder return value
@@ -53,8 +53,11 @@ func complexMagnitudeSquared(real, imag float64) float64 {
 	return 0.0
 }
 
-func polynomialHash(currentHash, value uint32) uint32 {
-	// TODO: Implement rolling hash: (hash * 31 + value) & 0xFFFFFFFF
+func fnv1aHashU32(data []uint32) uint32 {
+	// TODO: Implement FNV-1a hash for uint32 array
+	// hash = 2166136261 (offset basis)
+	// for each value: convert to bytes (little-endian)
+	// for each byte: hash ^= byte; hash *= 16777619 (prime)
 	return 0
 }
 

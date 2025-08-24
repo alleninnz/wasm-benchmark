@@ -33,9 +33,9 @@ pub extern "C" fn run_task(params_ptr: *mut c_void) -> u32 {
     // 4. Parse JSON string back to objects:
     //    - Implement JSON parser to deserialize string
     //    - Extract and validate all field values
-    // 5. Compute polynomial rolling hash of parsed results:
+    // 5. Compute FNV-1a hash of parsed results:
     //    - Hash all field values: id, value, flag (as 0/1), name bytes
-    //    - hash = (hash * 31 + field_value) & 0xFFFFFFFF
+    //    - Use FNV-1a algorithm for better collision resistance
     // 6. Return final hash for verification
     
     0 // Placeholder return value
@@ -106,10 +106,10 @@ fn parse_json_boolean(chars: &[char], pos: &mut usize) -> Result<bool, &'static 
     Ok(false)
 }
 
-fn polynomial_hash_records(records: &[JsonRecord]) -> u32 {
-    // TODO: Compute rolling hash of all record fields
+fn fnv1a_hash_records(records: &[JsonRecord]) -> u32 {
+    // TODO: Compute FNV-1a hash of all record fields
     // Hash order: id, value, flag (0/1), name bytes
-    // hash = (hash * 31 + field_value) & 0xFFFFFFFF
+    // Use FNV-1a: hash ^= byte; hash *= 16777619u32
     0
 }
 

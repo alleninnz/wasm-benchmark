@@ -28,9 +28,9 @@ pub extern "C" fn run_task(params_ptr: *mut c_void) -> u32 {
     //    - Use naive triple-loop algorithm (i,j,k order)
     //    - C[i][j] = sum(A[i][k] * B[k][j]) for k in 0..dimension
     //    - Store results as f32 values
-    // 4. Compute polynomial rolling hash of result matrix:
+    // 4. Compute FNV-1a hash of result matrix:
     //    - Round each f32 to 6 decimal places: round(value * 1e6)
-    //    - hash = (hash * 31 + rounded_value) & 0xFFFFFFFF
+    //    - Use FNV-1a hash for better distribution
     // 5. Return final hash for verification
     
     0 // Placeholder return value
@@ -64,11 +64,11 @@ fn create_zero_matrix(dimension: usize) -> Vec<Vec<f32>> {
     Vec::new()
 }
 
-fn polynomial_hash_matrix(matrix: &Vec<Vec<f32>>) -> u32 {
-    // TODO: Compute rolling hash of matrix elements
+fn fnv1a_hash_matrix(matrix: &Vec<Vec<f32>>) -> u32 {
+    // TODO: Compute FNV-1a hash of matrix elements
     // Round each f32 to 6 decimal places: round(value * 1e6)
     // Process elements in row-major order (i,j)
-    // hash = (hash * 31 + rounded_value) & 0xFFFFFFFF
+    // Use FNV-1a: hash ^= byte; hash *= 16777619u32
     0
 }
 

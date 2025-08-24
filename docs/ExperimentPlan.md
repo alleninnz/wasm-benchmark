@@ -198,15 +198,17 @@ func runTask(paramsPtr uint32) uint32  // 返回哈希值
 ### 固定随机性
 使用 xorshift32（Uint32），跨语言实现一致。
 
-### 多项式滚动哈希校验机制
-• 使用**多项式滚动哈希**替代简单累加：`hash = (hash * 31 + value) & 0xFFFFFFFF`
-• **优势**：检测顺序差异、低冲突率、实现简单、跨语言一致
+### FNV-1a 哈希校验机制
+• 使用**FNV-1a 哈希算法**替代简单累加：具有更好的分布特性和抗冲突性
+• **算法**：`hash = 2166136261; for each byte: hash ^= byte; hash *= 16777619`
+• **优势**：检测顺序差异、极低冲突率、雪崩效应、跨语言一致
 • `run_task` 返回 u32 哈希值，确保算法实现的正确性验证
 • **统一实现**：
   ```c
-  uint32_t hash = 0;
-  for (each value) {
-      hash = (hash * 31 + value) & 0xFFFFFFFF;
+  uint32_t hash = 2166136261;  // FNV 偏移基础
+  for (each byte) {
+      hash ^= byte;
+      hash *= 16777619;        // FNV 素数
   }
   return hash;
   ```
@@ -257,7 +259,7 @@ tinygo build -target=wasm \
   - L：1024×1024，max_iter=2000
 • **固定视区：** center=(-0.743643887037, 0.131825904205)；scale 分别为 3.0/宽度
 
-**校验：** 对迭代次数序列进行多项式滚动哈希，跨语言结果一致。
+**校验：** 对迭代次数序列进行 FNV-1a 哈希，跨语言结果一致。
 
 **备注：** 仅返回哈希值，不回传位图，减少边界传输。
 
@@ -278,7 +280,7 @@ tinygo build -target=wasm \
    - 相同的分区策略：`< pivot | = pivot | > pivot`
    - 相同的基准选择：median-of-three
    - 相同的递归终止条件：长度 ≤ 16 时切换到插入排序
-3. 对排序后数组进行多项式滚动哈希：`hash = (hash * 31 + element) & 0xFFFFFFFF`，返回哈希值
+3. 对排序后数组进行 FNV-1a 哈希，返回哈希值
 
 **注**：原地排序算法，内存分配主要来自输入数据本身，GC压力来自数据规模
 
@@ -297,7 +299,7 @@ tinygo build -target=wasm \
 1. **编码：** bytes → base64（标准表，\r\n 禁用，纯一行）
 2. **解码：** base64 → bytes2
 3. **校验：** 比较 bytes2 与原始 bytes（若不等直接返回特定错误码，例如 `0xDEAD_B64`）
-4. 对 bytes2 所有字节进行多项式滚动哈希，返回哈希值
+4. 对 bytes2 所有字节进行 FNV-1a 哈希，返回哈希值
 
 **备注：** 全流程在 Wasm 内完成；JS 不参与字符串构造或比较。
 
@@ -331,14 +333,15 @@ tinygo build -target=wasm \
    - sum_id（u64）
    - sum_value（u64）
    - cnt_true_flag（u32）
-   - hash_name（对所有 name 字节进行多项式滚动哈希）
-3. 将四个聚合值按顺序进行多项式滚动哈希：
+   - hash_name（对所有 name 字节进行 FNV-1a 哈希）
+3. 将四个聚合值按顺序进行 FNV-1a 哈希：
    ```c
-   hash = 0;
-   hash = (hash * 31 + (sum_id & 0xFFFFFFFF)) & 0xFFFFFFFF;
-   hash = (hash * 31 + (sum_value & 0xFFFFFFFF)) & 0xFFFFFFFF;
-   hash = (hash * 31 + cnt_true_flag) & 0xFFFFFFFF;
-   hash = (hash * 31 + hash_name) & 0xFFFFFFFF;
+   hash = 2166136261;  // FNV 偏移基础
+   // 将每个 u32 值转换为字节序列并用 FNV-1a 哈希
+   hash = fnv1a_hash_u32(hash, sum_id);
+   hash = fnv1a_hash_u32(hash, sum_value);
+   hash = fnv1a_hash_u32(hash, cnt_true_flag);
+   hash = fnv1a_hash_u32(hash, hash_name);
    return hash;
    ```
 
@@ -363,7 +366,7 @@ val = (x >>> 0) * (1.0 / 4294967296.0)
 **过程**（Wasm 内）
 1. 读取 A,B，分配 C
 2. 朴素三重循环（i,j,k 同序），保证不同语言浮点舍入路径一致
-3. **生成摘要：** 将 C 每个元素按 `round(x * 1e6)` 转为 i32，进行多项式滚动哈希，返回哈希值
+3. **生成摘要：** 将 C 每个元素按 `round(x * 1e6)` 转为 i32，进行 FNV-1a 哈希，返回哈希值
 
 **校验：** 哈希值可重复且跨语言一致（同序 + f32 + 固定精度）。
 

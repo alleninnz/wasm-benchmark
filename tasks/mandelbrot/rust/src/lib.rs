@@ -28,8 +28,8 @@ pub extern "C" fn run_task(params_ptr: *mut c_void) -> u32 {
     //    - Map to complex number c = center + scale * (x + iy)
     //    - Iterate z = z² + c until |z| > 2 or max_iter reached
     //    - Store iteration count for each pixel
-    // 3. Compute polynomial rolling hash of results:
-    //    hash = (hash * 31 + iteration_count) & 0xFFFFFFFF
+    // 3. Compute FNV-1a hash of results:
+    //    hash = fnv1a_hash(iteration_counts)
     // 4. Return final hash value for verification
     
     0 // Placeholder return value
@@ -48,8 +48,11 @@ fn complex_magnitude_squared(real: f64, imag: f64) -> f64 {
     0.0
 }
 
-fn polynomial_hash(current_hash: u32, value: u32) -> u32 {
-    // TODO: Implement rolling hash: (hash * 31 + value) & 0xFFFFFFFF
+fn fnv1a_hash_u32(data: &[u32]) -> u32 {
+    // TODO: Implement FNV-1a hash for u32 array
+    // hash = 2166136261u32 (offset basis)
+    // for each value: convert to bytes (little-endian)
+    // for each byte: hash ^= byte; hash *= 16777619u32 (prime)
     0
 }
 

@@ -133,10 +133,10 @@ languages:
 
 # Output and verification settings
 verification:
-  hash_algorithm: "polynomial_rolling"  # hash = (hash * 31 + value) & 0xFFFFFFFF
-  hash_prime: 31
-  hash_modulo: 0xFFFFFFFF
-  floating_point_precision: 6  # Digits for f32 normalization
+  hash_algorithm: "fnv1a"  # FNV-1a hash for better distribution and collision resistance
+  hash_offset_basis: 2166136261  # FNV-1a 32-bit offset basis
+  hash_prime: 16777619           # FNV-1a 32-bit prime
+  floating_point_precision: 6   # Digits for f32 normalization
 
 # Quality control thresholds
 qc:

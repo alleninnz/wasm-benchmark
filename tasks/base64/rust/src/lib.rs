@@ -30,9 +30,9 @@ pub extern "C" fn run_task(params_ptr: *mut c_void) -> u32 {
     // 4. Perform Base64 decoding:
     //    - Decode the encoded string back to bytes
     //    - Verify decoded data matches original input
-    // 5. Compute polynomial rolling hash of results:
+    // 5. Compute FNV-1a hash of results:
     //    - Hash both encoded string and decoded bytes
-    //    - hash = (hash * 31 + byte_value) & 0xFFFFFFFF
+    //    - Use FNV-1a algorithm for better distribution
     // 6. Return final hash for verification
     
     0 // Placeholder return value
@@ -72,15 +72,16 @@ fn char_to_base64_value(c: char) -> Option<u8> {
     None
 }
 
-fn polynomial_hash_bytes(data: &[u8]) -> u32 {
-    // TODO: Compute rolling hash of byte array
-    // hash = (hash * 31 + byte) & 0xFFFFFFFF
+fn fnv1a_hash_bytes(data: &[u8]) -> u32 {
+    // TODO: Implement FNV-1a hash for byte array
+    // hash = 2166136261u32 (offset basis)
+    // for each byte: hash ^= byte; hash *= 16777619u32 (prime)
     0
 }
 
-fn polynomial_hash_string(data: &str) -> u32 {
-    // TODO: Compute rolling hash of string
-    // hash = (hash * 31 + char_as_byte) & 0xFFFFFFFF
+fn fnv1a_hash_string(data: &str) -> u32 {
+    // TODO: Implement FNV-1a hash for string
+    // Convert string to bytes and use fnv1a_hash_bytes
     0
 }
 

@@ -27,8 +27,8 @@ pub extern "C" fn run_task(params_ptr: *mut c_void) -> u32 {
     //    - Implement median-of-three pivot selection
     //    - Switch to insertion sort for small subarrays (<16 elements)
     //    - Handle duplicate values efficiently
-    // 4. Compute polynomial rolling hash of sorted results:
-    //    hash = (hash * 31 + array[i]) & 0xFFFFFFFF
+    // 4. Compute FNV-1a hash of sorted results:
+    //    hash = fnv1a_hash(sorted_array)
     // 5. Return final hash for verification
     
     0 // Placeholder return value
@@ -64,9 +64,11 @@ fn insertion_sort(arr: &mut [i32]) {
     // More efficient than quicksort for small arrays
 }
 
-fn polynomial_hash_array(arr: &[i32]) -> u32 {
-    // TODO: Compute rolling hash of entire sorted array
-    // hash = (hash * 31 + arr[i]) & 0xFFFFFFFF
+fn fnv1a_hash_i32(data: &[i32]) -> u32 {
+    // TODO: Implement FNV-1a hash for i32 array
+    // hash = 2166136261u32 (offset basis)
+    // for each value: convert to bytes (little-endian)
+    // for each byte: hash ^= byte; hash *= 16777619u32 (prime)
     0
 }
 

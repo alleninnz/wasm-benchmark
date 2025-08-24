@@ -198,15 +198,17 @@ func runTask(paramsPtr uint32) uint32  // return hash value
 ### Fixed Randomness
 Use xorshift32 (Uint32), consistent cross-language implementation.
 
-### Polynomial Rolling Hash Verification Mechanism
-• Use **polynomial rolling hash** instead of simple accumulation: `hash = (hash * 31 + value) & 0xFFFFFFFF`
-• **Advantages:** Detects order differences, low collision rate, simple implementation, cross-language consistency
+### FNV-1a Hash Verification Mechanism
+• Use **FNV-1a hash algorithm** instead of simple accumulation: better distribution and collision resistance
+• **Algorithm:** `hash = 2166136261; for each byte: hash ^= byte; hash *= 16777619`
+• **Advantages:** Detects order differences, extremely low collision rate, avalanche effect, cross-language consistency
 • `run_task` returns u32 hash value, ensuring correctness verification of algorithm implementation
 • **Unified implementation:**
   ```c
-  uint32_t hash = 0;
-  for (each value) {
-      hash = (hash * 31 + value) & 0xFFFFFFFF;
+  uint32_t hash = 2166136261;  // FNV offset basis
+  for (each byte) {
+      hash ^= byte;
+      hash *= 16777619;        // FNV prime
   }
   return hash;
   ```
@@ -257,7 +259,7 @@ tinygo build -target=wasm \
   - L: 1024×1024, max_iter=2000
 • **Fixed viewport:** center=(-0.743643887037, 0.131825904205); scale respectively 3.0/width
 
-**Verification:** Polynomial rolling hash on iteration count sequence, consistent results across languages.
+**Verification:** FNV-1a hash on iteration count sequence, consistent results across languages.
 
 **Note:** Only return hash value, no bitmap return, reducing boundary transmission.
 
@@ -278,7 +280,7 @@ tinygo build -target=wasm \
    - Same partitioning strategy: `< pivot | = pivot | > pivot`
    - Same pivot selection: median-of-three
    - Same recursion termination condition: switch to insertion sort when length ≤ 16
-3. Perform polynomial rolling hash on sorted array: `hash = (hash * 31 + element) & 0xFFFFFFFF`, return hash value
+3. Perform FNV-1a hash on sorted array, return hash value
 
 **Note:** In-place sorting algorithm, memory allocation mainly from input data itself, GC pressure from data scale
 
@@ -297,7 +299,7 @@ tinygo build -target=wasm \
 1. **Encoding:** bytes → base64 (standard table, \r\n disabled, pure single line)
 2. **Decoding:** base64 → bytes2
 3. **Verification:** Compare bytes2 with original bytes (if not equal, directly return specific error code, e.g., `0xDEAD_B64`)
-4. Perform polynomial rolling hash on all bytes of bytes2, return hash value
+4. Perform FNV-1a hash on all bytes of bytes2, return hash value
 
 **Note:** Complete process inside Wasm; JS does not participate in string construction or comparison.
 
@@ -331,14 +333,15 @@ Estimated at average ~50 bytes JSON + ~100 bytes parsed objects per entry, testi
    - sum_id (u64)
    - sum_value (u64)
    - cnt_true_flag (u32)
-   - hash_name (polynomial rolling hash on all name bytes)
-3. Perform polynomial rolling hash on four aggregated values in order:
+   - hash_name (FNV-1a hash on all name bytes)
+3. Perform FNV-1a hash on four aggregated values in order:
    ```c
-   hash = 0;
-   hash = (hash * 31 + (sum_id & 0xFFFFFFFF)) & 0xFFFFFFFF;
-   hash = (hash * 31 + (sum_value & 0xFFFFFFFF)) & 0xFFFFFFFF;
-   hash = (hash * 31 + cnt_true_flag) & 0xFFFFFFFF;
-   hash = (hash * 31 + hash_name) & 0xFFFFFFFF;
+   hash = 2166136261;  // FNV offset basis
+   // Convert each u32 value to bytes and hash with FNV-1a
+   hash = fnv1a_hash_u32(hash, sum_id);
+   hash = fnv1a_hash_u32(hash, sum_value);
+   hash = fnv1a_hash_u32(hash, cnt_true_flag);
+   hash = fnv1a_hash_u32(hash, hash_name);
    return hash;
    ```
 
@@ -363,7 +366,7 @@ val = (x >>> 0) * (1.0 / 4294967296.0)
 **Process** (inside Wasm)
 1. Read A,B, allocate C
 2. Naive triple loop (i,j,k same order), ensuring consistent floating-point rounding paths in different languages
-3. **Generate digest:** Convert each element of C to i32 by `round(x * 1e6)`, perform polynomial rolling hash, return hash value
+3. **Generate digest:** Convert each element of C to i32 by `round(x * 1e6)`, perform FNV-1a hash, return hash value
 
 **Verification:** Hash value repeatable and cross-language consistent (same order + f32 + fixed precision).
 

@@ -34,9 +34,9 @@ func runTask(paramsPtr uintptr) uint32 {
 	//    - Use naive triple-loop algorithm (i,j,k order)
 	//    - C[i][j] = sum(A[i][k] * B[k][j]) for k in 0..dimension
 	//    - Store results as float32 values
-	// 4. Compute polynomial rolling hash of result matrix:
+	// 4. Compute FNV-1a hash of result matrix:
 	//    - Round each float32 to 6 decimal places: round(value * 1e6)
-	//    - hash = (hash * 31 + roundedValue) & 0xFFFFFFFF
+	//    - Use FNV-1a hash for better distribution
 	// 5. Return final hash for verification
 
 	return 0 // Placeholder return value
@@ -73,11 +73,11 @@ func createZeroMatrix(dimension int) [][]float32 {
 	return nil
 }
 
-func polynomialHashMatrix(matrix [][]float32) uint32 {
-	// TODO: Compute rolling hash of matrix elements
+func fnv1aHashMatrix(matrix [][]float32) uint32 {
+	// TODO: Compute FNV-1a hash of matrix elements
 	// Round each float32 to 6 decimal places: round(value * 1e6)
 	// Process elements in row-major order (i,j)
-	// hash = (hash * 31 + roundedValue) & 0xFFFFFFFF
+	// Use FNV-1a: hash ^= byte; hash *= 16777619
 	return 0
 }
 

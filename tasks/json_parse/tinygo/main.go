@@ -37,9 +37,9 @@ func runTask(paramsPtr uintptr) uint32 {
 	// 4. Parse JSON string back to objects:
 	//    - Implement JSON parser to deserialize string
 	//    - Extract and validate all field values
-	// 5. Compute polynomial rolling hash of parsed results:
+	// 5. Compute FNV-1a hash of parsed results:
 	//    - Hash all field values: id, value, flag (as 0/1), name bytes
-	//    - hash = (hash * 31 + fieldValue) & 0xFFFFFFFF
+	//    - Use FNV-1a algorithm for better collision resistance
 	// 6. Return final hash for verification
 
 	return 0 // Placeholder return value
@@ -104,10 +104,10 @@ func parseJsonBoolean(chars []rune, pos *int) (bool, error) {
 	return false, nil
 }
 
-func polynomialHashRecords(records []JsonRecord) uint32 {
-	// TODO: Compute rolling hash of all record fields
+func fnv1aHashRecords(records []JsonRecord) uint32 {
+	// TODO: Compute FNV-1a hash of all record fields
 	// Hash order: id, value, flag (0/1), name bytes
-	// hash = (hash * 31 + fieldValue) & 0xFFFFFFFF
+	// Use FNV-1a: hash ^= byte; hash *= 16777619
 	return 0
 }
 

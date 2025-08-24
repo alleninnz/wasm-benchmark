@@ -35,9 +35,9 @@ func runTask(paramsPtr uintptr) uint32 {
 	// 4. Perform Base64 decoding:
 	//    - Decode the encoded string back to bytes
 	//    - Verify decoded data matches original input
-	// 5. Compute polynomial rolling hash of results:
+	// 5. Compute FNV-1a hash of results:
 	//    - Hash both encoded string and decoded bytes
-	//    - hash = (hash * 31 + byteValue) & 0xFFFFFFFF
+	//    - Use FNV-1a algorithm for better distribution
 	// 6. Return final hash for verification
 
 	return 0 // Placeholder return value
@@ -77,15 +77,16 @@ func charToBase64Value(c byte) (uint8, bool) {
 	return 0, false
 }
 
-func polynomialHashBytes(data []byte) uint32 {
-	// TODO: Compute rolling hash of byte array
-	// hash = (hash * 31 + byte) & 0xFFFFFFFF
+func fnv1aHashBytes(data []byte) uint32 {
+	// TODO: Implement FNV-1a hash for byte array
+	// hash = 2166136261 (offset basis)
+	// for each byte: hash ^= byte; hash *= 16777619 (prime)
 	return 0
 }
 
-func polynomialHashString(data string) uint32 {
-	// TODO: Compute rolling hash of string
-	// hash = (hash * 31 + charAsByte) & 0xFFFFFFFF
+func fnv1aHashString(data string) uint32 {
+	// TODO: Implement FNV-1a hash for string
+	// Convert string to bytes and use fnv1aHashBytes
 	return 0
 }
 
