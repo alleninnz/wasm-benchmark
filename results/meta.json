@@ -1,0 +1,14 @@
+{
+  "experiment": {
+    "name": "WebAssembly Performance Benchmark",
+    "description": "Comparing Rust and TinyGo WebAssembly performance across computational tasks",
+    "version": "1.0"
+  },
+  "note": "This file will be populated by the fingerprint.sh script",
+  "structure": {
+    "timestamp_directories": "YYYYMMDD-HHMM format for each experiment run",
+    "data_files": "raw_data.json, raw_data.csv, final_dataset.csv",
+    "quality_control": "qc_report.txt",
+    "logs": "Runtime logs and debugging information"
+  }
+}

@@ -1,213 +1,398 @@
-# WebAssembly Performance Benchmark: Go vs Rust
+# WebAssembly Performance Benchmark: Rust vs TinyGo
 
-A comprehensive benchmarking framework to evaluate the efficiency of Golang (TinyGo) and Rust when compiled to WebAssembly across various computational workloads.
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey.svg)
+![Rust](https://img.shields.io/badge/rust-1.89.0-orange.svg)
+![TinyGo](https://img.shields.io/badge/tinygo-0.39.0-00ADD8.svg)
+![Node.js](https://img.shields.io/badge/node-22.18.0-green.svg)
+![Python](https://img.shields.io/badge/python-3.13.5-blue.svg)
 
-## Overview
+A comprehensive benchmarking framework to evaluate the efficiency of **Rust** and **TinyGo** when compiled to WebAssembly across various computational workloads.
 
-This project compares WebAssembly performance between:
-- **Rust 1.84+** with `wasm32-unknown-unknown` target (zero-cost abstractions, no GC)
-- **TinyGo 0.34+** with WebAssembly target (garbage collected runtime)
+## 🎯 Overview
+
+This project provides a rigorous performance comparison between:
+
+| Language | Target | Runtime | Optimization |
+|----------|--------|---------|--------------|
+| **Rust 1.89** | `wasm32-unknown-unknown` | Zero-cost abstractions, no GC | `-O3`, fat LTO |
+| **TinyGo 0.39** | `wasm` | Garbage collected runtime | `-opt=3`, no scheduler |
 
 **Test Environment:**
-- **Hardware:** MacBook Pro M4 10-Core CPU, 16GB RAM
-- **OS:** macOS 15.x
-- **Browser:** Headless Chromium (Puppeteer)
-- **Languages:** Rust 1.84+, Go 1.23+, TinyGo 0.34+, Node.js 22 LTS, Python 3.12+
+- **Hardware:** MacBook Pro M4 10-Core CPU, 16GB RAM  
+- **OS:** macOS 15.x (Darwin/amd64)
+- **Runtime:** Headless Chromium v122+ (Puppeteer)
+- **Toolchain:** Rust 1.89, Go 1.25, TinyGo 0.39, Node.js 22.18, Python 3.13
 
-## Benchmark Tasks
+## 🚀 Quick Start
 
-Five computational tasks designed to test different aspects of performance:
+Choose your path:
 
-1. **Mandelbrot Set** - CPU-intensive floating-point calculations
-2. **Array Sorting** - Integer operations and memory access patterns
-3. **Base64 Encoding/Decoding** - Byte manipulation and lookup tables
-4. **JSON Parsing** - Structured data processing and object allocation
-5. **Matrix Multiplication** - Dense numerical computation
+### For Researchers (Full Pipeline)
+```bash
+# Clone and run complete experiment
+git clone https://github.com/user/wasm-benchmark.git
+cd wasm-benchmark
+make all                    # ~15-20 minutes
+```
 
-Each task is implemented with three data sizes (Small/Medium/Large) to progressively stress garbage collection in TinyGo.
+### For Developers (Build & Test)
+```bash
+make init                   # Install dependencies
+make build                  # Build all WASM modules  
+make run                    # Run benchmarks
+make analyze                # Generate statistics & plots
+```
 
-## Key Metrics
+### For Quick Testing
+```bash
+make all-quick              # Reduced sample size (~5 minutes)
+```
 
-- **Execution Time:** Pure function execution using `performance.now()`
-- **Memory Usage:** Peak memory consumption during execution
-- **Binary Size:** Raw `.wasm` size and gzipped size
-- **Statistical Analysis:** Mean, standard deviation, 95% confidence intervals
+## 📊 Benchmark Tasks
 
-## Project Structure
+Five computational tasks designed to test different performance aspects:
+
+| Task | Focus | Small | Medium | Large |
+|------|-------|-------|--------|-------|
+| **Mandelbrot** | CPU-intensive floating-point | 256×256 | 512×512 | 1024×1024 |
+| **Array Sort** | Memory allocation pressure | 200K items | 800K items | 2M items |
+| **Base64** | Byte processing & strings | 300KB | 900KB | 2.4MB |
+| **JSON Parse** | Object allocation patterns | 6K records | 20K records | 50K records |
+| **Matrix Mul** | Dense numerical computation | 256×256 | 384×384 | 512×512 |
+
+*Each task runs with progressive memory pressure (1MB → 3MB → 8MB) to stress garbage collection.*
+
+## 📈 Key Metrics
+
+- **⚡ Execution Time** — Function-level timing via `performance.now()`
+- **🧠 Memory Usage** — Peak allocation during execution  
+- **📦 Binary Size** — Raw `.wasm` + gzipped sizes
+- **📊 Statistical Analysis** — Means, confidence intervals, effect sizes
+
+## 📁 Project Structure
 
 ```
 wasm-benchmark/
-├── configs/
-│   ├── bench.yaml              # Task configurations
-│   └── versions.lock           # Toolchain versions
-├── harness/
-│   └── web/
-│       ├── bench.html          # Benchmark runner page
-│       ├── bench.js            # WebAssembly loader and timer
-│       └── wasm_loader.js      # Module instantiation
-├── scripts/
-│   ├── build_rust.sh          # Rust build script
-│   ├── build_tinygo.sh        # TinyGo build script
+├── 📋 Makefile                 # Automation targets & pipeline
+├── 📦 package.json             # Node.js dependencies & scripts
+├── 🐍 requirements.txt         # Python analysis dependencies
+├── 📄 LICENSE                  # MIT license
+├── 
+├── 🔧 configs/
+│   ├── bench.yaml              # Task configurations & parameters
+│   └── versions.lock           # Environment fingerprint
+├── 
+├── 🌐 harness/web/             # Browser benchmark runner
+│   ├── bench.html              # Test page & UI
+│   ├── bench.js                # WASM loader & timer
+│   └── wasm_loader.js          # Module instantiation
+├── 
+├── 🛠️  scripts/                 # Build & automation scripts
+│   ├── build_rust.sh          # Rust → WASM compilation
+│   ├── build_tinygo.sh        # TinyGo → WASM compilation  
 │   ├── build_all.sh           # Complete build pipeline
 │   ├── run_browser_bench.js   # Puppeteer test runner
-│   ├── fingerprint.sh         # Environment fingerprinting
+│   ├── fingerprint.sh         # Environment detection
 │   └── all_in_one.sh          # Full experiment pipeline
-├── tasks/
-│   ├── mandelbrot/
-│   │   ├── rust/              # Rust implementation
-│   │   └── tinygo/            # TinyGo implementation
-│   ├── array_sort/            # Array sorting task
-│   ├── base64/                # Base64 codec task
-│   ├── json_parse/            # JSON parsing task
-│   └── matrix_mul/            # Matrix multiplication task
-├── builds/                    # Compiled WebAssembly modules
-├── results/                   # Benchmark data and logs
-├── analysis/                  # Statistical analysis and plots
-└── docs/                      # Documentation
+├── 
+├── 🎯 tasks/                   # Language implementations
+│   ├── mandelbrot/{rust,tinygo}/
+│   ├── array_sort/{rust,tinygo}/
+│   ├── base64/{rust,tinygo}/
+│   ├── json_parse/{rust,tinygo}/
+│   └── matrix_mul/{rust,tinygo}/
+├── 
+├── 📦 builds/                  # Generated WASM modules
+│   ├── rust/*.wasm
+│   ├── tinygo/*.wasm
+│   └── sizes.csv              # Binary size analysis
+├── 
+├── 📊 results/                 # Benchmark outputs
+│   └── YYYYMMDD-HHMM/         # Timestamped runs
+│       ├── raw_data.{json,csv}
+│       ├── qc_report.txt
+│       └── logs/
+├── 
+├── 📈 analysis/                # Statistical analysis
+│   ├── statistics.py          # Descriptive & inferential stats  
+│   ├── plots.py              # Visualization generation
+│   ├── figures/              # Generated charts (PNG/SVG)
+│   └── report.md             # Analysis template
+└── 
+└── 📚 docs/                    # Documentation
+    ├── ExperimentPlan.md      # Research methodology
+    └── ExperimentPlan_en.md   # English translation
 ```
 
-## Quick Start
+## ⚙️ Installation
 
-### Prerequisites
+### System Requirements
 
-Install required toolchains:
+| Component | Version | Installation |
+|-----------|---------|--------------|
+| **Node.js** | ≥18.0.0 (tested: 22.18) | `brew install node` |
+| **Python** | ≥3.12 (tested: 3.13.5) | `brew install python@3.13` |
+| **Rust** | ≥1.84 (tested: 1.89) | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| **Go** | ≥1.23 (tested: 1.25) | `brew install go` |
+| **TinyGo** | ≥0.34 (tested: 0.39) | `brew install tinygo` |
+| **WASM Tools** | Latest | `brew install binaryen wabt` |
+
+### One-Command Setup
 
 ```bash
-# Rust with WebAssembly target
+# Check dependencies
+make check-deps
+
+# Install everything (dependencies + tools)
+make init
+
+# Verify installation
+make info
+```
+
+<details>
+<summary>Manual Installation (Click to expand)</summary>
+
+```bash
+# Install Rust + WASM target
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup target add wasm32-unknown-unknown
 
-# Go and TinyGo
+# Install Go toolchain  
 brew install go tinygo
 
-# Node.js and Python
-brew install node python@3.12
+# Install Node.js + Python
+brew install node python@3.13
 
-# WebAssembly tools
+# Install WASM optimization tools
 brew install binaryen wabt
 
-# Python dependencies
+# Setup Python environment
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  
 pip install -r requirements.txt
+
+# Install Node.js dependencies
+npm ci
 ```
 
-### Running the Benchmark
+</details>
+
+## 🏃 Running Benchmarks
+
+### Available Commands
+
+| Command | Description | Time | Use Case |
+|---------|-------------|------|----------|
+| `make all` | Complete pipeline | ~15-20min | Research & publication |
+| `make all-quick` | Reduced samples | ~5min | Development & testing |
+
+### Step-by-Step Execution
 
 ```bash
-# Initialize environment and install dependencies
-make init
-
-# Build all WebAssembly modules
-make build
-
-# Run benchmark tests
-make run
-
-# Collect and validate data
-make collect
-
-# Generate statistical analysis
-make analyze
-
-# Create final report
-make report
+make init                   # Setup environment
+make build                  # Compile WASM modules (~2min)
+make run                    # Execute benchmarks (~10min) 
+make analyze                # Generate statistics (~1min)
+make report                 # Create final report
 ```
 
-Or run the complete pipeline:
+### Advanced Usage
 
 ```bash
-./scripts/all_in_one.sh
+# Build specific language
+make build-rust             # Rust modules only
+make build-tinygo          # TinyGo modules only
+
+# Run with custom settings
+make run-headed            # Visible browser (debugging)
+make run-quick             # Reduced sample size
+
+# Check project status
+make status                # Build status & results
+make info                  # System information
 ```
 
-## Implementation Details
+## 🔧 Technical Implementation  
 
 ### WebAssembly Interface
 
-Both languages export a unified C-style interface:
+Both languages export a unified **C-style interface** for fair comparison:
 
 ```c
-// Initialize random seed
-void init(uint32_t seed);
-
-// Allocate memory and return pointer
-uint32_t alloc(uint32_t n_bytes);
-
-// Execute task and return hash of results
-uint32_t run_task(uint32_t params_ptr);
+void     init(uint32_t seed);           // Initialize PRNG
+uint32_t alloc(uint32_t n_bytes);       // Allocate memory  
+uint32_t run_task(uint32_t params_ptr); // Execute & return result hash
 ```
 
-### Build Optimizations
+### Optimization Settings
 
-**Rust Configuration:**
+| Language | Target | Flags | Post-processing |
+|----------|--------|-------|----------------|
+| **Rust** | `wasm32-unknown-unknown` | `-O3`, fat LTO, 1 codegen unit | `wasm-strip`, `wasm-opt -O3` |
+| **TinyGo** | `wasm` | `-opt=3`, panic trap, no debug | `wasm-strip`, `wasm-opt -Oz` |
+
+<details>
+<summary>Detailed Configuration (Click to expand)</summary>
+
+**Rust `Cargo.toml`:**
 ```toml
 [profile.release]
-opt-level = 3
-lto = "fat"
-codegen-units = 1
-panic = "abort"
-strip = "debuginfo"
+opt-level = 3           # Maximum optimization
+lto = "fat"            # Link-time optimization
+codegen-units = 1      # Single compilation unit
+panic = "abort"        # No unwinding overhead  
+strip = "debuginfo"    # Remove debug symbols
 ```
 
-**TinyGo Compilation:**
+**TinyGo Command:**
 ```bash
-tinygo build -target=wasm -opt=3 -panic=trap -no-debug -scheduler=none
+tinygo build -target=wasm \
+  -opt=3                    # Maximum optimization
+  -panic=trap              # Trap on panic
+  -no-debug                # No debug info
+  -scheduler=none          # No goroutine scheduler
 ```
 
-### Verification System
+</details>
 
-Each task implements polynomial rolling hash verification:
+### Result Verification
+
+**Polynomial Rolling Hash** ensures correctness across languages:
 ```c
 hash = (hash * 31 + value) & 0xFFFFFFFF
 ```
 
-This ensures identical results across languages and detects implementation errors.
+✅ Detects implementation errors  
+✅ Language-agnostic verification  
+✅ Prevents optimization bypass
 
-## Statistical Analysis
+## 📊 Statistical Methodology
 
-- **Warmup:** 10 iterations (discarded)
-- **Measurement:** 100 iterations per task/language combination
-- **Outlier Detection:** IQR method with 1.5×IQR and 3×IQR thresholds
-- **Significance Testing:** Independent t-test or Mann-Whitney U test
-- **Multiple Comparison Correction:** Benjamini-Hochberg FDR control
-- **Effect Size:** Cohen's d calculation
+### Experimental Design
+- **Warmup:** 10 iterations (discarded for cold start elimination)
+- **Measurement:** 100 iterations per task/language/scale combination
+- **Randomization:** Task order shuffled to minimize systematic bias
+- **Environment:** Controlled temperature, isolated processes
 
-## Results and Analysis
+### Quality Control Pipeline
+| Stage | Method | Threshold |
+|-------|--------|-----------|
+| **Outlier Detection** | IQR method | 1.5×IQR (mild), 3.0×IQR (severe) |
+| **Variance Check** | Coefficient of variation | <15% CV required |
+| **Sample Size** | Post-filtering minimum | ≥90 valid samples |
+| **Normality** | Shapiro-Wilk test | p<0.05 → non-parametric |
 
-The benchmark generates:
+### Statistical Tests
+- **Significance:** Independent t-test or Mann-Whitney U  
+- **Multiple Comparisons:** Benjamini-Hochberg FDR correction (α=0.05)
+- **Effect Size:** Cohen's d for practical significance
+- **Confidence Intervals:** 95% bootstrap intervals
 
-- **Raw Data:** JSON/CSV format with execution times and memory usage
-- **Statistical Reports:** Means, standard deviations, confidence intervals
-- **Visualizations:** Bar charts, box plots, scatter plots (PNG/SVG)
-- **Significance Testing:** p-values with multiple comparison correction
-- **Effect Sizes:** Cohen's d for practical significance
+## 📈 Results & Analysis
 
-## Reproducibility
+### Generated Outputs
 
-- **Environment Fingerprinting:** All tool versions locked in `versions.lock`
-- **Data Integrity:** SHA256 checksums for all build artifacts and datasets
-- **Quality Control:** Automated outlier detection and variance analysis
-- **Full Automation:** One-command reproduction via `make` or `all_in_one.sh`
+| Output Type | Location | Description |
+|-------------|----------|-------------|
+| **Raw Data** | `results/*/raw_data.{json,csv}` | Individual execution times & memory |
+| **QC Report** | `results/*/qc_report.txt` | Outlier analysis & data quality |
+| **Statistics** | `analysis/figures/` | Descriptive stats & significance tests |
+| **Visualizations** | `analysis/figures/` | Bar charts, box plots, distributions |
+| **Final Report** | `results/*/REPORT.md` | Executive summary & conclusions |
 
-## Limitations
+### Expected Results Structure
 
-- **Single-threaded:** WebAssembly threading not utilized
-- **Browser-specific:** Results specific to V8 JavaScript engine
-- **Memory constraints:** Limited by 16GB system RAM
-- **Task selection:** Five tasks may not represent all use cases
-- **Platform-specific:** Results specific to Apple M4 architecture
+```
+results/20250824-1430/
+├── raw_data.json          # Individual measurements  
+├── raw_data.csv           # Tabular format for analysis
+├── qc_report.txt          # Quality control summary
+├── logs/benchmark.log     # Execution details
+└── REPORT.md             # Auto-generated analysis
+```
 
-## Contributing
+## 🔬 Reproducibility
 
-1. Fork the repository
-2. Create a feature branch
-3. Add new benchmark tasks in `tasks/`
-4. Update build scripts and analysis accordingly
-5. Submit a pull request
+| Component | Method | Purpose |
+|-----------|--------|---------|
+| **Environment** | `versions.lock` fingerprint | Lock all tool versions |
+| **Data Integrity** | SHA256 checksums | Verify build artifacts |
+| **Automation** | `make all` pipeline | One-command reproduction |
+| **Quality Assurance** | Automated outlier detection | Consistent data quality |
 
-## License
+### Reproduction Steps
+```bash
+git clone <repo> && cd wasm-benchmark
+make all                    # Complete experiment
+# Results in: results/$(date +%Y%m%d-%H%M)/
+```
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## ⚠️ Limitations & Considerations
+
+- **🔗 Single-threaded:** WASM threading not used (consistency)
+- **🌐 Browser-specific:** V8 engine results (Chrome/Node.js)  
+- **💾 Memory-bound:** Limited by 16GB system RAM
+- **🎯 Task coverage:** 5 tasks may not represent all workloads
+- **🖥️ Platform-specific:** Apple M4 architecture results
+- **⏱️ Temporal:** Performance may vary with browser/OS updates
+
+## 🤝 Contributing
+
+1. **Fork** the repository  
+2. **Create** feature branch: `git checkout -b feature/new-task`
+3. **Add** your implementation in `tasks/your_task/{rust,tinygo}/`
+4. **Update** `configs/bench.yaml` with task configuration
+5. **Test** with `make all-quick`
+6. **Submit** pull request
+
+## 📚 Documentation
+
+- [`docs/ExperimentPlan.md`](docs/ExperimentPlan.md) — Research methodology (Chinese)
+- [`docs/ExperimentPlan_en.md`](docs/ExperimentPlan_en.md) — Research methodology (English)
+- [`configs/bench.yaml`](configs/bench.yaml) — Task parameters & configuration
+- [`analysis/report.md`](analysis/report.md) — Analysis template
+
+## 🐛 Troubleshooting
+
+<details>
+<summary>Common Issues (Click to expand)</summary>
+
+**Build Failures:**
+```bash
+make clean && make init     # Reset environment
+make check-deps            # Verify tool installations
+```
+
+**Benchmark Timeouts:**
+```bash
+make run-quick             # Reduce sample size
+# Edit configs/bench.yaml → timeout_ms: 60000
+```
+
+**Memory Issues:**
+```bash
+# Reduce task scales in configs/bench.yaml
+scales:
+  large: { /* reduce parameters */ }
+```
+
+**Browser Crashes:**
+```bash
+make run-headed            # Debug with visible browser
+# Check system memory usage
+```
+
+</details>
+
+## 📄 License
+
+This project is licensed under the **MIT License** - see the [`LICENSE`](LICENSE) file for details.
+
+---
+
+**Keywords:** WebAssembly, WASM, Rust, Go, TinyGo, Performance, Benchmark, Comparison, Statistical Analysis
 
 
 

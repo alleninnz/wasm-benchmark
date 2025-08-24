@@ -1,89 +1,84 @@
-# System files
-.DS_Store
-Thumbs.db
+# Build artifacts
+builds/**/*.wasm
+builds/**/*.map
+builds/**/*.gz
+builds/**/manifest.json
+target/
+dist/
+
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Results and logs
+results/20*/
+!results/20250821-1430/
+*.log
+*.tmp
+
+# Analysis outputs
+analysis/figures/*.png
+analysis/figures/*.svg
+analysis/analysis_log.txt
+analysis/statistical_analysis.json
+
+# Environment files
+.env
+.env.local
+
+# IDE files
+.vscode/
+.idea/
 *.swp
 *.swo
 *~
 
-# IDE and editor files
-.vscode/
-.idea/
-.claude/
-*.sublime-project
-*.sublime-workspace
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Rust
-target/
-Cargo.lock
-**/*.rs.bk
-*.pdb
+# Cache directories
+.cache/
+.npm/
+.cargo/
+.rustup/
 
-# Go/TinyGo
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*.test
-*.out
-go.work
+# Jupyter notebooks
+.ipynb_checkpoints/
+*.ipynb
 
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.npm
-.eslintcache
-.nyc_output
-
-# Python
-.venv/
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.pytest_cache/
-.coverage
+# Coverage reports
 htmlcov/
-.tox/
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# WebAssembly build artifacts
-builds/
-*.wasm
-*.wat
-*.map
-
-# Benchmark results and analysis
-results/
-analysis/figures/
-analysis/*.png
-analysis/*.svg
-logs/
-*.log
+.coverage
+coverage.xml
 
 # Temporary files
-*.tmp
-*.temp
-.cache/
-.temp/
+temp/
+tmp/
 
-# Compressed files
-*.zip
-*.tar.gz
-*.tgz
+# Lock files (except versions.lock which is intentional)
+Cargo.lock
+package-lock.json
+yarn.lock
+poetry.lock
 
-# Lock files and checksums (optional - uncomment if you don't want to track them)
-# package-lock.json
-# yarn.lock
-# checksums.txt
-# versions.lock
+# Backup files
+*.bak
+*.backup
+*.old
 
-# OS generated files
-.Trashes
-ehthumbs.db
+# Testing artifacts
+.pytest_cache/
+test-results/
+
+# Benchmark data backups
+*.csv.bak
+*.json.bak
+
+# System monitoring
+.benchmarks/
+.profiler/

@@ -1,0 +1,154 @@
+# Benchmark Configuration
+# Defines tasks, scales, repetition counts, and optimization settings
+
+experiment:
+  name: "Golang vs Rust WebAssembly Performance Comparison"
+  version: "1.0"
+  description: "Evaluating efficiency of Golang (TinyGo) and Rust in WebAssembly across 5 computational tasks"
+
+# Test environment settings
+environment:
+  warmup_runs: 10      # Cold start runs to discard
+  measure_runs: 100    # Hot start runs to measure
+  gc_threshold_mb: 10  # Memory threshold to trigger GC in browsers
+  timeout_ms: 30000    # Maximum execution time per task
+
+# Task definitions with input scales
+tasks:
+  mandelbrot:
+    description: "CPU-intensive floating point computation"
+    scales:
+      small:
+        width: 256
+        height: 256
+        max_iter: 500
+        memory_est_mb: 0.5
+      medium:
+        width: 512
+        height: 512
+        max_iter: 1000
+        memory_est_mb: 2
+      large:
+        width: 1024
+        height: 1024
+        max_iter: 2000
+        memory_est_mb: 8
+    fixed_params:
+      center_real: -0.743643887037
+      center_imag: 0.131825904205
+      scale_factor: 3.0
+
+  array_sort:
+    description: "Integer sorting with memory allocation pressure"
+    scales:
+      small:
+        length: 200000      # 800KB - no GC trigger
+        memory_est_mb: 0.8
+      medium:
+        length: 800000      # 3.2MB - light GC trigger
+        memory_est_mb: 3.2
+      large:
+        length: 2000000     # 8MB - moderate GC trigger
+        memory_est_mb: 8
+    algorithm: "three_way_quicksort"
+    pivot_strategy: "median_of_three"
+    cutoff_threshold: 16    # Switch to insertion sort
+
+  base64:
+    description: "Byte processing with string allocation"
+    scales:
+      small:
+        input_bytes: 307200   # 300KB input -> 1MB total
+        memory_est_mb: 1
+      medium:
+        input_bytes: 921600   # 900KB input -> 3MB total
+        memory_est_mb: 3
+      large:
+        input_bytes: 2516582  # 2.4MB input -> 8MB total
+        memory_est_mb: 8
+    encoding: "standard"    # No line breaks
+
+  json_parse:
+    description: "Structured data parsing with object allocation"
+    scales:
+      small:
+        record_count: 6000    # ~300KB JSON + 600KB objects = 900KB
+        memory_est_mb: 0.9
+      medium:
+        record_count: 20000   # ~1MB JSON + 2MB objects = 3MB
+        memory_est_mb: 3
+      large:
+        record_count: 50000   # ~2.5MB JSON + 5MB objects = 7.5MB
+        memory_est_mb: 7.5
+    schema:
+      fields: ["id", "value", "flag", "name"]
+      id_sequential: true
+      value_random: true
+      flag_derived: true    # flag = (value & 1) == 0
+      name_pattern: "a{id}" # ASCII only
+
+  matrix_mul:
+    description: "Dense numerical computation with large memory allocation"
+    scales:
+      small:
+        dimension: 256        # 768KB total (A+B+C)
+        memory_est_mb: 0.75
+      medium:
+        dimension: 384        # ~1.7MB + computation overhead = 3MB
+        memory_est_mb: 3
+      large:
+        dimension: 512        # 3MB + computation overhead = 8MB
+        memory_est_mb: 8
+    data_type: "f32"
+    algorithm: "naive_triple_loop"  # i,j,k order for consistency
+    precision_digits: 6     # For hash computation: round(x * 1e6)
+
+# Language and optimization configurations
+languages:
+  rust:
+    enabled: true
+    target: "wasm32-unknown-unknown"
+    optimization_levels:
+      - name: "o3"
+        cargo_flags: "--release"
+        cargo_config:
+          opt_level: 3
+          lto: "fat"
+          codegen_units: 1
+          panic: "abort"
+          strip: "debuginfo"
+    post_processing:
+      - "wasm-strip"
+      - "wasm-opt -O3"
+  
+  tinygo:
+    enabled: true
+    target: "wasm"
+    optimization_levels:
+      - name: "oz"
+        build_flags: ["-opt=3", "-panic=trap", "-no-debug", "-scheduler=none"]
+    post_processing:
+      - "wasm-strip"
+      - "wasm-opt -Oz"
+
+# Output and verification settings
+verification:
+  hash_algorithm: "polynomial_rolling"  # hash = (hash * 31 + value) & 0xFFFFFFFF
+  hash_prime: 31
+  hash_modulo: 0xFFFFFFFF
+  floating_point_precision: 6  # Digits for f32 normalization
+
+# Quality control thresholds
+qc:
+  max_coefficient_variation: 0.15  # 15% CV threshold
+  outlier_iqr_multiplier: 1.5      # IQR-based outlier detection
+  severe_outlier_iqr_multiplier: 3.0
+  min_valid_samples: 90            # Minimum samples after QC
+
+# Statistical analysis configuration
+statistics:
+  confidence_level: 0.95
+  significance_alpha: 0.05
+  multiple_comparison_correction: "benjamini_hochberg"  # FDR control
+  effect_size_metric: "cohens_d"
+  normality_test: "shapiro_wilk"

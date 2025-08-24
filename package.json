@@ -1,0 +1,66 @@
+{
+  "name": "wasm-benchmark",
+  "version": "1.0.0",
+  "description": "WebAssembly Performance Benchmark: Rust vs TinyGo Comparison",
+  "main": "harness/web/bench.js",
+  "type": "module",
+  "scripts": {
+    "install": "npm ci",
+    "build": "scripts/build_all.sh",
+    "build:rust": "scripts/build_rust.sh", 
+    "build:tinygo": "scripts/build_tinygo.sh",
+    "bench": "node scripts/run_browser_bench.js",
+    "bench:headed": "node scripts/run_browser_bench.js --headed",
+    "bench:quick": "node scripts/run_browser_bench.js --timeout=60000",
+    "analyze": "python3 analysis/statistics.py results/$(ls -t results/ | head -n1) && python3 analysis/plots.py results/$(ls -t results/ | head -n1)",
+    "fingerprint": "scripts/fingerprint.sh",
+    "all": "scripts/all_in_one.sh",
+    "all:quick": "scripts/all_in_one.sh --quick",
+    "clean": "rm -rf builds/* results/20* && find . -name '*.tmp' -delete",
+    "test": "echo 'No tests defined yet'",
+    "lint": "echo 'No linting configured yet'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/wasm-benchmark.git"
+  },
+  "keywords": [
+    "webassembly",
+    "wasm", 
+    "rust",
+    "go",
+    "tinygo",
+    "benchmark",
+    "performance",
+    "comparison"
+  ],
+  "author": "WebAssembly Benchmark Team",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^22.15.0",
+    "yaml": "^2.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "funding": {
+    "type": "individual",
+    "url": "https://github.com/sponsors/webassembly-research"
+  },
+  "bugs": {
+    "url": "https://github.com/user/wasm-benchmark/issues"
+  },
+  "homepage": "https://github.com/user/wasm-benchmark#readme"
+}

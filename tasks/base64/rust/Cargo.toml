@@ -1,0 +1,17 @@
+[package]
+name = "base64_wasm"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "debuginfo"
+
+[dependencies]
+# No external dependencies - pure hand-written implementation
