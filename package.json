@@ -5,7 +5,7 @@
   "main": "harness/web/bench.js",
   "type": "module",
   "scripts": {
-    "install": "npm ci",
+    "postinstall": "echo 'Dependencies installed successfully'",
     "build": "scripts/build_all.sh",
     "build:rust": "scripts/build_rust.sh", 
     "build:tinygo": "scripts/build_tinygo.sh",

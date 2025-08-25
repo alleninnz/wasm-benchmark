@@ -1,14 +1,61 @@
 {
-  "experiment": {
-    "name": "WebAssembly Performance Benchmark",
-    "description": "Comparing Rust and TinyGo WebAssembly performance across computational tasks",
-    "version": "1.0"
-  },
-  "note": "This file will be populated by the fingerprint.sh script",
-  "structure": {
-    "timestamp_directories": "YYYYMMDD-HHMM format for each experiment run",
-    "data_files": "raw_data.json, raw_data.csv, final_dataset.csv",
-    "quality_control": "qc_report.txt",
-    "logs": "Runtime logs and debugging information"
-  }
+    "experiment": {
+        "name": "WebAssembly Performance Benchmark",
+        "description": "Comparing Rust and TinyGo WebAssembly performance across computational tasks",
+        "version": "1.0",
+        "generated_date": "2025-08-25T00:45:32Z",
+        "project_root": "/Users/kimi/Desktop/ARP/wasm-benchmark"
+    },
+    "system": {
+        "os": {
+            "name": "macOS",
+            "version": "15.6.1",
+            "build": "24G90",
+            "architecture": "x86_64"
+        },
+        "hardware": {
+            "cpu": "Apple M4",
+            "cores": "10",
+            "memory_gb": "16.00"
+        }
+    },
+    "toolchains": {
+        "rust": {
+            "rustc_version": "rustc 1.89.0 (29483883e 2025-08-04)",
+            "cargo_version": "cargo 1.89.0 (c24e10642 2025-06-23)",
+            "wasm32_target": "not installed"
+        },
+        "go": {
+            "go_version": "go version go1.25.0 darwin/amd64",
+            "tinygo_version": "tinygo version 0.39.0 darwin/amd64 (using go version go1.25.0 and LLVM version 19.1.2)"
+        },
+        "node": {
+            "node_version": "v22.18.0",
+            "npm_version": "10.9.3"
+        },
+        "python": {
+            "python_version": "Python 3.13.5",
+            "pip_version": "pip 25.2 from /Users/kimi/miniforge3/lib/python3.13/site-packages/pip (python 3.13)",
+            "libraries": {
+                "numpy": "not found",
+                "scipy": "not found", 
+                "pandas": "not found",
+                "matplotlib": "not found",
+                "seaborn": "not found"
+            }
+        }
+    },
+    "webassembly_tools": {
+        "wasm_strip": "1.0.36 (git~1.0.37)",
+        "wasm_opt": "wasm-opt version 123",
+        "wasm2wat": "1.0.36 (git~1.0.37)"
+    },
+    "browser": {
+        "chrome_version": "not found",
+        "puppeteer_version": "^24.17.0"
+    },
+    "build_tools": {
+        "make": "GNU Make 3.81",
+        "git": "git version 2.39.5 (Apple Git-154)"
+    }
 }

@@ -388,7 +388,7 @@ main() {
     # Display summary
     display_summary
     
-    log_section "Fingerprint Generation Complete")
+    log_section "Fingerprint Generation Complete"
     log_success "Environment fingerprint captured successfully"
 }
 
