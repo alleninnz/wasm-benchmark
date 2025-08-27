@@ -3,7 +3,7 @@
         "name": "WebAssembly Performance Benchmark",
         "description": "Comparing Rust and TinyGo WebAssembly performance across computational tasks",
         "version": "1.0",
-        "generated_date": "2025-08-25T00:45:32Z",
+        "generated_date": "2025-08-27T06:10:29Z",
         "project_root": "/Users/kimi/Desktop/ARP/wasm-benchmark"
     },
     "system": {
@@ -23,7 +23,7 @@
         "rust": {
             "rustc_version": "rustc 1.89.0 (29483883e 2025-08-04)",
             "cargo_version": "cargo 1.89.0 (c24e10642 2025-06-23)",
-            "wasm32_target": "not installed"
+            "wasm32_target": "installed"
         },
         "go": {
             "go_version": "go version go1.25.0 darwin/amd64",
@@ -37,11 +37,11 @@
             "python_version": "Python 3.13.5",
             "pip_version": "pip 25.2 from /Users/kimi/miniforge3/lib/python3.13/site-packages/pip (python 3.13)",
             "libraries": {
-                "numpy": "not found",
-                "scipy": "not found", 
-                "pandas": "not found",
-                "matplotlib": "not found",
-                "seaborn": "not found"
+                "numpy": "2.3.2",
+                "scipy": "1.16.1", 
+                "pandas": "2.3.2",
+                "matplotlib": "3.10.5",
+                "seaborn": "0.13.2"
             }
         }
     },
@@ -51,11 +51,11 @@
         "wasm2wat": "1.0.36 (git~1.0.37)"
     },
     "browser": {
-        "chrome_version": "not found",
+        "chrome_version": "139.0.7258.139",
         "puppeteer_version": "^24.17.0"
     },
     "build_tools": {
         "make": "GNU Make 3.81",
-        "git": "git version 2.39.5 (Apple Git-154)"
+        "git": "git version 2.51.0"
     }
 }

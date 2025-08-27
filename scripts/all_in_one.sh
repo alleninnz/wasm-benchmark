@@ -385,7 +385,7 @@ Results are available in the following files:
 
 ## System Information
 
-$(cat "${PROJECT_ROOT}/configs/versions.lock" | grep -E "(os_|cpu_|memory_|rust_|go_|tinygo_)" | sed 's/^/- /')
+$(cat "${PROJECT_ROOT}/versions.lock" | grep -E "(os_|cpu_|memory_|rust_|go_|tinygo_)" | sed 's/^/- /')
 
 ## Analysis Details
 

@@ -102,7 +102,7 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 
 • 安装 Wasm 工具：Binaryen（`wasm-opt`）、WABT（`wasm2wat`/`wasm-strip`）
 
-• 产出工具指纹：创建 `fingerprint.sh`，把所有版本写入 `results/meta.json` 和 `versions.lock.txt`，确保可复现
+• 产出工具指纹：创建 `fingerprint.sh`，把所有版本写入 `meta.json` 和 `versions.lock`，确保可复现
 
 ---
 
@@ -148,7 +148,7 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 │  │  ├─ final_dataset.csv      # QC 后数据
 │  │  ├─ qc_report.txt          # 质量控制报告
 │  │  └─ logs/                  # 运行日志
-│  └─ meta.json                 # 实验元数据
+├─ meta.json                    # 实验元数据
 ├─ analysis/
 │  ├─ statistics.py             # 统计分析脚本
 │  ├─ plots.py                  # 可视化脚本

@@ -4,7 +4,7 @@
 # Core Languages
 rust_version=rustc 1.89.0 (29483883e 2025-08-04)
 cargo_version=cargo 1.89.0 (c24e10642 2025-06-23)
-wasm32_target=not installed
+wasm32_target=installed
 
 # Go Toolchain  
 go_version=go version go1.25.0 darwin/amd64
@@ -24,14 +24,14 @@ python_version=Python 3.13.5
 pip_version=pip 25.2 from /Users/kimi/miniforge3/lib/python3.13/site-packages/pip (python 3.13)
 
 # Python Scientific Libraries
-numpy_version=not found
-scipy_version=not found
-pandas_version=not found
-matplotlib_version=not found
-seaborn_version=not found
+numpy_version=2.3.2
+scipy_version=1.16.1
+pandas_version=2.3.2
+matplotlib_version=3.10.5
+seaborn_version=0.13.2
 
 # Browser Engine
-chrome_version=not found
+chrome_version=139.0.7258.139
 puppeteer_version=^24.17.0
 
 # System Information
@@ -45,10 +45,10 @@ memory_gb=16.00
 
 # Build Tools
 make_version=GNU Make 3.81
-git_version=git version 2.39.5 (Apple Git-154)
+git_version=git version 2.51.0
 
 # Lock File Metadata
-generated_date=2025-08-25T00:45:32Z
+generated_date=2025-08-27T06:10:29Z
 generator_script=scripts/fingerprint.sh
 lock_file_version=1.0
 project_root=/Users/kimi/Desktop/ARP/wasm-benchmark

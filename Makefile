@@ -2,7 +2,7 @@
 # Automation targets for the complete experiment pipeline
 
 # Declare all phony targets (targets that don't create files)
-.PHONY: help init build build-rust build-tinygo build-all run run-headed run-quick \
+.PHONY: help init python-deps build build-rust build-tinygo build-all run run-headed run-quick \
         collect analyze report all all-clean all-quick clean clean-results clean-all \
         dev-setup lint format test status info check-deps
 
@@ -10,9 +10,6 @@
 
 # Configuration
 PROJECT_ROOT := $(shell pwd)
-VENV_DIR := .venv
-PYTHON := $(VENV_DIR)/bin/python3
-PIP := $(VENV_DIR)/bin/pip
 NODE_MODULES := node_modules
 
 # Terminal color support detection
@@ -91,20 +88,18 @@ help: ## Show this help message
 # Environment Setup Targets
 # ============================================================================
 
-init: $(VENV_DIR) $(NODE_MODULES) configs/versions.lock ## Initialize environment and install dependencies
+init: python-deps $(NODE_MODULES) versions.lock ## Initialize environment and install dependencies
 	$(call log_success,Environment initialized successfully)
 	@echo -e "$(GREEN)Ready to run:$(NC) make build"
 
-$(VENV_DIR): requirements.txt
-	$(call log_step,Creating Python virtual environment...)
+python-deps: requirements.txt ## Install Python dependencies with system Python
+	$(call log_step,Installing Python dependencies...)
 	@if [ ! -f requirements.txt ]; then \
 		$(call log_error,requirements.txt not found); \
 		exit 1; \
 	fi
-	python3 -m venv $(VENV_DIR)
-	$(PIP) install --upgrade pip setuptools wheel
-	$(PIP) install -r requirements.txt
-	$(call log_success,Python virtual environment created)
+	python3 -m pip install --user -r requirements.txt
+	$(call log_success,Python dependencies installed)
 
 $(NODE_MODULES): package.json
 	$(call log_step,Installing Node.js dependencies...)
@@ -115,7 +110,7 @@ $(NODE_MODULES): package.json
 	npm ci
 	$(call log_success,Node.js dependencies installed)
 
-configs/versions.lock: scripts/fingerprint.sh
+versions.lock: scripts/fingerprint.sh
 	$(call log_step,Generating environment fingerprint...)
 	@if [ ! -f scripts/fingerprint.sh ]; then \
 		$(call log_error,scripts/fingerprint.sh not found); \
@@ -200,7 +195,7 @@ run-quick: $(NODE_MODULES) ## Run quick benchmarks with reduced samples
 # Analysis Targets
 # ============================================================================
 
-collect: $(VENV_DIR) ## Run quality control on benchmark data
+collect: python-deps ## Run quality control on benchmark data
 	$(call log_step,Running quality control on results...)
 	@LATEST_RESULT=$(call find_latest_result); \
 	if [ -n "$$LATEST_RESULT" ]; then \
@@ -212,17 +207,17 @@ collect: $(VENV_DIR) ## Run quality control on benchmark data
 	fi
 	$(call log_success,Quality control completed)
 
-analyze: $(VENV_DIR) ## Run statistical analysis and generate plots
+analyze: python-deps ## Run statistical analysis and generate plots
 	$(call log_step,Running statistical analysis...)
 	@LATEST_RESULT=$(call find_latest_result); \
 	if [ -n "$$LATEST_RESULT" ]; then \
 		if [ -f analysis/statistics.py ]; then \
-			$(PYTHON) analysis/statistics.py $$LATEST_RESULT; \
+			python3 analysis/statistics.py $$LATEST_RESULT; \
 		else \
 			$(call log_warning,analysis/statistics.py not found, skipping statistics); \
 		fi; \
 		if [ -f analysis/plots.py ]; then \
-			$(PYTHON) analysis/plots.py $$LATEST_RESULT; \
+			python3 analysis/plots.py $$LATEST_RESULT; \
 		else \
 			$(call log_warning,analysis/plots.py not found, skipping plots); \
 		fi; \
@@ -294,11 +289,11 @@ clean-results: ## Clean all benchmark results
 
 clean-all: clean clean-results ## Clean everything including dependencies
 	$(call log_warning,Cleaning everything including dependencies...)
-	@read -p "Are you sure? This will delete venv and node_modules [y/N]: " -n 1 -r; \
+	@read -p "Are you sure? This will delete node_modules [y/N]: " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		rm -rf $(VENV_DIR) $(NODE_MODULES) 2>/dev/null || true; \
-		rm -f configs/versions.lock 2>/dev/null || true; \
+		rm -rf $(NODE_MODULES) 2>/dev/null || true; \
+		rm -f versions.lock 2>/dev/null || true; \
 		$(call log_success,Complete cleanup finished); \
 		echo "Run 'make init' to reinitialize"; \
 	else \
@@ -312,36 +307,36 @@ clean-all: clean clean-results ## Clean everything including dependencies
 dev-setup: init ## Setup development environment with additional tools
 	$(call log_step,Setting up development environment...)
 	@if [ -f setup.py ] || [ -f pyproject.toml ]; then \
-		$(PIP) install -e .; \
+		python3 -m pip install --user -e .; \
 		$(call log_success,Development environment ready); \
 	else \
 		$(call log_warning,No setup.py or pyproject.toml found, skipping editable install); \
 		$(call log_success,Basic development environment ready); \
 	fi
 
-lint: $(VENV_DIR) ## Run code quality checks
+lint: python-deps ## Run code quality checks
 	$(call log_step,Running code quality checks...)
 	@if [ -d analysis ]; then \
-		$(PYTHON) -m black --check analysis/ || true; \
-		$(PYTHON) -m flake8 analysis/ || true; \
+		python3 -m black --check analysis/ || true; \
+		python3 -m flake8 analysis/ || true; \
 		$(call log_success,Code quality checks completed); \
 	else \
 		$(call log_warning,No analysis directory found, skipping lint); \
 	fi
 
-format: $(VENV_DIR) ## Format Python code
+format: python-deps ## Format Python code
 	$(call log_step,Formatting Python code...)
 	@if [ -d analysis ]; then \
-		$(PYTHON) -m black analysis/; \
+		python3 -m black analysis/; \
 		$(call log_success,Code formatted); \
 	else \
 		$(call log_warning,No analysis directory found, skipping format); \
 	fi
 
-test: $(VENV_DIR) ## Run tests (when implemented)
+test: python-deps ## Run tests (when implemented)
 	$(call log_step,Running tests...)
 	@if [ -d tests ]; then \
-		$(PYTHON) -m pytest tests/ -v; \
+		python3 -m pytest tests/ -v; \
 		$(call log_success,Tests passed); \
 	else \
 		$(call log_warning,No tests directory found); \
@@ -357,17 +352,17 @@ status: ## Show current project status
 	@echo "=============="
 	@echo ""
 	@echo -e "$(BOLD)Environment:$(NC)"
-	@if [ -d "$(VENV_DIR)" ]; then \
-		echo -e "  $(GREEN)✓$(NC) Python venv ready"; \
+	@if python3 -c "import sys; print('Python', sys.version.split()[0])" 2>/dev/null; then \
+		echo -e "  $(GREEN)✓$(NC) Python ready"; \
 	else \
-		echo -e "  $(RED)✗$(NC) Python venv missing (run '$(CYAN)make init$(NC)')"; \
+		echo -e "  $(RED)✗$(NC) Python missing"; \
 	fi
 	@if [ -d "$(NODE_MODULES)" ]; then \
 		echo -e "  $(GREEN)✓$(NC) Node.js deps ready"; \
 	else \
 		echo -e "  $(RED)✗$(NC) Node.js deps missing (run '$(CYAN)make init$(NC)')"; \
 	fi
-	@if [ -f "configs/versions.lock" ]; then \
+	@if [ -f "versions.lock" ]; then \
 		echo -e "  $(GREEN)✓$(NC) Environment fingerprinted"; \
 	else \
 		echo -e "  $(RED)✗$(NC) Environment not fingerprinted (run '$(CYAN)make init$(NC)')"; \

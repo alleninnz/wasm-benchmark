@@ -17,8 +17,8 @@ NC='\033[0m' # No Color
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RESULTS_DIR="${PROJECT_ROOT}/results"
 CONFIG_DIR="${PROJECT_ROOT}/configs"
-VERSIONS_LOCK="${CONFIG_DIR}/versions.lock"
-META_JSON="${RESULTS_DIR}/meta.json"
+VERSIONS_LOCK="${PROJECT_ROOT}/versions.lock"
+META_JSON="${PROJECT_ROOT}/meta.json"
 
 # Logging functions
 log_info() {
@@ -168,7 +168,9 @@ get_browser_info() {
     log_info "Checking browser information..."
     
     # Try to get Chromium/Chrome version
-    if command -v google-chrome &> /dev/null; then
+    if [[ "$OSTYPE" == "darwin"* ]] && [[ -f "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]]; then
+        CHROME_VERSION=$("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --version 2>/dev/null | cut -d' ' -f3 || echo "unknown")
+    elif command -v google-chrome &> /dev/null; then
         CHROME_VERSION=$(google-chrome --version 2>/dev/null | cut -d' ' -f3 || echo "unknown")
     elif command -v chromium &> /dev/null; then
         CHROME_VERSION=$(chromium --version 2>/dev/null | cut -d' ' -f2 || echo "unknown")
@@ -191,8 +193,6 @@ get_browser_info() {
 # Generate versions.lock file
 generate_versions_lock() {
     log_info "Generating versions.lock file..."
-    
-    mkdir -p "$CONFIG_DIR"
     
     cat > "$VERSIONS_LOCK" << EOF
 # Fixed Toolchain Versions for Reproducible Builds
@@ -257,8 +257,6 @@ EOF
 # Generate meta.json for results
 generate_meta_json() {
     log_info "Generating meta.json for results..."
-    
-    mkdir -p "$RESULTS_DIR"
     
     cat > "$META_JSON" << EOF
 {
@@ -407,8 +405,8 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         echo "  - Browser information"
         echo ""
         echo "Output files:"
-        echo "  - configs/versions.lock"
-        echo "  - results/meta.json"
+        echo "  - versions.lock"
+        echo "  - meta.json"
         exit 0
     fi
     

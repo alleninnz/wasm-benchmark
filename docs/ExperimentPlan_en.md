@@ -102,7 +102,7 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 
 • Install Wasm tools: Binaryen (`wasm-opt`), WABT (`wasm2wat`/`wasm-strip`)
 
-• Generate tool fingerprint: create `fingerprint.sh`, write all versions to `results/meta.json` and `versions.lock.txt`, ensuring reproducibility
+• Generate tool fingerprint: create `fingerprint.sh`, write all versions to `meta.json` and `versions.lock`, ensuring reproducibility
 
 ---
 
@@ -148,7 +148,7 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 │  │  ├─ final_dataset.csv      # Post-QC data
 │  │  ├─ qc_report.txt          # Quality control report
 │  │  └─ logs/                  # Runtime logs
-│  └─ meta.json                 # Experiment metadata
+├─ meta.json                    # Experiment metadata
 ├─ analysis/
 │  ├─ statistics.py             # Statistical analysis script
 │  ├─ plots.py                  # Visualization script
