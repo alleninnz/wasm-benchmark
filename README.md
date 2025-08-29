@@ -51,13 +51,11 @@ make all-quick              # Reduced sample size (~5 minutes)
 
 ## 📊 Benchmark Tasks
 
-Five computational tasks designed to test different performance aspects:
+Three computational tasks designed to test different performance aspects:
 
 | Task | Focus | Small | Medium | Large |
 |------|-------|-------|--------|-------|
 | **Mandelbrot** | CPU-intensive floating-point | 256×256 | 512×512 | 1024×1024 |
-| **Array Sort** | Memory allocation pressure | 200K items | 800K items | 2M items |
-| **Base64** | Byte processing & strings | 300KB | 900KB | 2.4MB |
 | **JSON Parse** | Object allocation patterns | 6K records | 20K records | 50K records |
 | **Matrix Mul** | Dense numerical computation | 256×256 | 384×384 | 512×512 |
 
@@ -98,8 +96,6 @@ wasm-benchmark/
 ├── 
 ├── 🎯 tasks/                   # Language implementations
 │   ├── mandelbrot/{rust,tinygo}/
-│   ├── array_sort/{rust,tinygo}/
-│   ├── base64/{rust,tinygo}/
 │   ├── json_parse/{rust,tinygo}/
 │   └── matrix_mul/{rust,tinygo}/
 ├── 
@@ -338,7 +334,7 @@ make all                    # Complete experiment
 - **🔗 Single-threaded:** WASM threading not used (consistency)
 - **🌐 Browser-specific:** V8 engine results (Chrome/Node.js)  
 - **💾 Memory-bound:** Limited by 16GB system RAM
-- **🎯 Task coverage:** 5 tasks may not represent all workloads
+- **🎯 Task coverage:** 3 tasks may not represent all workloads
 - **🖥️ Platform-specific:** Apple M4 architecture results
 - **⏱️ Temporal:** Performance may vary with browser/OS updates
 

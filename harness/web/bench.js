@@ -263,10 +263,6 @@ export class BenchmarkRunner {
         switch (taskName) {
             case 'mandelbrot':
                 return this._generateMandelbrotParams(scaleConfig);
-            case 'array_sort':
-                return this._generateArraySortData(scaleConfig);
-            case 'base64':
-                return this._generateBase64Data(scaleConfig);
             case 'json_parse':
                 return this._generateJsonData(scaleConfig);
             case 'matrix_mul':
@@ -293,36 +289,6 @@ export class BenchmarkRunner {
         return new Uint8Array(params);
     }
 
-    /**
-     * Generate array sort data
-     * @private
-     */
-    _generateArraySortData(scaleConfig) {
-        const length = scaleConfig.length;
-        const buffer = new ArrayBuffer(length * 4);
-        const view = new Int32Array(buffer);
-        
-        for (let i = 0; i < length; i++) {
-            view[i] = this._randomInt32();
-        }
-        
-        return new Uint8Array(buffer);
-    }
-
-    /**
-     * Generate Base64 test data
-     * @private
-     */
-    _generateBase64Data(scaleConfig) {
-        const length = scaleConfig.inputBytes;
-        const data = new Uint8Array(length);
-        
-        for (let i = 0; i < length; i++) {
-            data[i] = Math.floor(this.random() * 256);
-        }
-        
-        return data;
-    }
 
     /**
      * Generate JSON test data

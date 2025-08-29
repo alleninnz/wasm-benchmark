@@ -4,7 +4,7 @@
 experiment:
   name: "Golang vs Rust WebAssembly Performance Comparison"
   version: "1.0"
-  description: "Evaluating efficiency of Golang (TinyGo) and Rust in WebAssembly across 5 computational tasks"
+  description: "Evaluating efficiency of Golang (TinyGo) and Rust in WebAssembly across 3 computational tasks"
 
 # Test environment settings
 environment:
@@ -38,35 +38,6 @@ tasks:
       center_imag: 0.131825904205
       scale_factor: 3.0
 
-  array_sort:
-    description: "Integer sorting with memory allocation pressure"
-    scales:
-      small:
-        length: 200000      # 800KB - no GC trigger
-        memory_est_mb: 0.8
-      medium:
-        length: 800000      # 3.2MB - light GC trigger
-        memory_est_mb: 3.2
-      large:
-        length: 2000000     # 8MB - moderate GC trigger
-        memory_est_mb: 8
-    algorithm: "three_way_quicksort"
-    pivot_strategy: "median_of_three"
-    cutoff_threshold: 16    # Switch to insertion sort
-
-  base64:
-    description: "Byte processing with string allocation"
-    scales:
-      small:
-        input_bytes: 307200   # 300KB input -> 1MB total
-        memory_est_mb: 1
-      medium:
-        input_bytes: 921600   # 900KB input -> 3MB total
-        memory_est_mb: 3
-      large:
-        input_bytes: 2516582  # 2.4MB input -> 8MB total
-        memory_est_mb: 8
-    encoding: "standard"    # No line breaks
 
   json_parse:
     description: "Structured data parsing with object allocation"

@@ -22,13 +22,11 @@
 
 ## 评测任务
 
-统一使用 5 个计算/数据密集任务，Rust 与 TinyGo 各实现一份，同参对照：
+统一使用 3 个计算/数据密集任务，Rust 与 TinyGo 各实现一份，同参对照：
 
 1. **Mandelbrot**（CPU 浮点密集）
-2. **Array Sort**（整数或浮点，固定分布与随机种子）
-3. **Base64 编解码**（字节处理）
-4. **JSON 解析**（结构化数据）
-5. **矩阵乘法**（MatMul）（整数/浮点可选，固定维度）
+2. **JSON 解析**（结构化数据）
+3. **矩阵乘法**（MatMul）（整数/浮点可选，固定维度）
 
 每个任务固定：输入规模（小 中 大）、随机种子、校验函数（在 Wasm 内部计算摘要（hash/校验），只把小结果返回给 JS，确保 Go Rust 在同一任务重返回结果完全一致）
 
@@ -84,7 +82,7 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 
 ## 成功判据
 
-**数据完备：** 5 个任务在 Rust 与 TinyGo 上均产出 ≥90 条有效样本（热启动100次，排除异常值后保留≥90）  
+**数据完备：** 3 个任务在 Rust 与 TinyGo 上均产出 ≥90 条有效样本（热启动100次，排除异常值后保留≥90）  
 **统计结果：** 每个任务至少完成一组语言间显著性对比与效应量报告  
 **报告产出：** `analysis/`
 
@@ -132,8 +130,6 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 │  │  │  └─ src/lib.rs
 │  │  └─ tinygo/                # TinyGo 实现
 │  │     └─ main.go
-│  ├─ array_sort/               # 同上结构
-│  ├─ base64/                   # 同上结构
 │  ├─ json_parse/               # 同上结构
 │  └─ matrix_mul/               # 同上结构
 ├─ builds/
@@ -263,47 +259,7 @@ tinygo build -target=wasm \
 
 **备注：** 仅返回哈希值，不回传位图，减少边界传输。
 
-## 任务二：数组快速排序
-
-**目的：** 测试整数比较、内存访问与原地修改算法。
-
-**输入：** 长度为 N 的 int32 数组（JS 以 xorshift32 生成 → alloc 区一次性写入）。
-
-**规模**（渐进式GC触发设计）
-• S：200,000（800KB，**不触发GC**）
-• M：800,000（3.2MB，**轻度触发GC**）
-• L：2,000,000（8MB，**中度触发GC**）
-
-**过程**（Wasm 内）
-1. 将输入缓冲视为 i32 切片
-2. **标准三路快排**（Dijkstra 3-way quicksort）：
-   - 相同的分区策略：`< pivot | = pivot | > pivot`
-   - 相同的基准选择：median-of-three
-   - 相同的递归终止条件：长度 ≤ 16 时切换到插入排序
-3. 对排序后数组进行 FNV-1a 哈希，返回哈希值
-
-**注**：原地排序算法，内存分配主要来自输入数据本身，GC压力来自数据规模
-
-## 任务三：Base64 编解码
-
-**目的：** 测试字节处理与表驱动、分支。
-
-**输入：** 长度为 N 的随机字节（xorshift32 生成，取低 8 位）。
-
-**规模**（渐进式GC触发设计）
-• S：300 KiB（编码后400KB + 解码300KB = 1MB，**不触发GC**）
-• M：900 KiB（编码后1.2MB + 解码900KB = 3MB，**轻度触发GC**）
-• L：2.4 MiB（编码后3.2MB + 解码2.4MB = 8MB，**中度触发GC**）
-
-**过程**（Wasm 内）
-1. **编码：** bytes → base64（标准表，\r\n 禁用，纯一行）
-2. **解码：** base64 → bytes2
-3. **校验：** 比较 bytes2 与原始 bytes（若不等直接返回特定错误码，例如 `0xDEAD_B64`）
-4. 对 bytes2 所有字节进行 FNV-1a 哈希，返回哈希值
-
-**备注：** 全流程在 Wasm 内完成；JS 不参与字符串构造或比较。
-
-## 任务四：JSON 解析（结构化文本 → 结构化对象）
+## 任务二：JSON 解析（结构化文本 → 结构化对象）
 
 **目的：** 测试文本扫描、数字解析、对象构建与内存分配。
 
@@ -347,7 +303,7 @@ tinygo build -target=wasm \
 
 **校验：** 只比对哈希值即可；两语言解析路径不同也能对齐。
 
-## 任务五：矩阵乘法
+## 任务三：矩阵乘法
 
 **目的：** 测试密集型数值计算、缓存访问。
 
@@ -378,8 +334,6 @@ val = (x >>> 0) * (1.0 / 4294967296.0)
 - **L（中度触发GC）**：6-10MB内存使用，GC开销明显，Rust零成本优势突出
 
 **各任务GC压力特点**：
-- **快速排序**：原地算法，主要压力来自输入数据规模
-- **Base64**：字符串分配，测试连续内存分配的GC影响
 - **JSON解析**：大量小对象分配，测试细粒度GC开销
 - **矩阵乘法**：大块连续内存，测试大对象分配的GC影响
 - **Mandelbrot**：纯计算基线，几乎无内存分配，GC影响最小
@@ -393,22 +347,22 @@ val = (x >>> 0) * (1.0 / 4294967296.0)
 `{task}-{lang}-{opt}.wasm`
 
 例：
-- `array_sort-rust-o3.wasm`（Rust 裸接口 + O3 优化）
-- `array_sort-tinygo-oz.wasm`（TinyGo + Oz 优化）
-- `mandelbrot-rust-o3.wasm`
-- `mandelbrot-tinygo-oz.wasm`
+- `mandelbrot-rust-o3.wasm`（Rust 裸接口 + O3 优化）
+- `mandelbrot-tinygo-oz.wasm`（TinyGo + Oz 优化）
+- `json_parse-rust-o3.wasm`
+- `json_parse-tinygo-oz.wasm`
 
 **构建目录结构：**
 ```
 builds/
 ├─ rust/
 │  ├─ mandelbrot-rust-o3.wasm
-│  ├─ array_sort-rust-o3.wasm
-│  └─ ...
+│  ├─ json_parse-rust-o3.wasm
+│  └─ matrix_mul-rust-o3.wasm
 └─ tinygo/
    ├─ mandelbrot-tinygo-oz.wasm
-   ├─ array_sort-tinygo-oz.wasm
-   └─ ...
+   ├─ json_parse-tinygo-oz.wasm
+   └─ matrix_mul-tinygo-oz.wasm
 ```
 
 ## 公平性与一致性守则（强制）
@@ -424,7 +378,7 @@ builds/
 
 ## 结果与异常处理（落盘格式不变）
 • `results/bench-*.ndjson` 保留每次 100 样本的 ms，以及 hash（来自返回值 u32）
-• 对于失败（解析错误、Base64 对比失败等），`run_task` 可返回固定错误码（如 `0xDEAD_xxxx`），JS 端把这次样本标记为 `ok:false` 并计入异常统计（不纳入均值）
+• 对于失败（解析错误等），`run_task` 可返回固定错误码（如 `0xDEAD_xxxx`），JS 端把这次样本标记为 `ok:false` 并计入异常统计（不纳入均值）
 • 二进制大小来自 `*.manifest.json`（raw/opt/gz）
 
 ---
@@ -646,7 +600,7 @@ builds/
   - **产出：** `.venv/`、`config/versions.lock`、`logs/init_*.log`
 
 • **`make build`**
-  - **目的：** 构建 Rust 与 Go 的五个 Wasm 任务（Release），同时产出 raw_size 与 gzip_size
+  - **目的：** 构建 Rust 与 Go 的三个 Wasm 任务（Release），同时产出 raw_size 与 gzip_size
   - **产出：** `wasm/build/` 下 `.wasm`、`.map`、`sizes.csv`、`checksums.txt`（SHA256）
 
 • **`make run`**

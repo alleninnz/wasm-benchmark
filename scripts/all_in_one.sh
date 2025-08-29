@@ -365,13 +365,11 @@ generate_report() {
 
 ## Experiment Overview
 
-This experiment compared the performance of Rust and TinyGo when compiled to WebAssembly across five computational tasks:
+This experiment compared the performance of Rust and TinyGo when compiled to WebAssembly across three computational tasks:
 
 1. **Mandelbrot Set** - CPU-intensive floating point computation
-2. **Array Sort** - Integer sorting with memory allocation
-3. **Base64 Encoding/Decoding** - Byte processing and string manipulation
-4. **JSON Parsing** - Structured data processing
-5. **Matrix Multiplication** - Dense numerical computation
+2. **JSON Parsing** - Structured data processing
+3. **Matrix Multiplication** - Dense numerical computation
 
 Each task was executed with three different input scales (small, medium, large) designed to progressively trigger garbage collection pressure in TinyGo.
 

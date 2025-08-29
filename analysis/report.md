@@ -10,10 +10,8 @@
 
 ### Benchmark Tasks
 1. **Mandelbrot Set** - CPU-intensive floating point computation
-2. **Array Sort** - Integer sorting with memory allocation pressure  
-3. **Base64 Encoding/Decoding** - Byte processing and string manipulation
-4. **JSON Parsing** - Structured data processing with object allocation
-5. **Matrix Multiplication** - Dense numerical computation
+2. **JSON Parsing** - Structured data processing with object allocation
+3. **Matrix Multiplication** - Dense numerical computation
 
 ### Test Scales
 - **Small**: Minimal memory allocation (~1MB) - baseline performance

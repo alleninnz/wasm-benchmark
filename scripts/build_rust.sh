@@ -171,7 +171,7 @@ generate_manifest() {
 EOF
 
     local first=true
-    for task in mandelbrot array_sort base64 json_parse matrix_mul; do
+    for task in mandelbrot json_parse matrix_mul; do
         local output_name="${task}-rust-o3.wasm"
         local output_path="${BUILDS_DIR}/${output_name}"
         local gzip_path="${output_path}.gz"
@@ -214,7 +214,7 @@ main() {
     check_wasm_tools
     
     # Define tasks to build
-    local tasks=("mandelbrot" "array_sort" "base64" "json_parse" "matrix_mul")
+    local tasks=("mandelbrot" "json_parse" "matrix_mul")
     local failed_tasks=()
     local successful_tasks=()
     
