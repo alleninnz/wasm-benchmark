@@ -29,6 +29,7 @@ analysis/statistical_analysis.json
 .env
 .env.local
 .claude/
+.serena/
 
 # IDE files
 .vscode/
