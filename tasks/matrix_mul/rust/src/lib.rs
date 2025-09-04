@@ -1,126 +1,212 @@
-use std::os::raw::{c_void, c_uint};
+use std::os::raw::c_void;
+use std::alloc::{alloc as sys_alloc, Layout};
 
-// WebAssembly C-style interface exports
+pub mod types;
+pub mod matrix;
+pub mod generation;
+pub mod hash;
+pub mod validation;
+pub mod reference;
+
+use types::{MatrixMulParams, MAX_ALLOCATION_SIZE};
+use matrix::naive_triple_loop_multiply;
+use generation::generate_random_matrix;
+use hash::fnv1a_hash_matrix;
+use validation::validate_parameters;
+
+
+
+// WebAssembly exports for benchmark harness integration
+
 #[no_mangle]
 pub extern "C" fn init(seed: u32) {
-    // TODO: Initialize random number generator with seed
-    // Used for generating reproducible test matrices
+    // Initialize WebAssembly module - no-op for this implementation
+    let _ = seed;
 }
 
+/// Allocate memory for WebAssembly linear memory management
 #[no_mangle]
 pub extern "C" fn alloc(n_bytes: u32) -> *mut c_void {
-    // TODO: Allocate memory buffer of specified size
-    // Return pointer for parameter passing and matrix storage
-    std::ptr::null_mut()
+    if n_bytes == 0 {
+        return std::ptr::null_mut();
+    }
+    
+    if n_bytes > MAX_ALLOCATION_SIZE {
+        return std::ptr::null_mut();
+    }
+    
+    let layout = match Layout::from_size_align(n_bytes as usize, std::mem::align_of::<u64>()) {
+        Ok(layout) => layout,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    
+    let ptr = unsafe { sys_alloc(layout) };
+    
+    if ptr.is_null() {
+        std::ptr::null_mut()
+    } else {
+        ptr as *mut c_void
+    }
 }
 
+/// Execute matrix multiplication benchmark task
 #[no_mangle]
 pub extern "C" fn run_task(params_ptr: *mut c_void) -> u32 {
-    // TODO: Implement Matrix Multiplication benchmark
-    // 1. Parse parameters from memory pointer:
-    //    - dimension: size of square matrices (N x N)
-    //    - seed: for reproducible random matrix generation
-    // 2. Generate random input matrices:
-    //    - Create two matrices A and B of size dimension x dimension
-    //    - Fill with pseudo-random f32 values using seed
-    //    - Values in range [-1.0, 1.0] for numerical stability
-    // 3. Perform matrix multiplication C = A × B:
-    //    - Use naive triple-loop algorithm (i,j,k order)
-    //    - C[i][j] = sum(A[i][k] * B[k][j]) for k in 0..dimension
-    //    - Store results as f32 values
-    // 4. Compute FNV-1a hash of result matrix:
-    //    - Round each f32 to 6 decimal places: round(value * 1e6)
-    //    - Use FNV-1a hash for better distribution
-    // 5. Return final hash for verification
+    if params_ptr.is_null() {
+        return 0;
+    }
     
-    0 // Placeholder return value
+    let params = unsafe { &*(params_ptr as *const MatrixMulParams) };
+    
+    if !validate_parameters(params) {
+        return 0;
+    }
+    
+    // Generate matrices A and B using reproducible random generation
+    let mut seed = params.seed;
+    let matrix_a = generate_random_matrix(params.dimension as usize, &mut seed);
+    let matrix_b = generate_random_matrix(params.dimension as usize, &mut seed);
+    
+    // Initialize result matrix C
+    let n = params.dimension as usize;
+    let mut matrix_c = vec![vec![0.0f32; n]; n];
+    
+    // Execute matrix multiplication: C = A × B
+    naive_triple_loop_multiply(&matrix_a, &matrix_b, &mut matrix_c);
+    
+    // Return FNV-1a hash of result matrix for verification
+    fnv1a_hash_matrix(&matrix_c)
 }
 
-// Private helper functions (to be implemented)
 
-fn generate_random_matrix(dimension: usize, seed: &mut u32) -> Vec<Vec<f32>> {
-    // TODO: Generate random matrix with reproducible values
-    // Use LCG to generate values in range [-1.0, 1.0]
-    Vec::new()
-}
-
-fn matrix_multiply(a: &Vec<Vec<f32>>, b: &Vec<Vec<f32>>) -> Vec<Vec<f32>> {
-    // TODO: Implement naive matrix multiplication C = A × B
-    // Use triple-loop with i,j,k order for consistency across languages
-    // C[i][j] = sum(A[i][k] * B[k][j]) for all k
-    Vec::new()
-}
-
-fn naive_triple_loop_multiply(a: &Vec<Vec<f32>>, b: &Vec<Vec<f32>>, c: &mut Vec<Vec<f32>>) {
-    // TODO: Triple-loop implementation with specific i,j,k order
-    // for i in 0..n:
-    //   for j in 0..n:
-    //     for k in 0..n:
-    //       c[i][j] += a[i][k] * b[k][j]
-}
-
-fn create_zero_matrix(dimension: usize) -> Vec<Vec<f32>> {
-    // TODO: Create matrix filled with zeros
-    Vec::new()
-}
-
-fn fnv1a_hash_matrix(matrix: &Vec<Vec<f32>>) -> u32 {
-    // TODO: Compute FNV-1a hash of matrix elements
-    // Round each f32 to 6 decimal places: round(value * 1e6)
-    // Process elements in row-major order (i,j)
-    // Use FNV-1a: hash ^= byte; hash *= 16777619u32
-    0
-}
-
-fn round_f32_to_precision(value: f32, precision_digits: u32) -> i32 {
-    // TODO: Round f32 to specified decimal places
-    // For precision_digits=6: round(value * 1e6) as i32
-    0
-}
-
-fn linear_congruential_generator(seed: &mut u32) -> u32 {
-    // TODO: Implement LCG for reproducible random numbers
-    // Use standard parameters: a=1664525, c=1013904223, m=2^32
-    0
-}
-
-fn lcg_to_float_range(lcg_value: u32, min: f32, max: f32) -> f32 {
-    // TODO: Convert LCG value to f32 in specified range
-    // Map u32 to [min, max] uniformly
-    0.0
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_matrix_multiplication() {
-        // TODO: Test matrix multiplication with known values
-        // Verify small matrices produce correct results
+    fn test_small_matrix_multiplication() {
+        // Test 2x2 matrix multiplication with known values
+        let a = vec![vec![1.0, 2.0], vec![3.0, 4.0]];
+        let b = vec![vec![5.0, 6.0], vec![7.0, 8.0]];
+        let mut c = vec![vec![0.0; 2]; 2];
+        
+        naive_triple_loop_multiply(&a, &b, &mut c);
+        
+        // Expected result: [[19, 22], [43, 50]]
+        assert_eq!(c[0][0], 19.0);
+        assert_eq!(c[0][1], 22.0);
+        assert_eq!(c[1][0], 43.0);
+        assert_eq!(c[1][1], 50.0);
     }
 
     #[test]
     fn test_identity_matrix() {
-        // TODO: Test multiplication by identity matrix
-        // A × I should equal A
+        // Test multiplication with 3x3 identity matrix
+        let a = vec![vec![2.0, 3.0, 4.0], vec![5.0, 6.0, 7.0], vec![8.0, 9.0, 1.0]];
+        let identity = vec![vec![1.0, 0.0, 0.0], vec![0.0, 1.0, 0.0], vec![0.0, 0.0, 1.0]];
+        let mut c = vec![vec![0.0; 3]; 3];
+        
+        naive_triple_loop_multiply(&a, &identity, &mut c);
+        
+        // Result should equal matrix A
+        for i in 0..3 {
+            for j in 0..3 {
+                assert_eq!(c[i][j], a[i][j]);
+            }
+        }
     }
 
     #[test]
     fn test_zero_matrix() {
-        // TODO: Test multiplication with zero matrix
-        // A × 0 should equal 0
+        // Test multiplication with zero matrix
+        let a = vec![vec![1.0, 2.0], vec![3.0, 4.0]];
+        let zero = vec![vec![0.0, 0.0], vec![0.0, 0.0]];
+        let mut c = vec![vec![0.0; 2]; 2];
+        
+        naive_triple_loop_multiply(&a, &zero, &mut c);
+        
+        // Result should be zero matrix
+        for i in 0..2 {
+            for j in 0..2 {
+                assert_eq!(c[i][j], 0.0);
+            }
+        }
     }
 
     #[test]
     fn test_hash_consistency() {
-        // TODO: Verify hash calculation produces consistent results
-        // Same matrices should produce same hash
+        // Verify hash calculation produces consistent results
+        let matrix = vec![vec![1.5, 2.75], vec![3.125, 4.0625]];
+        
+        let hash1 = fnv1a_hash_matrix(&matrix);
+        let hash2 = fnv1a_hash_matrix(&matrix);
+        
+        assert_eq!(hash1, hash2);
+        assert_ne!(hash1, 0); // Should not be zero for non-zero matrix
     }
 
     #[test]
-    fn test_precision_rounding() {
-        // TODO: Test f32 rounding to 6 decimal places
-        // Verify consistent rounding behavior
+    fn test_parameter_validation() {
+        let valid_params = MatrixMulParams { dimension: 16, seed: 12345 };
+        let invalid_zero = MatrixMulParams { dimension: 0, seed: 12345 };
+        let invalid_large = MatrixMulParams { dimension: 2001, seed: 12345 };
+        
+        assert!(validate_parameters(&valid_params));
+        assert!(!validate_parameters(&invalid_zero));
+        assert!(!validate_parameters(&invalid_large));
+    }
+
+    #[test]
+    fn test_deterministic_generation() {
+        // Same seed should produce same matrices
+        let n = 4;
+        let seed = 42;
+        
+        let mut seed1 = seed;
+        let mut seed2 = seed;
+        let matrix1 = generate_random_matrix(n, &mut seed1);
+        let matrix2 = generate_random_matrix(n, &mut seed2);
+        
+        for i in 0..n {
+            for j in 0..n {
+                assert_eq!(matrix1[i][j], matrix2[i][j]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_webassembly_interface() {
+        // Test WebAssembly interface compatibility
+        let params = MatrixMulParams { dimension: 4, seed: 12345 };
+        let params_ptr = &params as *const MatrixMulParams as *mut c_void;
+        
+        let hash_result = run_task(params_ptr);
+        
+        assert_ne!(hash_result, 0); // Should return valid hash
+        
+        // Same parameters should produce same hash
+        let hash_result2 = run_task(params_ptr);
+        assert_eq!(hash_result, hash_result2);
+    }
+
+    #[test] 
+    fn generate_reference_vectors_output() {
+        use reference::generate_test_vectors;
+        let vectors = generate_test_vectors();
+        
+        #[cfg(test)]
+        {
+            let json = serde_json::to_string_pretty(&vectors).unwrap();
+            println!("
+=== REFERENCE HASH VECTORS ===");
+            println!("{}", json);
+            println!("=== END REFERENCE VECTORS ===
+");
+        }
+        
+        // Basic validation
+        assert!(vectors.len() >= 10);
+        assert!(vectors.iter().all(|v| v.expected_hash != 0));
     }
 }
