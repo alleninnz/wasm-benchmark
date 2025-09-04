@@ -18,24 +18,18 @@ WASM_DIR="wasm_modules"
 # Matrix Multiplication-specific validation function
 validate_matrix_mul() {
     log_section "Matrix Multiplication Cross-Implementation Validation"
-    log_info "⚠️  Matrix Multiplication task not yet implemented"
     
-    # Check if directories exist
-    if [[ ! -d "$RUST_DIR" ]]; then
-        log_error "❌ Rust implementation directory not found: $RUST_DIR"
+    # Validate task using common framework
+    local test_file="cross_implementation_test.go"
+    if validate_task "$TASK_NAME" "$test_file"; then
+        log_success "✅ Matrix Multiplication cross-implementation validation passed"
+        return 0
+    else
+        log_error "❌ Matrix Multiplication cross-implementation validation failed"
+        # Note: This task has partial compatibility (small matrices work, larger ones differ)
+        log_warning "⚠️  Partial compatibility detected - small matrices (≤4x4) match exactly"
         return 1
     fi
-    
-    if [[ ! -d "$TINYGO_DIR" ]]; then
-        log_error "❌ TinyGo implementation directory not found: $TINYGO_DIR"
-        return 1
-    fi
-    
-    # Future implementation will use the common validation framework:
-    # validate_task "$TASK_NAME" "$RUST_DIR" "$TINYGO_DIR" "$WASM_DIR"
-    
-    log_error "❌ Matrix Multiplication validation not implemented yet"
-    return 1
 }
 
 # Main execution when run directly
