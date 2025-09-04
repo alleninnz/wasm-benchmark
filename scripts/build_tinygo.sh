@@ -73,7 +73,7 @@ check_wasm_tools() {
 build_tinygo_task() {
     local task_name="$1"
     local task_dir="${TASKS_DIR}/${task_name}/tinygo"
-    local output_name="${task_name}-tinygo-oz.wasm"
+    local output_name="${task_name}-tinygo-o3.wasm"
     local output_path="${BUILDS_DIR}/${output_name}"
     
     if [[ ! -d "${task_dir}" ]]; then
@@ -97,12 +97,11 @@ build_tinygo_task() {
     # TinyGo build command with optimizations
     local build_flags=(
         "-target=${WASM_TARGET}"
-        "-opt=3"                    # Optimization level 3
+        "-opt=2"                    # Speed optimization (equivalent to Rust O3)
         "-panic=trap"               # Use trap on panic instead of runtime
         "-no-debug"                 # Remove debug information
         "-scheduler=none"           # Disable scheduler for single-threaded WASM
         "-gc=conservative"          # Use conservative GC
-        "-wasm-abi=generic"         # Generic WASM ABI
     )
     
     if ! tinygo build "${build_flags[@]}" -o "${output_path}" .; then
@@ -126,7 +125,7 @@ build_tinygo_task() {
     # Optimize with wasm-opt
     if command -v wasm-opt &> /dev/null; then
         local temp_wasm="${output_path}.tmp"
-        wasm-opt -Oz "${output_path}" -o "${temp_wasm}"
+        wasm-opt -O3 "${output_path}" -o "${temp_wasm}"
         mv "${temp_wasm}" "${output_path}"
         local optimized_size=$(wc -c < "${output_path}")
         log_info "Optimized size: ${optimized_size} bytes"
@@ -158,12 +157,11 @@ generate_manifest() {
     "tinygo_version": "$(tinygo version)",
     "build_flags": [
         "-target=${WASM_TARGET}",
-        "-opt=3",
+        "-opt=2",
         "-panic=trap",
         "-no-debug",
         "-scheduler=none",
-        "-gc=conservative",
-        "-wasm-abi=generic"
+        "-gc=conservative"
     ],
     "tasks": [
 EOF

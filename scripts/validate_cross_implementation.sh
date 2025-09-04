@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/validation_common.sh"
 
 # Available task modules
-AVAILABLE_TASKS=("mandelbrot")
+AVAILABLE_TASKS=("mandelbrot" "json_parse")
 
 # Usage information
 show_usage() {
