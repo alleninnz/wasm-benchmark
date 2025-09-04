@@ -185,3 +185,8 @@ type MandelbrotParams struct {
 func parseParams(ptr uintptr) *MandelbrotParams {
 	return (*MandelbrotParams)(unsafe.Pointer(ptr))
 }
+
+// Required for TinyGo WebAssembly compilation
+func main() {
+	// Empty main function required for compilation
+}

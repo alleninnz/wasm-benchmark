@@ -122,13 +122,17 @@ build_tinygo_task() {
         log_info "Stripped size: ${stripped_size} bytes ($(( (original_size - stripped_size) * 100 / original_size ))% reduction)"
     fi
     
-    # Optimize with wasm-opt
+    # Optimize with wasm-opt (enable bulk memory operations)
     if command -v wasm-opt &> /dev/null; then
         local temp_wasm="${output_path}.tmp"
-        wasm-opt -O3 "${output_path}" -o "${temp_wasm}"
-        mv "${temp_wasm}" "${output_path}"
-        local optimized_size=$(wc -c < "${output_path}")
-        log_info "Optimized size: ${optimized_size} bytes"
+        wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int --enable-sign-ext "${output_path}" -o "${temp_wasm}"
+        if mv "${temp_wasm}" "${output_path}" 2>/dev/null; then
+            local optimized_size=$(wc -c < "${output_path}")
+            log_info "Optimized size: ${optimized_size} bytes"
+        else
+            log_warning "Failed to move optimized file, keeping original"
+            rm -f "${temp_wasm}" 2>/dev/null || true
+        fi
     fi
     
     # Create gzip version for size comparison
@@ -168,7 +172,7 @@ EOF
 
     local first=true
     for task in mandelbrot json_parse matrix_mul; do
-        local output_name="${task}-tinygo-oz.wasm"
+        local output_name="${task}-tinygo-o3.wasm"
         local output_path="${BUILDS_DIR}/${output_name}"
         local gzip_path="${output_path}.gz"
         
