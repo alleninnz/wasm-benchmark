@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/validation_common.sh"
 
 # Available task modules
-AVAILABLE_TASKS=("mandelbrot" "json_parse")
+AVAILABLE_TASKS=("mandelbrot" "json_parse" "matrix_mul")
 
 # Usage information
 show_usage() {
@@ -29,7 +29,8 @@ show_usage() {
     echo "Examples:"
     echo "  $0 mandelbrot              # Validate only Mandelbrot task"
     echo "  $0 --all                   # Validate all tasks"
-    echo "  $0 mandelbrot json_parse   # Validate specific tasks (when available)"
+    echo "  $0 mandelbrot json_parse   # Validate specific tasks"
+    echo "  $0 matrix_mul              # Validate matrix multiplication (partial compatibility)"
 }
 
 # List available tasks
