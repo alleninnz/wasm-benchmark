@@ -10,6 +10,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import yaml from 'yaml';
 import { fileURLToPath } from 'url';
+import chalk from 'chalk';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,17 +25,17 @@ const CONFIG_PATHS = {
  */
 async function loadYamlConfig() {
     try {
-        console.log(`📖 Reading YAML config: ${CONFIG_PATHS.input}`);
+        console.log(chalk.blue('📖 Reading YAML config:'), CONFIG_PATHS.input);
         const yamlContent = await fs.readFile(CONFIG_PATHS.input, 'utf8');
         
-        console.log(`🔄 Parsing YAML content...`);
+        console.log(chalk.cyan('🔄 Parsing YAML content...'));
         const config = yaml.parse(yamlContent);
         
-        console.log(`✅ YAML parsed successfully: ${config.experiment?.name || 'Unknown'}`);
+        console.log(chalk.green('✅ YAML parsed successfully:'), config.experiment?.name || 'Unknown');
         return config;
         
     } catch (error) {
-        console.error(`❌ Failed to load YAML config: ${error.message}`);
+        console.error(chalk.red('❌ Failed to load YAML config:'), error.message);
         throw error;
     }
 }
@@ -43,7 +44,7 @@ async function loadYamlConfig() {
  * Optimize configuration for browser use
  */
 function optimizeConfig(config) {
-    console.log(`⚡ Optimizing configuration for browser use...`);
+    console.log(chalk.yellow('⚡ Optimizing configuration for browser use...'));
     
     // Extract only essential data for browser
     const optimized = {
@@ -106,7 +107,7 @@ function optimizeConfig(config) {
  */
 async function writeJsonConfig(config) {
     try {
-        console.log(`💾 Writing JSON config: ${CONFIG_PATHS.output}`);
+        console.log(chalk.blue('💾 Writing JSON config:'), CONFIG_PATHS.output);
         
         // Ensure output directory exists
         const outputDir = path.dirname(CONFIG_PATHS.output);
@@ -125,10 +126,10 @@ async function writeJsonConfig(config) {
         await fs.writeFile(CONFIG_PATHS.output, jsonContent, 'utf8');
         
         const stats = await fs.stat(CONFIG_PATHS.output);
-        console.log(`✅ JSON config written: ${(stats.size / 1024).toFixed(1)}KB`);
+        console.log(chalk.green('✅ JSON config written:'), `${(stats.size / 1024).toFixed(1)}KB`);
         
     } catch (error) {
-        console.error(`❌ Failed to write JSON config: ${error.message}`);
+        console.error(chalk.red('❌ Failed to write JSON config:'), error.message);
         throw error;
     }
 }
@@ -171,12 +172,12 @@ function validateConfig(config) {
     }
     
     if (errors.length > 0) {
-        console.error(`❌ Configuration validation failed:`);
-        errors.forEach(error => console.error(`   - ${error}`));
+        console.error(chalk.red('❌ Configuration validation failed:'));
+        errors.forEach(error => console.error(chalk.red(`   - ${error}`)));
         throw new Error(`Configuration validation failed: ${errors.join(', ')}`);
     }
     
-    console.log(`✅ Configuration validation passed`);
+    console.log(chalk.green('✅ Configuration validation passed'));
 }
 
 /**
@@ -221,12 +222,12 @@ async function watchMode() {
     
     for await (const event of watcher) {
         if (event.eventType === 'change') {
-            console.log(`\n🔄 Config file changed, rebuilding...`);
+            console.log(chalk.cyan('\n🔄 Config file changed, rebuilding...'));
             try {
                 await buildConfig();
-                console.log(`✅ Rebuild completed\n`);
+                console.log(chalk.green('✅ Rebuild completed\n'));
             } catch (error) {
-                console.error(`❌ Rebuild failed: ${error.message}\n`);
+                console.error(chalk.red('❌ Rebuild failed:'), error.message + '\n');
             }
         }
     }
