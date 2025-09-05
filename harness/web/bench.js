@@ -375,6 +375,78 @@ export class BenchmarkRunner {
     }
 
     /**
+     * Run benchmark for a single task configuration
+     * Public interface method for external callers like run_browser_bench.js
+     * @param {Object} config - Task configuration object
+     * @returns {Promise<Array>} Benchmark results for the specific task
+     */
+    async runTaskBenchmark(config) {
+        if (this.isRunning) {
+            throw new Error('Benchmark is already running');
+        }
+
+        // Extract task parameters from config
+        const { task, language, scale, taskConfig, scaleConfig, warmupRuns, measureRuns, timeout } = config;
+        
+        if (!task || !language || !scale) {
+            throw new Error('Missing required parameters: task, language, scale');
+        }
+
+        this.isRunning = true;
+        this.cancelled = false;
+        const taskResults = [];
+        
+        try {
+            // Create a compatible config structure for initialization
+            const benchConfig = {
+                tasks: [task],
+                languages: [language], 
+                scales: [scale],
+                taskConfigs: {
+                    [task]: taskConfig || {}
+                },
+                warmupRuns: warmupRuns || 3,
+                measureRuns: measureRuns || 10,
+                timeout: timeout || 60000,
+                environment: {
+                    warmupRuns: warmupRuns || 3,
+                    measureRuns: measureRuns || 10,
+                    timeout: timeout || 60000
+                }
+            };
+            
+            // Initialize with the compatible configuration
+            await this.initialize(benchConfig);
+            
+            window.benchmarkState.status = 'running';
+            window.logResult(`Running single task benchmark: ${task}-${language}-${scale}`, 'success');
+            
+            // Store original results to filter later
+            const originalResultsLength = this.results.length;
+            
+            // Run the specific task benchmark
+            await this._runTaskBenchmark(task, language, scale, this.currentConfig);
+            
+            // Extract only the results from this specific run
+            const newResults = this.results.slice(originalResultsLength);
+            taskResults.push(...newResults);
+            
+            window.benchmarkState.status = this.cancelled ? 'cancelled' : 'completed';
+            window.logResult(`Single task benchmark ${this.cancelled ? 'cancelled' : 'completed'}`, 
+                           this.cancelled ? 'warning' : 'success');
+            
+        } catch (error) {
+            window.benchmarkState.status = 'error';
+            window.logResult(`Single task benchmark failed: ${error.message}`, 'error');
+            throw error;
+        } finally {
+            this.isRunning = false;
+        }
+        
+        return taskResults;
+    }
+
+    /**
      * Get current benchmark results
      */
     getResults() {
