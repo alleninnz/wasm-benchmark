@@ -5,11 +5,11 @@
   "main": "harness/web/bench.js",
   "type": "module",
   "scripts": {
-    "postinstall": "echo 'Dependencies installed successfully'",
+    "postinstall": "echo '🚀 Dependencies installed successfully'",
     
-    "dev": "python3 -m http.server 3001 --directory .",
-    "serve": "python3 -m http.server 3001 --directory .",
-    "serve:port": "python3 -m http.server ${PORT:-3001} --directory .",
+    "dev": "python3 -m http.server 3001 --directory harness/web & sleep 2 && (curl -s http://localhost:3001 > /dev/null && open http://localhost:3001/bench.html || python3 -c \"import webbrowser; webbrowser.open('http://localhost:3001/bench.html')\") && wait",
+    "serve": "python3 -m http.server 3001 --directory harness/web",
+    "serve:port": "python3 -m http.server ${PORT:-3001} --directory harness/web",
     
     "build": "npm run build:config && scripts/build_all.sh",
     "build:config": "node scripts/build_config.js",
