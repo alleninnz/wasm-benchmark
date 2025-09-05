@@ -3,47 +3,13 @@
 # Environment Fingerprint Generator
 # Captures all relevant system and toolchain information for reproducible builds
 
-set -euo pipefail
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-NC='\033[0m' # No Color
+# Source common utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/common.sh"
 
 # Configuration
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RESULTS_DIR="${PROJECT_ROOT}/results"
-CONFIG_DIR="${PROJECT_ROOT}/configs"
 VERSIONS_LOCK="${PROJECT_ROOT}/versions.lock"
 META_JSON="${PROJECT_ROOT}/meta.json"
-
-# Logging functions
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-log_section() {
-    echo
-    echo -e "${PURPLE}======================================${NC}"
-    echo -e "${PURPLE} $1${NC}"
-    echo -e "${PURPLE}======================================${NC}"
-    echo
-}
 
 # Get command version or return "not found"
 get_version() {

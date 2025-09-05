@@ -6,22 +6,37 @@
   "type": "module",
   "scripts": {
     "postinstall": "echo 'Dependencies installed successfully'",
-    "dev": "python3 -m http.server 3001 --directory harness/web",
-    "serve": "python3 -m http.server 3001 --directory harness/web",
-    "serve:port": "python3 -m http.server ${PORT:-3001} --directory harness/web",
+    
+    "dev": "python3 -m http.server 3001 --directory .",
+    "serve": "python3 -m http.server 3001 --directory .",
+    "serve:port": "python3 -m http.server ${PORT:-3001} --directory .",
+    
     "build": "npm run build:config && scripts/build_all.sh",
     "build:config": "node scripts/build_config.js",
     "build:rust": "scripts/build_rust.sh", 
     "build:tinygo": "scripts/build_tinygo.sh",
+    "build:clean": "scripts/build_all.sh --clean",
+    
     "bench": "node scripts/run_browser_bench.js",
     "bench:headed": "node scripts/run_browser_bench.js --headed",
     "bench:quick": "node scripts/run_browser_bench.js --timeout=60000",
+    
+    "validate": "scripts/validate_all_tasks.sh",
+    "validate:mandelbrot": "scripts/validate_mandelbrot.sh",
+    "validate:json": "scripts/validate_json_parse.sh",
+    "validate:matrix": "scripts/validate_matrix_mul.sh",
+    "validate:cross": "scripts/validate_cross_implementation.sh",
+    
     "analyze": "python3 analysis/statistics.py results/$(ls -t results/ | head -n1) && python3 analysis/plots.py results/$(ls -t results/ | head -n1)",
     "fingerprint": "scripts/fingerprint.sh",
+    
     "all": "scripts/all_in_one.sh",
     "all:quick": "scripts/all_in_one.sh --quick",
+    "all:clean": "scripts/all_in_one.sh --clean",
+    "all:headed": "scripts/all_in_one.sh --headed",
+    
     "clean": "rm -rf builds/* results/20* && find . -name '*.tmp' -delete",
-    "test": "echo 'No tests defined yet'",
+    "test": "npm run validate",
     "lint": "echo 'No linting configured yet'"
   },
   "repository": {

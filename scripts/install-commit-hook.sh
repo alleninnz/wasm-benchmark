@@ -92,7 +92,7 @@ print_error() {
 # Function to print guidelines
 print_guidelines() {
     echo -e "\n${BLUE}${BOLD}📋 Commit Message Guidelines:${NC}" >&2
-    echo -e "${BLUE}Format:${NC} ${BOLD}type: short summary (≤50 chars)${NC}" >&2
+    echo -e "${BLUE}Format:${NC} ${BOLD}type: short summary (≤100 chars)${NC}" >&2
     echo -e "\n${BLUE}Valid types:${NC}" >&2
     for type in "${valid_types[@]}"; do
         case $type in
@@ -107,7 +107,7 @@ print_guidelines() {
         echo -e "  ${GREEN}${type}${NC}: ${desc}" >&2
     done
     echo -e "\n${BLUE}Rules:${NC}" >&2
-    echo -e "  • Summary: ≤50 chars, imperative mood, lowercase, no period" >&2
+    echo -e "  • Summary: ≤100 chars, imperative mood, lowercase, no period" >&2
     echo -e "  • Focus: What changed, not why" >&2
     echo -e "  • Never: Add AI attribution or 'Generated with' tags" >&2
     echo -e "\n${YELLOW}Examples:${NC}" >&2
@@ -150,10 +150,10 @@ validate_commit_message() {
         errors+=("Invalid type '$type'. Valid types: ${valid_types[*]}")
     fi
     
-    # Validate description length (≤50 chars total, so description is ~45 chars max)
+    # Validate description length (≤100 chars total for better flexibility)
     local total_length=${#msg}
-    if [[ $total_length -gt 50 ]]; then
-        errors+=("Total length $total_length chars exceeds 50 char limit")
+    if [[ $total_length -gt 100 ]]; then
+        errors+=("Total length $total_length chars exceeds 100 char limit")
     fi
     
     # Validate description format
@@ -210,7 +210,7 @@ chmod +x "${COMMIT_MSG_HOOK}"
 echo -e "${GREEN}✅ Commit message hook installed successfully${NC}"
 echo
 echo -e "${BLUE}${BOLD}Hook Features:${NC}"
-echo -e "  • Enforces commit message format: ${BOLD}type: short summary (≤50 chars)${NC}"
+echo -e "  • Enforces commit message format: ${BOLD}type: short summary (≤100 chars)${NC}"
 echo -e "  • Validates commit types: feat, fix, docs, style, refactor, test, chore"
 echo -e "  • Ensures lowercase start, no trailing period"
 echo -e "  • Blocks AI attribution and forbidden patterns"

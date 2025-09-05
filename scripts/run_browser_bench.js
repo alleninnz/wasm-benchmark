@@ -5,10 +5,13 @@
  * Uses Puppeteer to drive headless Chrome for WebAssembly benchmarking
  */
 
-const fs = require('fs').promises;
-const path = require('path');
-const puppeteer = require('puppeteer');
-const yaml = require('yaml');
+import fs from 'fs/promises';
+import path from 'path';
+import puppeteer from 'puppeteer';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Colors for console output
 const colors = {
@@ -39,7 +42,7 @@ const log = {
 class BrowserBenchmarkRunner {
     constructor(options = {}) {
         this.projectRoot = path.resolve(__dirname, '..');
-        this.configFile = path.join(this.projectRoot, 'configs', 'bench.yaml');
+        this.configFile = path.join(this.projectRoot, 'harness', 'web', 'bench.config.json');
         this.harnessPath = path.join(this.projectRoot, 'harness', 'web', 'bench.html');
         this.resultsDir = path.join(this.projectRoot, 'results');
         this.buildsDir = path.join(this.projectRoot, 'builds');
@@ -62,17 +65,42 @@ class BrowserBenchmarkRunner {
     }
 
     /**
-     * Load benchmark configuration
+     * Load benchmark configuration from pre-generated JSON
      */
     async loadConfig() {
         try {
             const configContent = await fs.readFile(this.configFile, 'utf8');
-            this.config = yaml.parse(configContent);
+            this.config = JSON.parse(configContent);
+            
+            // Validate required configuration sections
+            this.validateConfig();
+            
             log.info(`Loaded configuration: ${this.config.experiment.name}`);
+            log.info(`Generated: ${this.config.generated.timestamp}`);
             return this.config;
         } catch (error) {
-            log.error(`Failed to load config: ${error.message}`);
+            if (error.code === 'ENOENT') {
+                log.error('Configuration file not found. Run "npm run build:config" to generate bench.config.json');
+            } else {
+                log.error(`Failed to load config: ${error.message}`);
+            }
             throw error;
+        }
+    }
+
+    /**
+     * Validate loaded configuration structure
+     */
+    validateConfig() {
+        const required = ['experiment', 'environment', 'tasks', 'languages', 'taskNames', 'enabledLanguages'];
+        for (const field of required) {
+            if (!this.config[field]) {
+                throw new Error(`Missing required configuration field: ${field}`);
+            }
+        }
+        
+        if (!this.config.generated || !this.config.generated.timestamp) {
+            throw new Error('Configuration missing generation metadata. Please regenerate with build:config');
         }
     }
 
@@ -181,23 +209,35 @@ class BrowserBenchmarkRunner {
             // Prepare benchmark configuration for this specific task
             const taskConfig = this.prepareBenchmarkConfig(task, language, scale);
             
-            // Inject configuration and start benchmark
+            // Inject configuration and start benchmark with enhanced error handling
             const results = await this.page.evaluate(async (config) => {
                 const runner = window.benchmarkRunner;
                 
                 try {
+                    // Validate runner availability
+                    if (!runner) {
+                        throw new Error('BenchmarkRunner not initialized in page');
+                    }
+                    
                     // Run the benchmark
                     const benchResults = await runner.runTaskBenchmark(config);
                     return {
                         success: true,
                         results: benchResults,
-                        state: window.benchmarkState
+                        state: window.benchmarkState,
+                        timestamp: Date.now()
                     };
                 } catch (error) {
                     return {
                         success: false,
-                        error: error.message,
-                        state: window.benchmarkState
+                        error: {
+                            message: error.message,
+                            stack: error.stack,
+                            name: error.name,
+                            timestamp: Date.now()
+                        },
+                        state: window.benchmarkState,
+                        config: config
                     };
                 }
             }, taskConfig);
@@ -228,13 +268,30 @@ class BrowserBenchmarkRunner {
             task: task,
             language: language,
             scale: scale,
-            warmupRuns: this.config.environment.warmup_runs,
-            measureRuns: this.config.environment.measure_runs,
-            timeout: this.config.environment.timeout_ms,
+            warmupRuns: this.config.environment.warmupRuns,
+            measureRuns: this.config.environment.measureRuns,
+            timeout: this.config.environment.timeout,
             taskConfig: taskConfig,
             scaleConfig: scaleConfig,
-            wasmPath: `../../builds/${language}/${task}-${language}-${language === 'rust' ? 'o3' : 'oz'}.wasm`
+            wasmPath: this.getWasmPath(task, language)
         };
+    }
+
+    /**
+     * Generate WASM file path based on task and language
+     */
+    getWasmPath(task, language) {
+        // Use language configuration if available
+        const langConfig = this.config.languages[language];
+        if (langConfig && langConfig.optimization_levels) {
+            const optLevel = langConfig.optimization_levels[0];
+            const suffix = optLevel.name === 'research_optimized' ? 
+                (language === 'rust' ? 'o3' : 'oz') : 'default';
+            return `../../builds/${language}/${task}-${language}-${suffix}.wasm`;
+        }
+        
+        // Fallback to simple naming
+        return `../../builds/${language}/${task}-${language}.wasm`;
     }
 
     /**
@@ -243,11 +300,10 @@ class BrowserBenchmarkRunner {
     async runBenchmarkSuite() {
         log.section('Starting Browser Benchmark Suite');
         
-        const tasks = Object.keys(this.config.tasks);
-        const languages = Object.keys(this.config.languages).filter(lang => 
-            this.config.languages[lang].enabled
-        );
-        const scales = ['small', 'medium', 'large'];
+        // Use pre-computed arrays from optimized config
+        const tasks = this.config.taskNames;
+        const languages = this.config.enabledLanguages; 
+        const scales = this.config.scales || ['small', 'medium', 'large'];
         
         let totalBenchmarks = 0;
         let completedBenchmarks = 0;
@@ -286,8 +342,8 @@ class BrowserBenchmarkRunner {
                         continue;
                     }
                     
-                    // Short delay between benchmarks to allow cleanup
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    // Smart cleanup between benchmarks
+                    await this.cleanupBetweenBenchmarks();
                 }
             }
         }
@@ -370,16 +426,55 @@ class BrowserBenchmarkRunner {
     }
 
     /**
-     * Cleanup resources
+     * Smart cleanup between benchmarks
+     */
+    async cleanupBetweenBenchmarks() {
+        try {
+            // Force garbage collection in the browser if available
+            await this.page.evaluate(() => {
+                if (window.gc) {
+                    window.gc();
+                }
+                
+                // Clear any module caches
+                if (window.wasmLoader) {
+                    window.wasmLoader.clearAll();
+                }
+            });
+            
+            // Short delay to allow cleanup to complete
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+        } catch (error) {
+            log.warning(`Cleanup between benchmarks failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Cleanup resources with enhanced error handling
      */
     async cleanup() {
-        if (this.page) {
-            await this.page.close();
+        log.info('Starting cleanup...');
+        
+        try {
+            if (this.page && !this.page.isClosed()) {
+                await this.page.close();
+                log.info('Page closed');
+            }
+        } catch (error) {
+            log.warning(`Failed to close page: ${error.message}`);
         }
-        if (this.browser) {
-            await this.browser.close();
+        
+        try {
+            if (this.browser && this.browser.isConnected()) {
+                await this.browser.close();
+                log.info('Browser closed');
+            }
+        } catch (error) {
+            log.warning(`Failed to close browser: ${error.message}`);
         }
-        log.info('Cleanup completed');
+        
+        log.success('Cleanup completed');
     }
 
     /**
@@ -457,9 +552,9 @@ Examples:
     }
 }
 
-// Run if executed directly
-if (require.main === module) {
+// Run if executed directly  
+if (import.meta.url === `file://${process.argv[1]}`) {
     main().catch(console.error);
 }
 
-module.exports = BrowserBenchmarkRunner;
+export default BrowserBenchmarkRunner;

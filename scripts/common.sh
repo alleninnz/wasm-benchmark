@@ -1,45 +1,125 @@
 #!/bin/bash
-# scripts/lib/validation_common.sh
-# Shared validation functions and utilities
 
-# Colors for consistent output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+# Common utilities for all build/validation scripts
+# Source this file to get standardized logging and error handling
 
-# Logging functions with consistent formatting
-log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
-log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_step() { echo -e "${CYAN}[STEP]${NC} $1"; }
+# Standard error handling
+set -euo pipefail
 
-# Project paths
-get_project_root() {
-    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    echo "$(cd "$script_dir/../.." && pwd)"
+# Color definitions
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly PURPLE='\033[0;35m'
+readonly CYAN='\033[0;36m'
+readonly NC='\033[0m' # No Color
+
+# Project paths (computed once)
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly PROJECT_ROOT="$(dirname "${SCRIPT_DIR}")"
+readonly BUILDS_DIR="${PROJECT_ROOT}/builds"
+readonly RESULTS_DIR="${PROJECT_ROOT}/results"
+readonly CONFIG_DIR="${PROJECT_ROOT}/configs"
+readonly HARNESS_DIR="${PROJECT_ROOT}/harness"
+
+# Standardized logging functions
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1" >&2
 }
 
-cd_to_root() {
-    cd "$(get_project_root)"
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1" >&2
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1" >&2
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
 log_section() {
-    echo
-    echo "════════════════════════════════════════════════════════════════════════"
-    echo "  $1"
-    echo "════════════════════════════════════════════════════════════════════════"
+    echo >&2
+    echo -e "${PURPLE}======================================${NC}" >&2
+    echo -e "${PURPLE} $1${NC}" >&2
+    echo -e "${PURPLE}======================================${NC}" >&2
+    echo >&2
+}
+
+log_step() {
+    echo -e "${CYAN}[STEP]${NC} $1" >&2
+}
+
+# Utility functions
+check_command() {
+    local cmd="$1"
+    local package="${2:-$1}"
+    
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        log_error "Required command '$cmd' not found"
+        log_info "Install $package and ensure it's in your PATH"
+        return 1
+    fi
+}
+
+check_file() {
+    local file="$1"
+    local description="${2:-File}"
+    
+    if [[ ! -f "$file" ]]; then
+        log_error "$description not found: $file"
+        return 1
+    fi
+}
+
+check_directory() {
+    local dir="$1"
+    local description="${2:-Directory}"
+    
+    if [[ ! -d "$dir" ]]; then
+        log_error "$description not found: $dir"
+        return 1
+    fi
+}
+
+# Create directory if it doesn't exist
+ensure_directory() {
+    local dir="$1"
+    if [[ ! -d "$dir" ]]; then
+        log_info "Creating directory: $dir"
+        mkdir -p "$dir"
+    fi
+}
+
+# Generate timestamp for output files
+timestamp() {
+    date +"%Y%m%d-%H%M"
+}
+
+# Clean up function for trap
+cleanup() {
+    local exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
+        log_error "Script exited with error code $exit_code"
+    fi
+}
+
+# Set up cleanup trap
+trap cleanup EXIT
+
+# Validation-specific functions
+cd_to_root() {
+    cd "${PROJECT_ROOT}"
 }
 
 get_rust_dir() {
-    echo "$(get_project_root)/tasks/$1/rust"
+    echo "${PROJECT_ROOT}/tasks/$1/rust"
 }
 
 get_tinygo_dir() {
-    echo "$(get_project_root)/tasks/$1/tinygo"
+    echo "${PROJECT_ROOT}/tasks/$1/tinygo"
 }
 
 # Validation result tracking
@@ -87,7 +167,7 @@ print_validation_summary() {
     fi
 }
 
-# Common validation functions
+# Validation functions
 validate_directory_structure() {
     local task="$1"
     local rust_dir="$(get_rust_dir "$task")"
@@ -226,8 +306,9 @@ validate_task() {
     return 0
 }
 
-# Error handling
-set -euo pipefail
-
-# Trap to ensure we return to original directory on exit
-trap 'cd "$(get_project_root)"' EXIT
+# Export functions for use in other scripts
+export -f log_info log_success log_warning log_error log_section log_step
+export -f check_command check_file check_directory ensure_directory timestamp
+export -f cd_to_root get_rust_dir get_tinygo_dir add_validation_result print_validation_summary
+export -f validate_directory_structure generate_reference_hashes copy_reference_hashes
+export -f run_cross_implementation_test validate_task

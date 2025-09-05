@@ -4,9 +4,9 @@
 
 set -e
 
-# Import common validation functions
+# Import common utilities
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/lib/validation_common.sh"
+source "$SCRIPT_DIR/common.sh"
 
 # Enhanced validation with detailed reporting
 main() {

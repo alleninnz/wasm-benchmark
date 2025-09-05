@@ -7,7 +7,7 @@ set -e
 
 # Import common validation functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/lib/validation_common.sh"
+source "$SCRIPT_DIR/common.sh"
 
 # Available task modules
 AVAILABLE_TASKS=("mandelbrot" "json_parse" "matrix_mul")

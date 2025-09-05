@@ -15,8 +15,8 @@ export class ConfigLoader {
      * @returns {Promise<Object>} Parsed configuration object
      */
     async loadConfig(configPath = null) {
-        // Always use pre-generated JSON configuration
-        const jsonPath = './bench.config.json';
+        // Use pre-generated JSON configuration from configs directory
+        const jsonPath = '../../configs/bench.json';
         
         try {
             window.logResult(`Loading pre-generated configuration from: ${jsonPath}`, 'info');
@@ -24,7 +24,7 @@ export class ConfigLoader {
             // Fetch the pre-generated JSON file
             const response = await fetch(jsonPath);
             if (!response.ok) {
-                throw new Error(`Failed to fetch config file: ${response.status} ${response.statusText}. Make sure 'npm run build' was executed to generate bench.config.json`);
+                throw new Error(`Failed to fetch config file: ${response.status} ${response.statusText}. Make sure 'npm run build:config' was executed to generate configs/bench.json`);
             }
             
             // Parse JSON content directly - no YAML service needed!

@@ -3,15 +3,15 @@
         "name": "WebAssembly Performance Benchmark",
         "description": "Comparing Rust and TinyGo WebAssembly performance across computational tasks",
         "version": "1.0",
-        "generated_date": "2025-08-27T06:10:29Z",
-        "project_root": "/Users/kimi/Desktop/ARP/wasm-benchmark"
+        "generated_date": "2025-09-05T04:29:28Z",
+        "project_root": "/Users/Ethan/Desktop/ARP/wasm-benchmark"
     },
     "system": {
         "os": {
             "name": "macOS",
             "version": "15.6.1",
             "build": "24G90",
-            "architecture": "x86_64"
+            "architecture": "arm64"
         },
         "hardware": {
             "cpu": "Apple M4",
@@ -30,17 +30,17 @@
             "tinygo_version": "tinygo version 0.39.0 darwin/amd64 (using go version go1.25.0 and LLVM version 19.1.2)"
         },
         "node": {
-            "node_version": "v22.18.0",
+            "node_version": "v22.19.0",
             "npm_version": "10.9.3"
         },
         "python": {
             "python_version": "Python 3.13.5",
-            "pip_version": "pip 25.2 from /Users/kimi/miniforge3/lib/python3.13/site-packages/pip (python 3.13)",
+            "pip_version": "pip 25.2 from /opt/homebrew/Caskroom/miniforge/base/lib/python3.13/site-packages/pip (python 3.13)",
             "libraries": {
                 "numpy": "2.3.2",
                 "scipy": "1.16.1", 
                 "pandas": "2.3.2",
-                "matplotlib": "3.10.5",
+                "matplotlib": "3.10.6",
                 "seaborn": "0.13.2"
             }
         }
@@ -51,8 +51,8 @@
         "wasm2wat": "1.0.36 (git~1.0.37)"
     },
     "browser": {
-        "chrome_version": "139.0.7258.139",
-        "puppeteer_version": "^24.17.0"
+        "chrome_version": "140.0.7339.80",
+        "puppeteer_version": "24.19.0"
     },
     "build_tools": {
         "make": "GNU Make 3.81",
