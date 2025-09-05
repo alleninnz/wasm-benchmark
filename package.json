@@ -6,37 +6,33 @@
   "type": "module",
   "scripts": {
     "postinstall": "echo '🚀 Dependencies installed successfully'",
-    
     "dev": "python3 -m http.server 3001 --directory harness/web & sleep 2 && (curl -s http://localhost:3001 > /dev/null && open http://localhost:3001/bench.html || python3 -c \"import webbrowser; webbrowser.open('http://localhost:3001/bench.html')\") && wait",
     "serve": "python3 -m http.server 3001 --directory harness/web",
     "serve:port": "python3 -m http.server ${PORT:-3001} --directory harness/web",
-    
     "build": "npm run build:config && scripts/build_all.sh",
     "build:config": "node scripts/build_config.js",
-    "build:rust": "scripts/build_rust.sh", 
+    "build:rust": "scripts/build_rust.sh",
     "build:tinygo": "scripts/build_tinygo.sh",
     "build:clean": "scripts/build_all.sh --clean",
-    
-    "bench": "node scripts/run_browser_bench.js",
-    "bench:headed": "node scripts/run_browser_bench.js --headed",
-    "bench:quick": "node scripts/run_browser_bench.js --timeout=60000",
-    
+    "bench": "node scripts/run_bench.js",
+    "bench:headed": "node scripts/run_bench.js --headed",
+    "bench:quick": "node scripts/run_bench.js --timeout=60000",
     "validate": "scripts/validate_all_tasks.sh",
     "validate:mandelbrot": "scripts/validate_mandelbrot.sh",
     "validate:json": "scripts/validate_json_parse.sh",
     "validate:matrix": "scripts/validate_matrix_mul.sh",
     "validate:cross": "scripts/validate_cross_implementation.sh",
-    
     "analyze": "python3 analysis/statistics.py results/$(ls -t results/ | head -n1) && python3 analysis/plots.py results/$(ls -t results/ | head -n1)",
     "fingerprint": "scripts/fingerprint.sh",
-    
     "all": "scripts/all_in_one.sh",
     "all:quick": "scripts/all_in_one.sh --quick",
     "all:clean": "scripts/all_in_one.sh --clean",
     "all:headed": "scripts/all_in_one.sh --headed",
-    
     "clean": "rm -rf builds/* results/20* && find . -name '*.tmp' -delete",
-    "test": "npm run validate",
+    "test": "echo 'TODO: Implement test suite with vitest'",
+    "test:watch": "echo 'TODO: Implement test watch mode'",
+    "test:ui": "echo 'TODO: Implement test UI'",
+    "test:coverage": "echo 'TODO: Implement test coverage'",
     "lint": "echo 'No linting configured yet'"
   },
   "repository": {
@@ -45,7 +41,7 @@
   },
   "keywords": [
     "webassembly",
-    "wasm", 
+    "wasm",
     "rust",
     "go",
     "tinygo",
@@ -56,6 +52,7 @@
   "author": "Xingxing Wang",
   "license": "MIT",
   "dependencies": {
+    "chalk": "^5.6.0",
     "puppeteer": "24.19.0",
     "yaml": "^2.8.1"
   },
