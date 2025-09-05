@@ -1,0 +1,132 @@
+/**
+ * Pure Service-Oriented Benchmark Runner
+ * Clean architecture with dependency injection
+ */
+
+import { ConfigurationService } from './services/ConfigurationService.js';
+import { BrowserService } from './services/BrowserService.js';
+import { ResultsService } from './services/ResultsService.js';
+import { BenchmarkOrchestrator } from './services/BenchmarkOrchestrator.js';
+import { LoggingService } from './services/LoggingService.js';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * Main CLI entry point using pure service-oriented architecture
+ */
+async function main() {
+    const args = process.argv.slice(2);
+    const options = {
+        headless: !args.includes('--headed'),
+        devtools: args.includes('--devtools'),
+        verbose: args.includes('--verbose'),
+        parallel: args.includes('--parallel'),
+        timeout: parseInt(args.find(arg => arg.startsWith('--timeout='))?.split('=')[1]) || 300000,
+        maxParallel: parseInt(args.find(arg => arg.startsWith('--max-concurrent='))?.split('=')[1]) || 4,
+        failureThreshold: parseFloat(args.find(arg => arg.startsWith('--failure-threshold='))?.split('=')[1]) || 0.3
+    };
+    
+    if (args.includes('--help') || args.includes('-h')) {
+        console.log(`
+Usage: node run_bench.js [options]
+
+Options:
+  --headed                    Run in headed mode (show browser)
+  --devtools                  Open browser DevTools
+  --verbose                   Enable verbose logging
+  --parallel                  Enable parallel benchmark execution
+  --timeout=<ms>              Set timeout in milliseconds (default: 300000)
+  --max-concurrent=<n>        Max concurrent benchmarks in parallel mode (default: 4)
+  --failure-threshold=<rate>  Failure threshold rate 0-1 (default: 0.3)
+  --help, -h                  Show this help message
+
+Examples:
+  node run_bench.js                                # Run headless sequential
+  node run_bench.js --headed                       # Run with visible browser
+  node run_bench.js --verbose                      # Enable verbose output
+  node run_bench.js --parallel                     # Run benchmarks in parallel
+  node run_bench.js --parallel --max-concurrent=5  # Parallel with 5 concurrent
+  node run_bench.js --failure-threshold=0.1        # Conservative failure rate
+        `);
+        return;
+    }
+
+    // Initialize services with dependency injection  
+    const logger = new LoggingService({ 
+        logLevel: options.verbose ? 'debug' : 'info',
+        enableColors: true,
+        enableTimestamp: false
+    });
+    
+    const configService = new ConfigurationService();
+    const browserService = new BrowserService();
+    const resultsService = new ResultsService();
+    const orchestrator = new BenchmarkOrchestrator(configService, browserService, resultsService);
+    
+    try {
+        logger.section('Initializing Pure Service Architecture');
+        
+        // Initialize orchestrator
+        const configPath = path.join(__dirname, '..', 'harness', 'web', 'bench.config.json');
+        await orchestrator.initialize(configPath);
+        
+        // Execute benchmarks
+        const results = await orchestrator.executeBenchmarks(options);
+        
+        // Save results
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const outputPath = path.join(__dirname, '..', 'results', `benchmark-results-${timestamp}.json`);
+        await orchestrator.saveResults(outputPath, 'json');
+        
+        logger.section('Benchmark Process Completed Successfully');
+        logger.success(`Results saved to: ${outputPath}`);
+        logger.success(`Total benchmarks: ${results.summary.totalTasks}`);
+        logger.success(`Successful: ${results.summary.successfulTasks}`);
+        logger.success(`Success rate: ${(results.summary.successRate * 100).toFixed(1)}%`);
+        
+        if (results.summary.failedTasks > 0) {
+            logger.warn(`Failed: ${results.summary.failedTasks}`);
+        }
+        
+        process.exit(0);
+        
+    } catch (error) {
+        logger.error(`Process failed: ${error.message}`);
+        if (options.verbose) {
+            console.error(error.stack);
+        }
+        
+        // Emergency cleanup
+        try {
+            await orchestrator.emergencyCleanup();
+        } catch (cleanupError) {
+            logger.error(`Emergency cleanup failed: ${cleanupError.message}`);
+        }
+        
+        process.exit(1);
+    } finally {
+        // Graceful cleanup
+        try {
+            await orchestrator.cleanup();
+        } catch (cleanupError) {
+            logger.warn(`Cleanup warning: ${cleanupError.message}`);
+        }
+    }
+}
+
+// Run if executed directly  
+if (import.meta.url === `file://${process.argv[1]}`) {
+    main().catch(console.error);
+}
+
+// Export services for external use
+export { 
+    ConfigurationService,
+    BrowserService, 
+    ResultsService,
+    BenchmarkOrchestrator,
+    LoggingService
+};
