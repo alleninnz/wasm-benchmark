@@ -4,16 +4,18 @@
  */
 
 import { WasmLoader } from './wasm_loader.js';
+import { ConfigLoader } from './config_loader.js';
 
 export class BenchmarkRunner {
-    constructor() {
+    constructor(config = null) {
         this.loader = new WasmLoader();
+        this.configLoader = new ConfigLoader();
         this.results = [];
-        this.currentConfig = null;
+        this.currentConfig = config;
         this.isRunning = false;
         this.cancelled = false;
         
-        // Initialize random number generator for reproducible tests
+        // Initialize random number generator (will be configured from config)
         this.randomSeed = 12345;
         this.random = this._xorshift32(this.randomSeed);
     }
@@ -43,16 +45,43 @@ export class BenchmarkRunner {
 
     /**
      * Initialize benchmark with configuration
-     * @param {Object} config - Benchmark configuration
+     * @param {Object} config - Optional benchmark configuration (will load if not provided)
      */
-    async initialize(config) {
-        this.currentConfig = config;
+    async initialize(config = null) {
+        // Load configuration if not provided
+        if (!config) {
+            if (!this.currentConfig) {
+                this.currentConfig = await this.configLoader.loadConfig();
+            }
+            config = this.currentConfig;
+        } else {
+            this.currentConfig = config;
+        }
+        
+        // Apply configuration to instance
+        this._applyConfig(config);
+        
         window.logResult('Initializing benchmark runner', 'success');
         window.logResult(`Config loaded: ${config.tasks.length} tasks, ${config.languages.length} languages`);
         
         // Update global state
         window.benchmarkState.status = 'initialized';
         window.benchmarkState.totalRuns = this._calculateTotalRuns(config);
+    }
+
+    /**
+     * Apply configuration settings to benchmark instance
+     * @private
+     */
+    _applyConfig(config) {
+        // Apply random seed from config if available
+        if (config.verification && config.verification.hash_offset_basis) {
+            this.randomSeed = config.verification.hash_offset_basis;
+            this.random = this._xorshift32(this.randomSeed);
+        }
+        
+        // Store config reference for easy access
+        this.config = config;
     }
 
     /**
@@ -73,10 +102,10 @@ export class BenchmarkRunner {
 
     /**
      * Run complete benchmark suite
-     * @param {Object} config - Benchmark configuration
+     * @param {Object} config - Optional benchmark configuration (will load if not provided)
      * @returns {Promise<Array>} Benchmark results
      */
-    async runBenchmarkSuite(config) {
+    async runBenchmarkSuite(config = null) {
         if (this.isRunning) {
             throw new Error('Benchmark is already running');
         }
@@ -88,19 +117,22 @@ export class BenchmarkRunner {
         try {
             await this.initialize(config);
             
+            // Use the initialized configuration
+            const activeConfig = this.currentConfig;
+            
             window.benchmarkState.status = 'running';
             window.logResult('Starting benchmark suite execution', 'success');
 
-            for (const taskName of config.tasks) {
+            for (const taskName of activeConfig.tasks) {
                 if (this.cancelled) break;
                 
-                for (const language of config.languages) {
+                for (const language of activeConfig.languages) {
                     if (this.cancelled) break;
                     
-                    for (const scale of config.scales) {
+                    for (const scale of activeConfig.scales) {
                         if (this.cancelled) break;
                         
-                        await this._runTaskBenchmark(taskName, language, scale, config);
+                        await this._runTaskBenchmark(taskName, language, scale, activeConfig);
                     }
                 }
             }
@@ -193,8 +225,12 @@ export class BenchmarkRunner {
                 language: language,
                 scale: scale,
                 error: error.message,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                success: false
             });
+        } finally {
+            // Clean up any loaded WASM module for this task
+            this.loader.unloadModule(moduleId);
         }
     }
 
@@ -277,14 +313,15 @@ export class BenchmarkRunner {
      * @private
      */
     _generateMandelbrotParams(scaleConfig) {
-        const params = new ArrayBuffer(24); // 6 * 4 bytes
+        const params = new ArrayBuffer(32); // 8 * 4 bytes for proper alignment
         const view = new DataView(params);
         
         view.setUint32(0, scaleConfig.width, true);
         view.setUint32(4, scaleConfig.height, true);
-        view.setUint32(8, scaleConfig.maxIter, true);
-        view.setFloat64(12, -0.743643887037, true); // center_real
-        view.setFloat64(20, 0.131825904205, true);  // center_imag
+        view.setUint32(8, scaleConfig.max_iter, true); // Fixed: use max_iter not maxIter
+        view.setUint32(12, 0, true); // Padding for alignment
+        view.setFloat64(16, -0.743643887037, true); // center_real
+        view.setFloat64(24, 0.131825904205, true);  // center_imag
         
         return new Uint8Array(params);
     }

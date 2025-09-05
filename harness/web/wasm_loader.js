@@ -130,7 +130,22 @@ export class WasmLoader {
     unloadModule(moduleId) {
         if (this.loadedModules.has(moduleId)) {
             window.logResult(`Unloading module: ${moduleId}`);
+            
+            const instance = this.loadedModules.get(moduleId);
+            
+            // Clear any cached data for this module
+            this.moduleCache.delete(moduleId);
             this.loadedModules.delete(moduleId);
+            
+            // Clean up WASM memory if possible
+            try {
+                // Some WASM modules may export cleanup functions
+                if (instance.exports.cleanup && typeof instance.exports.cleanup === 'function') {
+                    instance.exports.cleanup();
+                }
+            } catch (e) {
+                // Ignore cleanup errors, not all modules have cleanup
+            }
             
             // Force garbage collection if available
             if (typeof window.gc === 'function') {

@@ -295,6 +295,15 @@ main() {
     # Create build directory
     mkdir -p "${BUILDS_DIR}"
     
+    # Generate configuration JSON from YAML
+    log_info "Generating configuration JSON from YAML..."
+    if ! node "${SCRIPT_DIR}/build_config.js"; then
+        log_error "Failed to generate configuration JSON"
+        build_success=false
+    else
+        log_success "Configuration JSON generated successfully"
+    fi
+    
     # Build process
     local build_success=true
     

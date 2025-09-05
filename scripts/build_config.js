@@ -1,0 +1,241 @@
+#!/usr/bin/env node
+
+/**
+ * Build-time YAML to JSON Configuration Converter
+ * Converts bench.yaml to optimized JSON for browser consumption
+ * Eliminates need for runtime YAML parsing service
+ */
+
+import fs from 'fs/promises';
+import path from 'path';
+import yaml from 'yaml';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const CONFIG_PATHS = {
+    input: path.join(__dirname, '..', 'configs', 'bench.yaml'),
+    output: path.join(__dirname, '..', 'harness', 'web', 'bench.config.json')
+};
+
+/**
+ * Load and parse YAML configuration
+ */
+async function loadYamlConfig() {
+    try {
+        console.log(`📖 Reading YAML config: ${CONFIG_PATHS.input}`);
+        const yamlContent = await fs.readFile(CONFIG_PATHS.input, 'utf8');
+        
+        console.log(`🔄 Parsing YAML content...`);
+        const config = yaml.parse(yamlContent);
+        
+        console.log(`✅ YAML parsed successfully: ${config.experiment?.name || 'Unknown'}`);
+        return config;
+        
+    } catch (error) {
+        console.error(`❌ Failed to load YAML config: ${error.message}`);
+        throw error;
+    }
+}
+
+/**
+ * Optimize configuration for browser use
+ */
+function optimizeConfig(config) {
+    console.log(`⚡ Optimizing configuration for browser use...`);
+    
+    // Extract only essential data for browser
+    const optimized = {
+        // Basic experiment info
+        experiment: config.experiment,
+        
+        // Environment settings with enhanced timeout support
+        environment: {
+            warmupRuns: config.environment.warmup_runs,
+            measureRuns: config.environment.measure_runs,
+            repetitions: config.environment.repetitions || 1,
+            timeout: config.environment.timeout_ms || 300000,
+            taskTimeouts: config.environment.task_timeouts || {},
+            gcThreshold: config.environment.gc_threshold_mb || 10,
+            memoryMonitoring: config.environment.memory_monitoring || true,
+            gcMonitoring: config.environment.gc_monitoring || true,
+            timeoutAsData: config.environment.timeout_as_data || false
+        },
+        
+        // Task configurations
+        tasks: config.tasks,
+        
+        // Language configurations
+        languages: config.languages,
+        
+        // Quality control settings
+        qc: config.qc || {},
+        
+        // Statistical analysis settings
+        statistics: config.statistics || {},
+        
+        // Verification settings
+        verification: config.verification || {},
+        
+        // Metadata
+        generated: {
+            timestamp: new Date().toISOString(),
+            source: 'configs/bench.yaml',
+            version: config.experiment?.version || '1.0'
+        }
+    };
+    
+    // Extract convenience arrays
+    optimized.taskNames = Object.keys(optimized.tasks);
+    optimized.enabledLanguages = Object.keys(optimized.languages).filter(lang => 
+        optimized.languages[lang].enabled
+    );
+    optimized.scales = ['small', 'medium', 'large'];
+    
+    console.log(`📊 Optimization complete:`);
+    console.log(`   Tasks: ${optimized.taskNames.join(', ')}`);
+    console.log(`   Languages: ${optimized.enabledLanguages.join(', ')}`);
+    console.log(`   Scales: ${optimized.scales.join(', ')}`);
+    
+    return optimized;
+}
+
+/**
+ * Write optimized JSON configuration
+ */
+async function writeJsonConfig(config) {
+    try {
+        console.log(`💾 Writing JSON config: ${CONFIG_PATHS.output}`);
+        
+        // Ensure output directory exists
+        const outputDir = path.dirname(CONFIG_PATHS.output);
+        await fs.mkdir(outputDir, { recursive: true });
+        
+        // Write formatted JSON
+        const jsonContent = JSON.stringify(config, null, 2);
+        await fs.writeFile(CONFIG_PATHS.output, jsonContent, 'utf8');
+        
+        const stats = await fs.stat(CONFIG_PATHS.output);
+        console.log(`✅ JSON config written: ${(stats.size / 1024).toFixed(1)}KB`);
+        
+    } catch (error) {
+        console.error(`❌ Failed to write JSON config: ${error.message}`);
+        throw error;
+    }
+}
+
+/**
+ * Validate generated configuration
+ */
+function validateConfig(config) {
+    console.log(`🔍 Validating generated configuration...`);
+    
+    const errors = [];
+    
+    // Check required sections
+    const requiredSections = ['experiment', 'environment', 'tasks', 'languages'];
+    for (const section of requiredSections) {
+        if (!config[section]) {
+            errors.push(`Missing required section: ${section}`);
+        }
+    }
+    
+    // Check experiment info
+    if (!config.experiment?.name) {
+        errors.push('Missing experiment name');
+    }
+    
+    // Check environment
+    const env = config.environment;
+    if (!env?.warmupRuns || !env?.measureRuns) {
+        errors.push('Missing warmup_runs or measure_runs');
+    }
+    
+    // Check tasks
+    if (config.taskNames?.length === 0) {
+        errors.push('No tasks defined');
+    }
+    
+    // Check languages
+    if (config.enabledLanguages?.length === 0) {
+        errors.push('No languages enabled');
+    }
+    
+    if (errors.length > 0) {
+        console.error(`❌ Configuration validation failed:`);
+        errors.forEach(error => console.error(`   - ${error}`));
+        throw new Error(`Configuration validation failed: ${errors.join(', ')}`);
+    }
+    
+    console.log(`✅ Configuration validation passed`);
+}
+
+/**
+ * Main build process
+ */
+async function buildConfig() {
+    console.log(`🏗️  Starting configuration build process...`);
+    const startTime = performance.now();
+    
+    try {
+        // Load and parse YAML
+        const yamlConfig = await loadYamlConfig();
+        
+        // Optimize for browser use
+        const optimizedConfig = optimizeConfig(yamlConfig);
+        
+        // Validate configuration
+        validateConfig(optimizedConfig);
+        
+        // Write JSON output
+        await writeJsonConfig(optimizedConfig);
+        
+        const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+        console.log(`🎉 Configuration build completed in ${duration}s`);
+        console.log(`📁 Output: ${CONFIG_PATHS.output}`);
+        
+        return optimizedConfig;
+        
+    } catch (error) {
+        console.error(`💥 Configuration build failed: ${error.message}`);
+        process.exit(1);
+    }
+}
+
+/**
+ * Watch mode for development
+ */
+async function watchMode() {
+    console.log(`👀 Starting watch mode for: ${CONFIG_PATHS.input}`);
+    
+    const watcher = fs.watch(CONFIG_PATHS.input, { persistent: true });
+    
+    for await (const event of watcher) {
+        if (event.eventType === 'change') {
+            console.log(`\n🔄 Config file changed, rebuilding...`);
+            try {
+                await buildConfig();
+                console.log(`✅ Rebuild completed\n`);
+            } catch (error) {
+                console.error(`❌ Rebuild failed: ${error.message}\n`);
+            }
+        }
+    }
+}
+
+// Handle CLI arguments
+const args = process.argv.slice(2);
+const isWatch = args.includes('--watch') || args.includes('-w');
+
+// Run appropriate mode
+if (isWatch) {
+    // Initial build then watch
+    await buildConfig();
+    await watchMode();
+} else {
+    // Single build
+    await buildConfig();
+}
+
+export { buildConfig, optimizeConfig, validateConfig };
