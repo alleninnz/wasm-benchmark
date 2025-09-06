@@ -47,7 +47,13 @@ export class ConfigLoader {
         }
     }
 
-
+    /**
+     * Parse primitive values from strings (legacy utility method)
+     * @param {string} value - String value to parse
+     * @returns {any} Parsed value
+     * @private
+     */
+    parseValue(value) {
         if (value.startsWith("'") && value.endsWith("'")) {
             return value.slice(1, -1);
         }
