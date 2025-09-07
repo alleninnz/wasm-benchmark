@@ -53,15 +53,20 @@ function optimizeConfig(config) {
         
         // Environment settings with enhanced timeout support
         environment: {
-            warmupRuns: config.environment.warmup_runs,
-            measureRuns: config.environment.measure_runs,
+            warmupRuns: config.environment.warmup_runs || config.environment.warmupRuns,
+            measureRuns: config.environment.measure_runs || config.environment.measureRuns,
             repetitions: config.environment.repetitions || 1,
             timeout: config.environment.timeout_ms || 300000,
             taskTimeouts: config.environment.task_timeouts || {},
             gcThreshold: config.environment.gc_threshold_mb || 10,
             memoryMonitoring: config.environment.memory_monitoring || true,
             gcMonitoring: config.environment.gc_monitoring || true,
-            timeoutAsData: config.environment.timeout_as_data || false
+            timeoutAsData: config.environment.timeout_as_data || false,
+            // Preserve nested objects
+            ...Object.fromEntries(
+                Object.entries(config.environment || {})
+                    .filter(([key]) => !['warmup_runs', 'measure_runs', 'warmupRuns', 'measureRuns', 'repetitions', 'timeout_ms', 'task_timeouts', 'gc_threshold_mb', 'memory_monitoring', 'gc_monitoring', 'timeout_as_data'].includes(key))
+            )
         },
         
         // Task configurations
@@ -90,7 +95,7 @@ function optimizeConfig(config) {
     // Extract convenience arrays
     optimized.taskNames = Object.keys(optimized.tasks);
     optimized.enabledLanguages = Object.keys(optimized.languages).filter(lang => 
-        optimized.languages[lang].enabled
+        optimized.languages[lang].enabled !== false
     );
     optimized.scales = ['small', 'medium', 'large'];
     

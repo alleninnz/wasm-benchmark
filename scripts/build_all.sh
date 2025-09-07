@@ -7,8 +7,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/common.sh"
 
-# Configuration
-BUILDS_DIR="${PROJECT_ROOT}/builds"
+# Configuration (BUILDS_DIR already defined in common.sh)
 
 # Print usage
 usage() {

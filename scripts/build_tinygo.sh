@@ -9,7 +9,7 @@ source "${SCRIPT_DIR}/common.sh"
 
 # Configuration
 TASKS_DIR="${PROJECT_ROOT}/tasks"
-BUILDS_DIR="${PROJECT_ROOT}/builds/tinygo"
+TINYGO_OUTPUT_DIR="${BUILDS_DIR}/tinygo"
 WASM_TARGET="wasm"
 
 # Check if Go and TinyGo toolchain is available
@@ -51,7 +51,7 @@ build_tinygo_task() {
     local task_name="$1"
     local task_dir="${TASKS_DIR}/${task_name}/tinygo"
     local output_name="${task_name}-tinygo-o3.wasm"
-    local output_path="${BUILDS_DIR}/${output_name}"
+    local output_path="${TINYGO_BUILDS_DIR}/${output_name}"
     
     if [[ ! -d "${task_dir}" ]]; then
         log_error "Task directory not found: ${task_dir}"
@@ -66,7 +66,7 @@ build_tinygo_task() {
     log_info "Building ${task_name}..."
     
     # Create output directory
-    mkdir -p "${BUILDS_DIR}"
+    mkdir -p "${TINYGO_BUILDS_DIR}"
     
     # Build with TinyGo
     cd "${task_dir}"
@@ -124,7 +124,7 @@ build_tinygo_task() {
 
 # Generate build manifest
 generate_manifest() {
-    local manifest_file="${BUILDS_DIR}/manifest.json"
+    local manifest_file="${TINYGO_BUILDS_DIR}/manifest.json"
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     
     log_info "Generating build manifest..."
@@ -150,7 +150,7 @@ EOF
     local first=true
     for task in mandelbrot json_parse matrix_mul; do
         local output_name="${task}-tinygo-o3.wasm"
-        local output_path="${BUILDS_DIR}/${output_name}"
+        local output_path="${TINYGO_BUILDS_DIR}/${output_name}"
         local gzip_path="${output_path}.gz"
         
         if [[ -f "${output_path}" ]]; then
