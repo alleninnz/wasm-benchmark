@@ -9,6 +9,116 @@ global.performance = {
   now: vi.fn(() => Date.now())
 };
 
+// Mock CSV serialization functions for testing
+function serializeToCSV(data) {
+  if (!Array.isArray(data) || data.length === 0) return '';
+  
+  const headers = Object.keys(data[0]);
+  const csvContent = [
+    headers.join(','),
+    ...data.map(row => 
+      headers.map(header => {
+        const value = row[header] || '';
+        const stringValue = String(value);
+        // Escape special characters
+        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+      }).join(',')
+    )
+  ];
+  
+  return csvContent.join('\n');
+}
+
+function deserializeFromCSV(csvString) {
+  if (!csvString.trim()) return [];
+  
+  const results = [];
+  let headers = [];
+  let currentRecord = [];
+  let currentField = '';
+  let inQuotes = false;
+  let recordIndex = 0;
+  
+  for (let i = 0; i < csvString.length; i++) {
+    const char = csvString[i];
+    const nextChar = csvString[i + 1];
+    
+    if (char === '"' && !inQuotes) {
+      inQuotes = true;
+    } else if (char === '"' && inQuotes && nextChar === '"') {
+      currentField += '"';
+      i++; // Skip next quote
+    } else if (char === '"' && inQuotes) {
+      inQuotes = false;
+    } else if (char === ',' && !inQuotes) {
+      currentRecord.push(currentField);
+      currentField = '';
+    } else if (char === '\n' && !inQuotes) {
+      currentRecord.push(currentField);
+      
+      if (recordIndex === 0) {
+        headers = currentRecord.slice();
+      } else {
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header.trim()] = currentRecord[index] || '';
+        });
+        results.push(row);
+      }
+      
+      currentRecord = [];
+      currentField = '';
+      recordIndex++;
+    } else {
+      currentField += char;
+    }
+  }
+  
+  // Handle last field if no trailing newline
+  if (currentField || currentRecord.length > 0) {
+    currentRecord.push(currentField);
+    if (recordIndex > 0) {
+      const row = {};
+      headers.forEach((header, index) => {
+        row[header.trim()] = currentRecord[index] || '';
+      });
+      results.push(row);
+    }
+  }
+  
+  return results;
+}
+
+function convertYamlToJson(yamlConfig) {
+  const converted = JSON.parse(JSON.stringify(yamlConfig));
+  
+  // Convert environment snake_case to camelCase
+  if (converted.environment) {
+    const env = converted.environment;
+    if (env.warmup_runs !== undefined) {
+      env.warmupRuns = env.warmup_runs;
+      delete env.warmup_runs;
+    }
+    if (env.measure_runs !== undefined) {
+      env.measureRuns = env.measure_runs;
+      delete env.measure_runs;
+    }
+    if (env.timeout_ms !== undefined) {
+      env.timeout = env.timeout_ms;
+      delete env.timeout_ms;
+    }
+    if (env.gc_threshold_mb !== undefined) {
+      env.gcThreshold = env.gc_threshold_mb;
+      delete env.gc_threshold_mb;
+    }
+  }
+  
+  return converted;
+}
+
 describe('Data Conversion Functions', () => {
   let testDataGen;
 
@@ -273,20 +383,6 @@ describe('Data Conversion Functions', () => {
   });
 });
 
-// Helper functions that would be tested (implementation examples)
-function convertYamlToJson(config) {
-  const converted = { ...config };
-  if (config.environment) {
-    converted.environment = {
-      warmupRuns: config.environment.warmup_runs,
-      measureRuns: config.environment.measure_runs,
-      timeout: config.environment.timeout_ms,
-      gcThreshold: config.environment.gc_threshold_mb
-    };
-  }
-  return converted;
-}
-
 function convertSnakeToCamel(obj) {
   const converted = {};
   for (const [key, value] of Object.entries(obj)) {
@@ -397,43 +493,6 @@ function validateMatrixDimensions(matrix) {
   return matrix.every(row => row.length === expectedCols);
 }
 
-function serializeToCSV(data) {
-  if (data.length === 0) return '';
-  
-  const headers = Object.keys(data[0]);
-  const rows = [headers.join(',')];
-  
-  data.forEach(item => {
-    const values = headers.map(header => {
-      const value = String(item[header] || '');
-      return value.includes(',') || value.includes('"') || value.includes('\n')
-        ? `"${value.replace(/"/g, '""')}"` 
-        : value;
-    });
-    rows.push(values.join(','));
-  });
-  
-  return rows.join('\n');
-}
-
-function deserializeFromCSV(csv) {
-  const lines = csv.split('\n');
-  if (lines.length < 2) return [];
-  
-  const headers = lines[0].split(',');
-  const result = [];
-  
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',');
-    const item = {};
-    headers.forEach((header, index) => {
-      item[header] = values[index] || '';
-    });
-    result.push(item);
-  }
-  
-  return result;
-}
 
 function convertStringTypes(data) {
   const result = {};

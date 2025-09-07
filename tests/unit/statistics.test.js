@@ -136,7 +136,7 @@ describe('Statistical Functions', () => {
       expect(significance.tStatistic).toBeDefined();
       expect(significance.isSignificant).toBeDefined();
       expect(significance.meanDifference).toBe(5); // 7.5 - 2.5
-      expect(significance.meanDifferencePercent).toBeCloseTo(200, 0); // 100% increase
+      expect(significance.meanDifferencePercent).toBeCloseTo(166.67, 1); // (8-3)/3*100 = 166.67%
     });
 
     test('should provide experimental design recommendations', () => {

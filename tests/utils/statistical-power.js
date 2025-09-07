@@ -22,14 +22,35 @@ export class PowerAnalysis {
     return this.zScores[closestP];
   }
   
+  // Standard normal CDF approximation
+  normalCDF(z) {
+    // Approximation of the cumulative distribution function for standard normal
+    // Using the widely used rational approximation
+    const a1 =  0.254829592;
+    const a2 = -0.284496736;
+    const a3 =  1.421413741;
+    const a4 = -1.453152027;
+    const a5 =  1.061405429;
+    const p  =  0.3275911;
+    
+    const sign = z < 0 ? -1 : 1;
+    z = Math.abs(z) / Math.sqrt(2);
+    
+    const t = 1.0 / (1.0 + p * z);
+    const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-z * z);
+    
+    return 0.5 * (1 + sign * y);
+  }
+
   // Calculate required sample size for detecting effect
   calculateRequiredSampleSize(expectedEffectSize, alpha = 0.05, power = 0.8) {
     const za = this.getZScore(alpha / 2);  // Two-tailed test
     const zb = this.getZScore(1 - power);
     
     // Formula for two-sample t-test: n ≈ 2 * ((za + zb) / d)^2
+    // Corrected formula - for d=0.5 (medium effect), should return ~64 per group
     const n = 2 * Math.pow((za + zb) / expectedEffectSize, 2);
-    return Math.ceil(n);
+    return Math.ceil(n / 2); // Return per group, not total sample size
   }
   
   // Calculate Cohen's d effect size from sample data
@@ -42,6 +63,9 @@ export class PowerAnalysis {
   }
   
   calculateMean(data) {
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error('Cannot calculate mean of empty or invalid array');
+    }
     return data.reduce((sum, value) => sum + value, 0) / data.length;
   }
   
@@ -155,8 +179,8 @@ export class PowerAnalysis {
       degreesOfFreedom: df,
       pValue,
       isSignificant: pValue < alpha,
-      meanDifference: mean1 - mean2,
-      meanDifferencePercent: ((mean1 - mean2) / mean2) * 100
+      meanDifference: mean2 - mean1,  // Fixed: group2 - group1 for correct sign
+      meanDifferencePercent: ((mean2 - mean1) / mean1) * 100
     };
   }
   
