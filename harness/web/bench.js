@@ -158,7 +158,7 @@ export class BenchmarkRunner {
      */
     async _runTaskBenchmark(taskName, language, scale, config) {
         const moduleId = `${taskName}-${language}-${scale}`;
-        const wasmPath = `../../builds/${language}/${taskName}-${language}-o3.wasm`;
+        const wasmPath = `/builds/${language}/${taskName}-${language}-o3.wasm`;
         
         window.benchmarkState.currentTask = taskName;
         window.benchmarkState.currentLang = language;
@@ -275,10 +275,11 @@ export class BenchmarkRunner {
         
         const result = {
             ...metadata,
-            executionTimeMs: executionTime,
+            executionTime: executionTime,
             memoryUsageMb: memoryDelta,
+            memoryUsed: memoryDelta * 1024 * 1024, // Convert MB to bytes for test compatibility
             wasmMemoryBytes: wasmMemStats ? wasmMemStats.bytes : 0,
-            hash: hash >>> 0, // Ensure unsigned 32-bit
+            resultHash: hash >>> 0, // Ensure unsigned 32-bit
             timestamp: Date.now(),
             jsHeapBefore: memBefore ? memBefore.used : 0,
             jsHeapAfter: memAfter ? memAfter.used : 0,
@@ -318,7 +319,7 @@ export class BenchmarkRunner {
         
         view.setUint32(0, scaleConfig.width, true);
         view.setUint32(4, scaleConfig.height, true);
-        view.setUint32(8, scaleConfig.max_iter, true); // Fixed: use max_iter not maxIter
+        view.setUint32(8, scaleConfig.maxIter || scaleConfig.max_iter, true); // Support both field names
         view.setUint32(12, 0, true); // Padding for alignment
         view.setFloat64(16, -0.743643887037, true); // center_real
         view.setFloat64(24, 0.131825904205, true);  // center_imag

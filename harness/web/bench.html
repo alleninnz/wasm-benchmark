@@ -167,6 +167,98 @@
         // Periodic UI updates
         setInterval(updateUI, 100);
         
+        // Expose benchmark runner functions globally for tests
+        window.runTask = async function(taskName, language, taskData) {
+            if (!window.benchmarkRunner) {
+                throw new Error('Benchmark runner not initialized');
+            }
+            
+            // Create task configuration from test data
+            const config = {
+                task: taskName,
+                language: language,
+                scale: 'small', // Default scale for tests
+                taskConfig: {
+                    scales: {
+                        small: taskData
+                    }
+                },
+                warmupRuns: 3,
+                measureRuns: 10,
+                timeout: 30000
+            };
+            
+            try {
+                const results = await window.benchmarkRunner.runTaskBenchmark(config);
+                return results[0]; // Return first result for single task execution
+            } catch (error) {
+                window.logResult(`runTask failed: ${error.message}`, 'error');
+                throw error;
+            }
+        };
+        
+        // Add missing functions expected by integration tests
+        window.enableDetailedMetrics = function(enable) {
+            window.benchmarkState.detailedMetrics = enable;
+            window.logResult(`Detailed metrics ${enable ? 'enabled' : 'disabled'}`);
+        };
+        
+        window.getSystemMetrics = function() {
+            return {
+                timestamp: Date.now(),
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                hardwareConcurrency: navigator.hardwareConcurrency,
+                memory: performance.memory ? {
+                    used: performance.memory.usedJSHeapSize,
+                    total: performance.memory.totalJSHeapSize,
+                    limit: performance.memory.jsHeapSizeLimit
+                } : null,
+                timing: performance.timing ? {
+                    navigationStart: performance.timing.navigationStart,
+                    loadEventEnd: performance.timing.loadEventEnd
+                } : null
+            };
+        };
+        
+        window.getBrowserInfo = function() {
+            return {
+                userAgent: navigator.userAgent,
+                vendor: navigator.vendor,
+                platform: navigator.platform,
+                language: navigator.language,
+                cookieEnabled: navigator.cookieEnabled,
+                onLine: navigator.onLine,
+                webdriver: navigator.webdriver,
+                maxTouchPoints: navigator.maxTouchPoints || 0
+            };
+        };
+        
+        window.validateConfig = function(config) {
+            const errors = [];
+            
+            if (!config.experiment || !config.experiment.name) {
+                errors.push('Missing experiment name');
+            }
+            
+            if (!config.environment || !config.environment.measureRuns) {
+                errors.push('Missing measureRuns in environment');
+            }
+            
+            if (!config.taskNames || !Array.isArray(config.taskNames) || config.taskNames.length === 0) {
+                errors.push('Missing or empty taskNames array');
+            }
+            
+            if (!config.enabledLanguages || !Array.isArray(config.enabledLanguages) || config.enabledLanguages.length === 0) {
+                errors.push('Missing or empty enabledLanguages array');
+            }
+            
+            return {
+                valid: errors.length === 0,
+                errors: errors
+            };
+        };
+        
         // Initial log
         window.logResult('Benchmark harness loaded successfully', 'success');
     </script>
