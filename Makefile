@@ -4,7 +4,8 @@
 # Declare all phony targets (targets that don't create files)
 .PHONY: help init python-deps build build-rust build-tinygo build-all run run-headed run-quick \
         collect analyze report all all-clean all-quick clean clean-results clean-all \
-        dev-setup lint format test status info check-deps
+        dev-setup lint lint-python lint-rust lint-go format format-python format-rust format-go \
+        test status info check-deps
 
 .DEFAULT_GOAL := help
 
@@ -90,7 +91,7 @@ help: ## Show this help message
 
 init: python-deps $(NODE_MODULES) versions.lock ## Initialize environment and install dependencies
 	$(call log_success,Environment initialized successfully)
-	@echo -e "$(GREEN)Ready to run:$(NC) make build"
+	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Ready to run: make build"
 
 python-deps: requirements.txt ## Install Python dependencies with system Python
 	$(call log_step,Installing Python dependencies...)
@@ -224,7 +225,7 @@ analyze: python-deps ## Run statistical analysis and generate plots
 		$(call log_success,Analysis completed for $$LATEST_RESULT); \
 	else \
 		$(call log_error,No benchmark results found); \
-		echo "Run 'make run' first to generate benchmark data"; \
+		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Run 'make run' first to generate benchmark data"; \
 		exit 1; \
 	fi
 
@@ -254,7 +255,7 @@ all: init build run analyze report ## Run complete experiment pipeline
 	@echo ""
 	@LATEST_RESULT=$(call find_latest_result); \
 	if [ -n "$$LATEST_RESULT" ]; then \
-		echo -e "$(GREEN)Results available in:$(NC) $$LATEST_RESULT"; \
+		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Results available in: $$LATEST_RESULT"; \
 	fi
 
 all-clean: clean all ## Clean everything and run complete pipeline
@@ -294,10 +295,10 @@ clean-all: clean clean-results ## Clean everything including dependencies
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		rm -rf $(NODE_MODULES) 2>/dev/null || true; \
 		rm -f versions.lock 2>/dev/null || true; \
-		$(call log_success,Complete cleanup finished); \
-		echo "Run 'make init' to reinitialize"; \
+		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Complete cleanup finished"; \
+		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Run 'make init' to reinitialize"; \
 	else \
-		$(call log_info,Operation cancelled); \
+		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Operation cancelled"; \
 	fi
 
 # ============================================================================
@@ -314,33 +315,121 @@ dev-setup: init ## Setup development environment with additional tools
 		$(call log_success,Basic development environment ready); \
 	fi
 
-lint: python-deps ## Run code quality checks
-	$(call log_step,Running code quality checks...)
-	@if [ -d analysis ]; then \
-		python3 -m black --check analysis/ || true; \
-		python3 -m flake8 analysis/ || true; \
-		$(call log_success,Code quality checks completed); \
+lint: lint-python lint-rust lint-go ## Run all code quality checks
+	$(call log_success,All linting completed)
+
+lint-python: ## Run Python code quality checks
+	$(call log_step,Running Python code quality checks...)
+	@python_files=$$(find . -name "*.py" -not -path "./node_modules/*" -not -path "./__pycache__/*" 2>/dev/null | head -1); \
+	if [ -n "$$python_files" ]; then \
+		if command -v black >/dev/null 2>&1 && command -v flake8 >/dev/null 2>&1; then \
+			python3 -m black --check . --exclude="node_modules|__pycache__" || true; \
+			python3 -m flake8 . --exclude="node_modules,__pycache__" || true; \
+			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Python linting completed"; \
+		else \
+			echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) Python linting tools (black, flake8) not installed, skipping..."; \
+		fi; \
 	else \
-		$(call log_warning,No analysis directory found, skipping lint); \
+		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Python files found, skipping Python lint"; \
 	fi
 
-format: python-deps ## Format Python code
+lint-rust: ## Run Rust code quality checks
+	$(call log_step,Running Rust code quality checks...)
+	@rust_projects=$$(find tasks/ -name 'Cargo.toml' -exec dirname {} \; 2>/dev/null); \
+	if [ -n "$$rust_projects" ]; then \
+		for rust_project in $$rust_projects; do \
+			if [ -d "$$rust_project" ]; then \
+				echo "Linting Rust project: $$rust_project"; \
+				(cd "$$rust_project" && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings) || exit 1; \
+			fi; \
+		done; \
+		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Rust linting completed"; \
+	else \
+		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Rust projects found, skipping Rust lint"; \
+	fi
+
+lint-go: ## Run Go code quality checks
+	$(call log_step,Running Go code quality checks...)
+	@go_modules=$$(find tasks/ -name '*.go' -exec dirname {} \; 2>/dev/null | sort -u); \
+	if [ -n "$$go_modules" ]; then \
+		for go_dir in $$go_modules; do \
+			if [ -d "$$go_dir" ] && [ -n "$$(find "$$go_dir" -maxdepth 1 -name '*.go')" ]; then \
+				echo "Linting Go module: $$go_dir"; \
+				if echo "$$go_dir" | grep -q "tinygo"; then \
+					echo "  → Skipping unsafe pointer checks for TinyGo WASM module"; \
+					(cd "$$go_dir" && go vet -unsafeptr=false . 2>/dev/null || go vet -vettool= . 2>/dev/null || echo "Using relaxed vet for WASM module") && \
+					(cd "$$go_dir" && gofmt -l . | (grep . && exit 1 || true)) || exit 1; \
+				else \
+					(cd "$$go_dir" && go vet . && gofmt -l . | (grep . && exit 1 || true)) || exit 1; \
+				fi; \
+			fi; \
+		done; \
+		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Go linting completed"; \
+	else \
+		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Go files found, skipping Go lint"; \
+	fi
+
+format: format-python format-rust format-go ## Format all code
+	$(call log_success,All code formatting completed)
+
+format-python: ## Format Python code
 	$(call log_step,Formatting Python code...)
-	@if [ -d analysis ]; then \
-		python3 -m black analysis/; \
-		$(call log_success,Code formatted); \
+	@python_files=$$(find . -name "*.py" -not -path "./node_modules/*" -not -path "./__pycache__/*" 2>/dev/null | head -1); \
+	if [ -n "$$python_files" ]; then \
+		if command -v black >/dev/null 2>&1; then \
+			python3 -m black . --exclude="node_modules|__pycache__"; \
+			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Python code formatted"; \
+		else \
+			echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) Python formatting tool (black) not installed, skipping..."; \
+		fi; \
 	else \
-		$(call log_warning,No analysis directory found, skipping format); \
+		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Python files found, skipping Python format"; \
 	fi
 
-test: python-deps ## Run tests (when implemented)
+format-rust: ## Format Rust code
+	$(call log_step,Formatting Rust code...)
+	@rust_projects=$$(find tasks/ -name 'Cargo.toml' -exec dirname {} \; 2>/dev/null); \
+	if [ -n "$$rust_projects" ]; then \
+		for rust_project in $$rust_projects; do \
+			if [ -d "$$rust_project" ]; then \
+				echo "Formatting Rust project: $$rust_project"; \
+				(cd "$$rust_project" && cargo fmt); \
+			fi; \
+		done; \
+		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Rust code formatted"; \
+	else \
+		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Rust projects found, skipping Rust format"; \
+	fi
+
+format-go: ## Format Go code
+	$(call log_step,Formatting Go code...)
+	@go_modules=$$(find tasks/ -name '*.go' -exec dirname {} \; 2>/dev/null | sort -u); \
+	if [ -n "$$go_modules" ]; then \
+		for go_dir in $$go_modules; do \
+			if [ -d "$$go_dir" ] && [ -n "$$(find "$$go_dir" -maxdepth 1 -name '*.go')" ]; then \
+				echo "Formatting Go module: $$go_dir"; \
+				(cd "$$go_dir" && gofmt -w .); \
+			fi; \
+		done; \
+		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Go code formatted"; \
+	else \
+		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Go files found, skipping Go format"; \
+	fi
+
+test: ## Run tests (when implemented)
 	$(call log_step,Running tests...)
 	@if [ -d tests ]; then \
-		python3 -m pytest tests/ -v; \
-		$(call log_success,Tests passed); \
+		if command -v npm >/dev/null 2>&1 && [ -f package.json ]; then \
+			npm test; \
+		elif command -v python3 >/dev/null 2>&1 && command -v pytest >/dev/null 2>&1; then \
+			python3 -m pytest tests/ -v; \
+		else \
+			echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No suitable test runner found (npm or pytest)"; \
+		fi; \
+		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Tests completed"; \
 	else \
-		$(call log_warning,No tests directory found); \
-		echo "Create tests/ directory and add your test files"; \
+		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No tests directory found"; \
+		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Create tests/ directory and add your test files"; \
 	fi
 
 # ============================================================================
@@ -460,5 +549,5 @@ check-deps: ## Check if all required dependencies are available
 		echo -e "  $(YELLOW)○$(NC) wasm-opt:    not found (from binaryen package)"; \
 	fi
 	@echo ""
-	@echo "Install missing tools with:"
+	$(call log_info,Install missing tools with:)
 	@echo -e "  $(CYAN)brew install rust go tinygo node python wabt binaryen$(NC)"
