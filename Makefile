@@ -163,32 +163,32 @@ build-all: ## Build all modules with optimization and size reporting
 
 run: $(NODE_MODULES) ## Run browser benchmark suite
 	$(call log_step,Running browser benchmarks...)
-	@if [ ! -f scripts/run_browser_bench.js ]; then \
-		$(call log_error,scripts/run_browser_bench.js not found); \
+	@if [ ! -f scripts/run_bench.js ]; then \
+		$(call log_error,scripts/run_bench.js not found); \
 		exit 1; \
 	fi
-	chmod +x scripts/run_browser_bench.js
-	node scripts/run_browser_bench.js
+	chmod +x scripts/run_bench.js
+	node scripts/run_bench.js
 	$(call log_success,Benchmarks completed)
 
 run-headed: $(NODE_MODULES) ## Run benchmarks with visible browser
 	$(call log_step,Running benchmarks with headed browser...)
-	@if [ ! -f scripts/run_browser_bench.js ]; then \
-		$(call log_error,scripts/run_browser_bench.js not found); \
+	@if [ ! -f scripts/run_bench.js ]; then \
+		$(call log_error,scripts/run_bench.js not found); \
 		exit 1; \
 	fi
-	chmod +x scripts/run_browser_bench.js
-	node scripts/run_browser_bench.js --headed
+	chmod +x scripts/run_bench.js
+	node scripts/run_bench.js --headed
 	$(call log_success,Headed benchmarks completed)
 
 run-quick: $(NODE_MODULES) ## Run quick benchmarks with reduced samples
 	$(call log_step,Running quick benchmarks...)
-	@if [ ! -f scripts/run_browser_bench.js ]; then \
-		$(call log_error,scripts/run_browser_bench.js not found); \
+	@if [ ! -f scripts/run_bench.js ]; then \
+		$(call log_error,scripts/run_bench.js not found); \
 		exit 1; \
 	fi
-	chmod +x scripts/run_browser_bench.js
-	node scripts/run_browser_bench.js --timeout=60000
+	chmod +x scripts/run_bench.js
+	node scripts/run_bench.js --timeout=60000
 	$(call log_success,Quick benchmarks completed)
 
 # ============================================================================
