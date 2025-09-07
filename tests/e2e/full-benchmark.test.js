@@ -42,7 +42,7 @@ describe('Full Benchmark Suite E2E', () => {
       page = await browser.newPage();
       
       // Navigate to benchmark page
-      await page.goto('http://localhost:3001/bench.html', { 
+      await page.goto('http://localhost:2025/bench.html', { 
         waitUntil: 'networkidle0',
         timeout: 60000 
       });
@@ -179,7 +179,7 @@ describe('Full Benchmark Suite E2E', () => {
 
     test('should generate comprehensive performance report', async () => {
       page = await browser.newPage();
-      await page.goto('http://localhost:3001/bench.html', { waitUntil: 'networkidle0' });
+      await page.goto('http://localhost:2025/bench.html', { waitUntil: 'networkidle0' });
       
       // Execute smoke test for rapid report generation
       const testData = testDataGen.generateTestConfigs().smoke;
@@ -296,7 +296,7 @@ describe('Full Benchmark Suite E2E', () => {
   describe('Statistical Validation and Power Analysis', () => {
     test('should validate experimental design meets statistical requirements', async () => {
       page = await browser.newPage();
-      await page.goto('http://localhost:3001/bench.html', { waitUntil: 'networkidle0' });
+      await page.goto('http://localhost:2025/bench.html', { waitUntil: 'networkidle0' });
       
       const sampleSize = 20;
       const testData = testDataGen.generateScaledDataset('mandelbrot', 'small');
@@ -353,7 +353,7 @@ describe('Full Benchmark Suite E2E', () => {
   describe('System Integration and Environment Validation', () => {
     test('should validate system meets experimental requirements', async () => {
       page = await browser.newPage();
-      await page.goto('http://localhost:3001/bench.html', { waitUntil: 'networkidle0' });
+      await page.goto('http://localhost:2025/bench.html', { waitUntil: 'networkidle0' });
       
       const systemValidation = await page.evaluate(async () => {
         const validation = {

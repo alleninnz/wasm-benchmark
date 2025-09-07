@@ -28,7 +28,7 @@ describe('Error Recovery and System Resilience', () => {
       console.log('PAGE EXCEPTION:', error.message);
     });
     
-    await page.goto('http://localhost:3001/bench.html', { 
+    await page.goto('http://localhost:2025/bench.html', { 
       waitUntil: 'networkidle0' 
     });
   });

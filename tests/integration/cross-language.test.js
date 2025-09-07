@@ -250,7 +250,7 @@ describe('Cross-Language Consistency', () => {
       await browser.close();
       browser = await puppeteer.launch(global.testBrowserConfig);
       const newPage = await browser.newPage();
-      await newPage.goto('http://localhost:3001/bench.html', { 
+      await newPage.goto('http://localhost:2025/bench.html', { 
         waitUntil: 'networkidle0' 
       });
 

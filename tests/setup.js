@@ -28,6 +28,10 @@ const testDataGenerator = {
   }
 };
 
+// Test server configuration
+const TEST_PORT = process.env.PORT || 2025;
+const TEST_BASE_URL = `http://localhost:${TEST_PORT}`;
+
 // Browser configuration for real puppeteer instances
 const testBrowserConfig = {
   headless: true,
@@ -58,6 +62,8 @@ global.testConfig = testConfig;
 global.testDataGenerator = testDataGenerator;
 global.testBrowserConfig = testBrowserConfig;
 global.validationRules = validationRules;
+global.TEST_PORT = TEST_PORT;
+global.TEST_BASE_URL = TEST_BASE_URL;
 
 // Test setup hooks
 beforeEach(async (context) => {

@@ -26,7 +26,7 @@ describe('Parallel Execution and Concurrency Control', () => {
     
     // Increase memory limit for parallel tests
     await page.setDefaultTimeout(60000);
-    await page.goto('http://localhost:3001/bench.html', { 
+    await page.goto('http://localhost:2025/bench.html', { 
       waitUntil: 'networkidle0' 
     });
   });
