@@ -1,8 +1,5 @@
 # Build artifacts
-builds/**/*.wasm
-builds/**/*.map
-builds/**/*.gz
-builds/**/manifest.json
+builds/
 target/
 dist/
 
@@ -76,6 +73,7 @@ poetry.lock
 # Testing artifacts
 .pytest_cache/
 test-results/
+test-results.json
 
 # Generated reference files
 reference_hashes.json
@@ -87,3 +85,7 @@ reference_hashes.json
 # System monitoring
 .benchmarks/
 .profiler/
+
+# Public directory symlinks (these are generated)
+public/builds
+public/harness
