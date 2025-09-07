@@ -16,14 +16,14 @@ const (
 	LCGIncrement  uint32 = 1013904223
 
 	// Matrix computation constants
-	FloatRangeMin      float32 = -1.0
-	FloatRangeMax      float32 = 1.0
-	PrecisionDigits    uint32  = 6
+	FloatRangeMin       float32 = -1.0
+	FloatRangeMax       float32 = 1.0
+	PrecisionDigits     uint32  = 6
 	PrecisionMultiplier float32 = 1e6
 
 	// Validation limits to prevent resource exhaustion
-	MaxMatrixDimension uint32 = 2000              // Max 2000x2000 (16MB per matrix)
-	MaxAllocationSize  uint32 = 1_073_741_824    // 1GB
+	MaxMatrixDimension uint32 = 2000          // Max 2000x2000 (16MB per matrix)
+	MaxAllocationSize  uint32 = 1_073_741_824 // 1GB
 )
 
 // MatrixMulParams represents parameters for matrix multiplication computation
@@ -46,11 +46,11 @@ func alloc(nBytes uint32) uintptr {
 	if nBytes == 0 {
 		return 0
 	}
-	
+
 	if nBytes > MaxAllocationSize {
 		return 0
 	}
-	
+
 	// Allocate slice of bytes and return pointer to underlying data
 	data := make([]byte, nBytes)
 	return uintptr(unsafe.Pointer(&data[0]))
@@ -62,24 +62,24 @@ func runTask(paramsPtr uintptr) uint32 {
 	if paramsPtr == 0 {
 		return 0
 	}
-	
+
 	params := (*MatrixMulParams)(unsafe.Pointer(paramsPtr))
-	
+
 	if !validateParameters(params) {
 		return 0
 	}
-	
+
 	// Generate matrices A and B using reproducible random generation
 	seed := params.Seed
 	matrixA := generateRandomMatrix(int(params.Dimension), &seed)
 	matrixB := generateRandomMatrix(int(params.Dimension), &seed)
-	
+
 	// Initialize result matrix C
 	matrixC := createZeroMatrix(int(params.Dimension))
-	
+
 	// Execute matrix multiplication: C = A × B
 	naiveTripleLoopMultiply(matrixA, matrixB, matrixC)
-	
+
 	// Return FNV-1a hash of result matrix for verification
 	return fnv1aHashMatrix(matrixC)
 }
@@ -110,7 +110,7 @@ func matrixMultiply(a, b [][]float32) [][]float32 {
 	if n == 0 || len(b) != n || len(b[0]) != n {
 		return nil // Invalid matrix dimensions
 	}
-	
+
 	c := createZeroMatrix(n)
 	naiveTripleLoopMultiply(a, b, c)
 	return c
@@ -120,7 +120,7 @@ func matrixMultiply(a, b [][]float32) [][]float32 {
 // This order is chosen for consistency across language implementations
 func naiveTripleLoopMultiply(a, b [][]float32, c [][]float32) {
 	n := len(a)
-	
+
 	// Use i,j,k order for consistent cross-language behavior
 	for i := 0; i < n; i++ {
 		for j := 0; j < n; j++ {
@@ -136,7 +136,7 @@ func naiveTripleLoopMultiply(a, b [][]float32, c [][]float32) {
 // generateRandomMatrix generates random matrix with reproducible values using LCG
 func generateRandomMatrix(dimension int, seed *uint32) [][]float32 {
 	matrix := make([][]float32, dimension)
-	
+
 	for i := 0; i < dimension; i++ {
 		matrix[i] = make([]float32, dimension)
 		for j := 0; j < dimension; j++ {
@@ -145,7 +145,7 @@ func generateRandomMatrix(dimension int, seed *uint32) [][]float32 {
 			matrix[i][j] = floatValue
 		}
 	}
-	
+
 	return matrix
 }
 
@@ -168,13 +168,13 @@ func lcgToFloatRange(lcgValue uint32, min, max float32) float32 {
 // fnv1aHashMatrix computes FNV-1a hash of matrix elements for cross-implementation verification
 func fnv1aHashMatrix(matrix [][]float32) uint32 {
 	hash := FNVOffsetBasis
-	
+
 	// Process elements in row-major order for consistency
 	for _, row := range matrix {
 		for _, value := range row {
 			// Round float32 to specified precision and convert to int32
 			roundedValue := roundFloat32ToPrecision(value, PrecisionDigits)
-			
+
 			// Hash the int32 as little-endian bytes
 			bytes := int32ToLittleEndianBytes(roundedValue)
 			for _, b := range bytes {
@@ -183,7 +183,7 @@ func fnv1aHashMatrix(matrix [][]float32) uint32 {
 			}
 		}
 	}
-	
+
 	return hash
 }
 
@@ -211,22 +211,22 @@ func validateParameters(params *MatrixMulParams) bool {
 	if params.Dimension == 0 {
 		return false // Zero dimension is invalid
 	}
-	
+
 	if params.Dimension > MaxMatrixDimension {
 		return false // Too large, would cause memory exhaustion
 	}
-	
+
 	// Check for potential overflow in memory calculations
 	// Each matrix needs dimension² × 4 bytes (float32), need 3 matrices total
 	elements := uint64(params.Dimension) * uint64(params.Dimension)
 	bytesPerMatrix := elements * 4
 	totalBytes := bytesPerMatrix * 3
-	
+
 	// Reasonable memory limit: 256MB total for all matrices
 	if totalBytes > 256*1024*1024 {
 		return false
 	}
-	
+
 	// Seed can be any uint32 value (including 0)
 	return true
 }
@@ -238,7 +238,7 @@ func matricesApproximatelyEqual(a, b [][]float32, tolerance float32) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	
+
 	for i := 0; i < len(a); i++ {
 		if len(a[i]) != len(b[i]) {
 			return false
@@ -249,7 +249,7 @@ func matricesApproximatelyEqual(a, b [][]float32, tolerance float32) bool {
 			}
 		}
 	}
-	
+
 	return true
 }
 

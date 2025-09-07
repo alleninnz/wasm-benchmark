@@ -4,8 +4,8 @@
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct MatrixMulParams {
-    pub dimension: u32,  // Size of square matrices (N x N)
-    pub seed: u32,       // Seed for reproducible random matrix generation
+    pub dimension: u32, // Size of square matrices (N x N)
+    pub seed: u32,      // Seed for reproducible random matrix generation
 }
 
 /// Constants for FNV-1a hash algorithm
@@ -23,5 +23,5 @@ pub const PRECISION_DIGITS: u32 = 6;
 pub const PRECISION_MULTIPLIER: f32 = 1e6;
 
 /// Validation limits to prevent resource exhaustion
-pub const MAX_MATRIX_DIMENSION: u32 = 2000;  // Max 2000x2000 (16MB per matrix)
+pub const MAX_MATRIX_DIMENSION: u32 = 2000; // Max 2000x2000 (16MB per matrix)
 pub const MAX_ALLOCATION_SIZE: u32 = 1_073_741_824; // 1GB

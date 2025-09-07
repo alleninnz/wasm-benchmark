@@ -10,11 +10,11 @@ import (
 
 // TestVector represents a cross-implementation test case
 type TestVector struct {
-	Name         string                 `json:"name"`
-	Description  string                 `json:"description"`
-	Params       SerializableParams     `json:"params"`
-	ExpectedHash uint32                 `json:"expected_hash"`
-	Category     string                 `json:"category"`
+	Name         string             `json:"name"`
+	Description  string             `json:"description"`
+	Params       SerializableParams `json:"params"`
+	ExpectedHash uint32             `json:"expected_hash"`
+	Category     string             `json:"category"`
 }
 
 // SerializableParams matches the JSON structure from Rust
@@ -95,7 +95,7 @@ func TestCrossImplementationHashMatching(t *testing.T) {
 			"First failure: %s\n"+
 			"This indicates the TinyGo implementation does not match the Rust reference.\n"+
 			"Check algorithm implementation for differences in floating-point arithmetic,\n"+
-			"iteration logic, or coordinate mapping.", 
+			"iteration logic, or coordinate mapping.",
 			totalFailed, totalTests, firstFailure)
 	}
 }
@@ -121,9 +121,9 @@ func TestMemoryLayoutCompatibility(t *testing.T) {
 		parsed.CenterReal != params.CenterReal ||
 		parsed.CenterImag != params.CenterImag ||
 		parsed.ScaleFactor != params.ScaleFactor {
-		t.Errorf("❌ MEMORY LAYOUT INCOMPATIBLE\n"+
-			"Parameter parsing failed - struct layout differs from Rust.\n"+
-			"This will cause incorrect WebAssembly interop.\n"+
+		t.Errorf("❌ MEMORY LAYOUT INCOMPATIBLE\n" +
+			"Parameter parsing failed - struct layout differs from Rust.\n" +
+			"This will cause incorrect WebAssembly interop.\n" +
 			"Check struct field order and padding.")
 	} else {
 		t.Logf("✅ Memory layout compatible with Rust implementation")

@@ -1,7 +1,7 @@
-use crate::{MandelbrotParams, run_task};
+use crate::{run_task, MandelbrotParams};
+use serde::{Deserialize, Serialize};
 use std::alloc::{alloc as sys_alloc, Layout};
 use std::os::raw::c_void;
-use serde::{Serialize, Deserialize};
 
 /// Test vector for cross-implementation validation
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -53,13 +53,13 @@ impl From<SerializableParams> for MandelbrotParams {
 /// Generate systematic test vectors across parameter space
 pub fn generate_systematic_vectors() -> Vec<TestVector> {
     let mut vectors = Vec::new();
-    
+
     // Systematic parameter combinations
     let sizes = [(2, 2), (4, 4), (10, 10), (50, 50), (100, 100)];
     let iterations = [10, 100, 1000];
     let centers = [(0.0, 0.0), (-0.5, 0.0), (-0.75, 0.1), (0.25, 0.5)];
     let scales = [4.0, 2.0, 1.0, 0.5, 0.01];
-    
+
     for (i, &(width, height)) in sizes.iter().enumerate() {
         for (j, &max_iter) in iterations.iter().enumerate() {
             for (k, &(center_real, center_imag)) in centers.iter().enumerate() {
@@ -72,9 +72,9 @@ pub fn generate_systematic_vectors() -> Vec<TestVector> {
                         center_imag,
                         scale_factor,
                     };
-                    
+
                     let hash = compute_reference_hash(&params);
-                    
+
                     vectors.push(TestVector {
                         name: format!("systematic_{}_{}_{}_{}", i, j, k, l),
                         description: format!(
@@ -89,7 +89,7 @@ pub fn generate_systematic_vectors() -> Vec<TestVector> {
             }
         }
     }
-    
+
     vectors
 }
 
@@ -193,23 +193,26 @@ pub fn generate_manual_critical_vectors() -> Vec<TestVector> {
             },
         ),
     ];
-    
-    critical_cases.iter().map(|(name, desc, params)| {
-        let hash = compute_reference_hash(params);
-        TestVector {
-            name: name.to_string(),
-            description: desc.to_string(),
-            params: (*params).into(),
-            expected_hash: hash,
-            category: "critical".to_string(),
-        }
-    }).collect()
+
+    critical_cases
+        .iter()
+        .map(|(name, desc, params)| {
+            let hash = compute_reference_hash(params);
+            TestVector {
+                name: name.to_string(),
+                description: desc.to_string(),
+                params: (*params).into(),
+                expected_hash: hash,
+                category: "critical".to_string(),
+            }
+        })
+        .collect()
 }
 
 /// Generate floating-point precision validation vectors
 pub fn generate_precision_vectors() -> Vec<TestVector> {
     let mut vectors = Vec::new();
-    
+
     // Test cases designed to stress floating-point precision
     let precision_cases = [
         (
@@ -255,7 +258,7 @@ pub fn generate_precision_vectors() -> Vec<TestVector> {
                 width: 100,
                 height: 100,
                 max_iter: 10000,
-                center_real: -0.7540000000000000,
+                center_real: -0.754,
                 center_imag: 0.0000000000000001,
                 scale_factor: 0.001,
             },
@@ -273,7 +276,7 @@ pub fn generate_precision_vectors() -> Vec<TestVector> {
             },
         ),
     ];
-    
+
     for (name, desc, params) in precision_cases.iter() {
         let hash = compute_reference_hash(params);
         vectors.push(TestVector {
@@ -284,7 +287,7 @@ pub fn generate_precision_vectors() -> Vec<TestVector> {
             category: "precision".to_string(),
         });
     }
-    
+
     vectors
 }
 
@@ -376,40 +379,46 @@ pub fn generate_edge_case_vectors() -> Vec<TestVector> {
             },
         ),
     ];
-    
-    edge_cases.iter().map(|(name, desc, params)| {
-        let hash = compute_reference_hash(params);
-        TestVector {
-            name: name.to_string(),
-            description: desc.to_string(),
-            params: (*params).into(),
-            expected_hash: hash,
-            category: "edge_case".to_string(),
-        }
-    }).collect()
+
+    edge_cases
+        .iter()
+        .map(|(name, desc, params)| {
+            let hash = compute_reference_hash(params);
+            TestVector {
+                name: name.to_string(),
+                description: desc.to_string(),
+                params: (*params).into(),
+                expected_hash: hash,
+                category: "edge_case".to_string(),
+            }
+        })
+        .collect()
 }
 
 /// Compute reference hash using the Rust implementation
 fn compute_reference_hash(params: &MandelbrotParams) -> u32 {
     // Allocate memory for parameters
-    let layout = Layout::from_size_align(std::mem::size_of::<MandelbrotParams>(), std::mem::align_of::<MandelbrotParams>())
-        .expect("Invalid layout");
+    let layout = Layout::from_size_align(
+        std::mem::size_of::<MandelbrotParams>(),
+        std::mem::align_of::<MandelbrotParams>(),
+    )
+    .expect("Invalid layout");
     let params_ptr = unsafe { sys_alloc(layout) as *mut MandelbrotParams };
-    
+
     if params_ptr.is_null() {
         panic!("Failed to allocate memory for parameters");
     }
-    
+
     // Copy parameters to allocated memory
     unsafe {
         std::ptr::write(params_ptr, *params);
-        
+
         // Call the reference implementation
         let hash = run_task(params_ptr as *mut c_void);
-        
+
         // Clean up
         std::alloc::dealloc(params_ptr as *mut u8, layout);
-        
+
         hash
     }
 }
@@ -417,21 +426,21 @@ fn compute_reference_hash(params: &MandelbrotParams) -> u32 {
 /// Generate all test vectors
 pub fn generate_all_vectors() -> Vec<TestVector> {
     let mut all_vectors = Vec::new();
-    
+
     println!("Generating systematic test vectors...");
     all_vectors.extend(generate_systematic_vectors());
-    
+
     println!("Generating manual critical test vectors...");
     all_vectors.extend(generate_manual_critical_vectors());
-    
+
     println!("Generating floating-point precision vectors...");
     all_vectors.extend(generate_precision_vectors());
-    
+
     println!("Generating edge case vectors...");
     all_vectors.extend(generate_edge_case_vectors());
-    
+
     println!("Generated {} total test vectors", all_vectors.len());
-    
+
     all_vectors
 }
 
@@ -439,11 +448,11 @@ pub fn generate_all_vectors() -> Vec<TestVector> {
 pub fn export_vectors_to_json(vectors: &[TestVector], filename: &str) -> std::io::Result<()> {
     use std::fs::File;
     use std::io::Write;
-    
+
     let json = serde_json::to_string_pretty(vectors)?;
     let mut file = File::create(filename)?;
     file.write_all(json.as_bytes())?;
-    
+
     println!("Exported {} test vectors to {}", vectors.len(), filename);
     Ok(())
 }

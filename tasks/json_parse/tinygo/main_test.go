@@ -14,9 +14,9 @@ func TestGenerateJsonRecords(t *testing.T) {
 		expected []JsonRecord
 	}{
 		{
-			name:  "empty records",
-			count: 0,
-			seed:  12345,
+			name:     "empty records",
+			count:    0,
+			seed:     12345,
 			expected: []JsonRecord{},
 		},
 		{
@@ -24,7 +24,7 @@ func TestGenerateJsonRecords(t *testing.T) {
 			count: 1,
 			seed:  12345,
 			expected: []JsonRecord{
-				{ID: 1, Value: int32(linearCongruentialGeneratorTest(12345)), Flag: (linearCongruentialGeneratorTest(12345)&1) == 0, Name: "a1"},
+				{ID: 1, Value: int32(linearCongruentialGeneratorTest(12345)), Flag: (linearCongruentialGeneratorTest(12345) & 1) == 0, Name: "a1"},
 			},
 		},
 		{
@@ -32,9 +32,9 @@ func TestGenerateJsonRecords(t *testing.T) {
 			count: 3,
 			seed:  0,
 			expected: []JsonRecord{
-				{ID: 1, Value: int32(linearCongruentialGeneratorTest(0)), Flag: (linearCongruentialGeneratorTest(0)&1) == 0, Name: "a1"},
-				{ID: 2, Value: int32(linearCongruentialGeneratorTest(1013904223)), Flag: (linearCongruentialGeneratorTest(1013904223)&1) == 0, Name: "a2"},
-				{ID: 3, Value: int32(linearCongruentialGeneratorTest(3204258894)), Flag: (linearCongruentialGeneratorTest(3204258894)&1) == 0, Name: "a3"},
+				{ID: 1, Value: int32(linearCongruentialGeneratorTest(0)), Flag: (linearCongruentialGeneratorTest(0) & 1) == 0, Name: "a1"},
+				{ID: 2, Value: int32(linearCongruentialGeneratorTest(1013904223)), Flag: (linearCongruentialGeneratorTest(1013904223) & 1) == 0, Name: "a2"},
+				{ID: 3, Value: int32(linearCongruentialGeneratorTest(3204258894)), Flag: (linearCongruentialGeneratorTest(3204258894) & 1) == 0, Name: "a3"},
 			},
 		},
 	}
@@ -42,19 +42,19 @@ func TestGenerateJsonRecords(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := generateJsonRecords(tt.count, tt.seed)
-			
+
 			if len(tt.expected) == 0 {
 				if len(result) != 0 {
 					t.Errorf("Expected empty slice, got %v", result)
 				}
 				return
 			}
-			
+
 			if len(result) != len(tt.expected) {
 				t.Errorf("Expected %d records, got %d", len(tt.expected), len(result))
 				return
 			}
-			
+
 			for i, expected := range tt.expected {
 				if result[i].ID != expected.ID {
 					t.Errorf("Record %d: expected ID %d, got %d", i, expected.ID, result[i].ID)
@@ -147,16 +147,16 @@ func TestParseJsonString(t *testing.T) {
 			expectErr: false,
 		},
 		{
-			name:    "single record",
-			input:   `[{"id":1,"value":123,"flag":true,"name":"a1"}]`,
+			name:  "single record",
+			input: `[{"id":1,"value":123,"flag":true,"name":"a1"}]`,
 			expected: []JsonRecord{
 				{ID: 1, Value: 123, Flag: true, Name: "a1"},
 			},
 			expectErr: false,
 		},
 		{
-			name:    "multiple records with whitespace",
-			input:   `[ {"id": 1, "value": 123, "flag": false, "name": "a1"} , {"id": 2, "value": -456, "flag": true, "name": "a2"} ]`,
+			name:  "multiple records with whitespace",
+			input: `[ {"id": 1, "value": 123, "flag": false, "name": "a1"} , {"id": 2, "value": -456, "flag": true, "name": "a2"} ]`,
 			expected: []JsonRecord{
 				{ID: 1, Value: 123, Flag: false, Name: "a1"},
 				{ID: 2, Value: -456, Flag: true, Name: "a2"},
@@ -192,24 +192,24 @@ func TestParseJsonString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := parseJsonString(tt.input)
-			
+
 			if tt.expectErr {
 				if err == nil {
 					t.Errorf("Expected error, but got none")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
 				return
 			}
-			
+
 			if len(result) != len(tt.expected) {
 				t.Errorf("Expected %d records, got %d", len(tt.expected), len(result))
 				return
 			}
-			
+
 			for i, expected := range tt.expected {
 				if result[i] != expected {
 					t.Errorf("Record %d: expected %+v, got %+v", i, expected, result[i])
@@ -222,12 +222,12 @@ func TestParseJsonString(t *testing.T) {
 // Test string parsing with escape sequences
 func TestParseJsonStringValue(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     []rune
-		pos       int
-		expected  string
+		name        string
+		input       []rune
+		pos         int
+		expected    string
 		expectedPos int
-		expectErr bool
+		expectErr   bool
 	}{
 		{
 			name:        "simple string",
@@ -254,7 +254,7 @@ func TestParseJsonStringValue(t *testing.T) {
 			expectErr:   false,
 		},
 		{
-			name:        "string with escaped backslash", 
+			name:        "string with escaped backslash",
 			input:       []rune(`"path\\to\\file"`),
 			pos:         0,
 			expected:    `path\to\file`,
@@ -283,23 +283,23 @@ func TestParseJsonStringValue(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			pos := tt.pos
 			result, err := parseJsonStringValue(tt.input, &pos)
-			
+
 			if tt.expectErr {
 				if err == nil {
 					t.Errorf("Expected error, but got none")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
 				return
 			}
-			
+
 			if result != tt.expected {
 				t.Errorf("Expected: %s, Got: %s", tt.expected, result)
 			}
-			
+
 			if pos != tt.expectedPos {
 				t.Errorf("Expected position %d, got %d", tt.expectedPos, pos)
 			}
@@ -379,23 +379,23 @@ func TestParseJsonNumber(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			pos := tt.pos
 			result, err := parseJsonNumber(tt.input, &pos)
-			
+
 			if tt.expectErr {
 				if err == nil {
 					t.Errorf("Expected error, but got none")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
 				return
 			}
-			
+
 			if result != tt.expected {
 				t.Errorf("Expected: %d, Got: %d", tt.expected, result)
 			}
-			
+
 			if pos != tt.expectedPos {
 				t.Errorf("Expected position %d, got %d", tt.expectedPos, pos)
 			}
@@ -451,23 +451,23 @@ func TestParseJsonBoolean(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			pos := tt.pos
 			result, err := parseJsonBoolean(tt.input, &pos)
-			
+
 			if tt.expectErr {
 				if err == nil {
 					t.Errorf("Expected error, but got none")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
 				return
 			}
-			
+
 			if result != tt.expected {
 				t.Errorf("Expected: %t, Got: %t", tt.expected, result)
 			}
-			
+
 			if pos != tt.expectedPos {
 				t.Errorf("Expected position %d, got %d", tt.expectedPos, pos)
 			}
@@ -521,9 +521,9 @@ func TestFnv1aHashRecords(t *testing.T) {
 func calculateExpectedHash(records []JsonRecord) uint32 {
 	const fnvOffsetBasis uint32 = 2166136261
 	const fnvPrime uint32 = 16777619
-	
+
 	hash := fnvOffsetBasis
-	
+
 	for _, record := range records {
 		// Hash ID field
 		id := record.ID
@@ -535,7 +535,7 @@ func calculateExpectedHash(records []JsonRecord) uint32 {
 		hash *= fnvPrime
 		hash ^= uint32((id >> 24) & 0xFF)
 		hash *= fnvPrime
-		
+
 		// Hash Value field
 		value := uint32(record.Value)
 		hash ^= uint32(value & 0xFF)
@@ -546,7 +546,7 @@ func calculateExpectedHash(records []JsonRecord) uint32 {
 		hash *= fnvPrime
 		hash ^= uint32((value >> 24) & 0xFF)
 		hash *= fnvPrime
-		
+
 		// Hash Flag field
 		var flagByte uint32 = 0
 		if record.Flag {
@@ -554,7 +554,7 @@ func calculateExpectedHash(records []JsonRecord) uint32 {
 		}
 		hash ^= flagByte
 		hash *= fnvPrime
-		
+
 		// Hash Name field
 		nameBytes := []byte(record.Name)
 		for _, b := range nameBytes {
@@ -562,7 +562,7 @@ func calculateExpectedHash(records []JsonRecord) uint32 {
 			hash *= fnvPrime
 		}
 	}
-	
+
 	return hash
 }
 
@@ -635,24 +635,24 @@ func TestCompleteRoundTrip(t *testing.T) {
 			if len(originalRecords) != tt.count {
 				t.Fatalf("Expected %d records, got %d", tt.count, len(originalRecords))
 			}
-			
+
 			// Serialize to JSON
 			jsonStr := serializeToJson(originalRecords)
 			if jsonStr == "" {
 				t.Fatalf("Serialization failed")
 			}
-			
+
 			// Parse JSON back to records
 			parsedRecords, err := parseJsonString(jsonStr)
 			if err != nil {
 				t.Fatalf("Parsing failed: %v", err)
 			}
-			
+
 			// Verify record count matches
 			if len(parsedRecords) != len(originalRecords) {
 				t.Fatalf("Parsed record count mismatch: expected %d, got %d", len(originalRecords), len(parsedRecords))
 			}
-			
+
 			// Verify all fields match exactly
 			for i, original := range originalRecords {
 				parsed := parsedRecords[i]
@@ -669,7 +669,7 @@ func TestCompleteRoundTrip(t *testing.T) {
 					t.Errorf("Record %d Name mismatch: expected %s, got %s", i, original.Name, parsed.Name)
 				}
 			}
-			
+
 			// Verify hash consistency
 			originalHash := fnv1aHashRecords(originalRecords)
 			parsedHash := fnv1aHashRecords(parsedRecords)
@@ -687,13 +687,13 @@ func TestWebAssemblyInterface(t *testing.T) {
 	if globalSeed != 42 {
 		t.Errorf("Expected globalSeed to be 42, got %d", globalSeed)
 	}
-	
+
 	// Test alloc function
 	ptr := alloc(128)
 	if ptr == 0 {
 		t.Errorf("Expected non-zero pointer, got 0")
 	}
-	
+
 	// Test parseParams function
 	params := JsonParseParams{RecordCount: 5, Seed: 12345}
 	ptr = uintptr(unsafe.Pointer(&params))
@@ -708,13 +708,13 @@ func TestWebAssemblyInterface(t *testing.T) {
 			t.Errorf("Expected Seed 12345, got %d", parsedParams.Seed)
 		}
 	}
-	
+
 	// Test runTask function with valid parameters
 	result := runTask(ptr)
 	if result == 0 {
 		t.Errorf("Expected non-zero hash result, got 0")
 	}
-	
+
 	// Test runTask with null pointer
 	result = runTask(0)
 	if result != 0 {
@@ -732,7 +732,7 @@ func BenchmarkGenerateJsonRecords(b *testing.B) {
 func BenchmarkSerializeToJson(b *testing.B) {
 	records := generateJsonRecords(100, 12345)
 	b.ResetTimer()
-	
+
 	for i := 0; i < b.N; i++ {
 		serializeToJson(records)
 	}
@@ -742,7 +742,7 @@ func BenchmarkParseJsonString(b *testing.B) {
 	records := generateJsonRecords(100, 12345)
 	jsonStr := serializeToJson(records)
 	b.ResetTimer()
-	
+
 	for i := 0; i < b.N; i++ {
 		parseJsonString(jsonStr)
 	}
@@ -751,7 +751,7 @@ func BenchmarkParseJsonString(b *testing.B) {
 func BenchmarkFnv1aHashRecords(b *testing.B) {
 	records := generateJsonRecords(100, 12345)
 	b.ResetTimer()
-	
+
 	for i := 0; i < b.N; i++ {
 		fnv1aHashRecords(records)
 	}

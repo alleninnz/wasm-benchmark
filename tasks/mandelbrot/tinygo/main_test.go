@@ -57,7 +57,7 @@ func TestComplexMagnitude(t *testing.T) {
 	for _, test := range tests {
 		result := complexMagnitudeSquared(test.real, test.imag)
 		if result != test.expected {
-			t.Errorf("complexMagnitudeSquared(%f, %f) = %f, expected %f", 
+			t.Errorf("complexMagnitudeSquared(%f, %f) = %f, expected %f",
 				test.real, test.imag, result, test.expected)
 		}
 	}

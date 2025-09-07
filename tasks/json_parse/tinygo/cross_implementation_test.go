@@ -10,11 +10,11 @@ import (
 
 // TestVector represents a cross-implementation test case
 type TestVector struct {
-	Name         string            `json:"name"`
-	Description  string            `json:"description"`
+	Name         string             `json:"name"`
+	Description  string             `json:"description"`
 	Params       SerializableParams `json:"params"`
-	ExpectedHash uint32            `json:"expected_hash"`
-	Category     string            `json:"category"`
+	ExpectedHash uint32             `json:"expected_hash"`
+	Category     string             `json:"category"`
 }
 
 // SerializableParams matches the JSON structure from Rust
@@ -59,7 +59,7 @@ func TestCrossImplementationHashMatching(t *testing.T) {
 	for _, vector := range vectors {
 		// Convert parameters to WebAssembly interface format
 		params := vector.Params.toParams()
-		
+
 		// Allocate memory for parameters (8 bytes for 2 uint32s)
 		paramPtr := alloc(8)
 		if paramPtr == 0 {
@@ -97,7 +97,7 @@ func TestCrossImplementationHashMatching(t *testing.T) {
 			"First failure: %s\n"+
 			"This indicates the TinyGo implementation does not match the Rust reference.\n"+
 			"Check algorithm implementation for differences in JSON generation,\n"+
-			"parsing logic, or hash calculation.", 
+			"parsing logic, or hash calculation.",
 			totalFailed, totalTests, firstFailure)
 	}
 }
