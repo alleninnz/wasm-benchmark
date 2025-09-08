@@ -44,6 +44,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Handle favicon.ico to prevent 404 errors in tests
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end(); // No Content - prevents 404 error
+});
+
 // Root route - serve bench.html directly
 app.get('/', (req, res) => {
   const benchPath = path.join(__dirname, '../harness/web/bench.html');
@@ -65,10 +70,6 @@ app.get('/', (req, res) => {
 app.use('/harness', express.static(path.join(__dirname, '../harness'), {
   maxAge: 0, // No caching in development
   setHeaders: (res, filePath) => {
-    // Set MIME types for WASM files
-    if (filePath.endsWith('.wasm')) {
-      res.setHeader('Content-Type', 'application/wasm');
-    }
     // Set MIME types for JS modules
     if (filePath.endsWith('.js')) {
       res.setHeader('Content-Type', 'application/javascript');
@@ -88,6 +89,24 @@ app.use('/builds', express.static(path.join(__dirname, '../builds'), {
     res.setHeader('Accept-Ranges', 'bytes');
   }
 }));
+
+// Serve essential config files only (bench.json needed for tests)
+app.get('/configs/bench.json', (req, res) => {
+  const configPath = path.join(__dirname, '../configs/bench.json');
+  console.log(`🔧 Serving config: ${configPath}`);
+  
+  if (fs.existsSync(configPath)) {
+    res.setHeader('Content-Type', 'application/json');
+    res.sendFile(configPath);
+  } else {
+    console.log(`❌ bench.json not found at: ${configPath}`);
+    res.status(404).json({
+      error: 'Configuration not found',
+      message: 'bench.json not found. Run "npm run build:config" to generate it.',
+      path: '/configs/bench.json'
+    });
+  }
+});
 
 // Serve individual files from harness/web at root level for convenience
 const webAssets = ['bench.js', 'wasm_loader.js', 'config_loader.js'];
@@ -112,7 +131,6 @@ const blockedPaths = [
   '/src',
   '/tests',
   '/scripts',
-  '/configs',
   '/docs',
   '/reports',
   '/results',
@@ -142,7 +160,8 @@ app.use((req, res) => {
     availablePaths: [
       '/ (bench.html)',
       '/harness/**',
-      '/builds/**'
+      '/builds/**',
+      '/configs/bench.json'
     ]
   });
 });
@@ -176,6 +195,7 @@ app.listen(PORT, () => {
   console.log('📁 Serving directories:');
   console.log('   • /harness -> harness/');
   console.log('   • /builds  -> builds/');
+  console.log('   • /configs -> configs/');
   console.log('🏠 Direct access: http://localhost:' + PORT + ' → bench.html');
   console.log('⏹️  Press Ctrl+C to stop');
 });
