@@ -8,6 +8,12 @@ export class WasmLoader {
         this.loadedModules = new Map();
         this.moduleCache = new Map();
         this.loadingPromises = new Map();
+        
+        // Constants
+        this.REQUIRED_EXPORTS = ['init', 'alloc', 'run_task', 'memory'];
+        this.WASM_PAGE_SIZE = 65536;
+        this.MAX_MODULE_ID_LENGTH = 100;
+        this.MAX_DATA_SIZE = 100 * 1024 * 1024; // 100MB safety limit
     }
 
     /**
@@ -17,13 +23,26 @@ export class WasmLoader {
      * @returns {Promise<WebAssembly.Instance>}
      */
     async loadModule(wasmPath, moduleId) {
+        // Input validation
+        if (typeof wasmPath !== 'string' || !wasmPath.trim()) {
+            throw new Error('loadModule: wasmPath must be a non-empty string');
+        }
+        if (typeof moduleId !== 'string' || !moduleId.trim()) {
+            throw new Error('loadModule: moduleId must be a non-empty string');
+        }
+        if (moduleId.length > this.MAX_MODULE_ID_LENGTH) {
+            throw new Error(`loadModule: moduleId exceeds maximum length of ${this.MAX_MODULE_ID_LENGTH} characters`);
+        }
+
         // Check if already loaded
         if (this.loadedModules.has(moduleId)) {
+            window.logResult && window.logResult(`Using cached module: ${moduleId}`);
             return this.loadedModules.get(moduleId);
         }
 
         // Check if currently loading
         if (this.loadingPromises.has(moduleId)) {
+            window.logResult && window.logResult(`Waiting for module load: ${moduleId}`);
             return this.loadingPromises.get(moduleId);
         }
 
@@ -52,7 +71,14 @@ export class WasmLoader {
             // Fetch the WASM bytes
             const response = await fetch(wasmPath);
             if (!response.ok) {
-                throw new Error(`Failed to fetch ${wasmPath}: ${response.statusText}`);
+                const errorMsg = `Failed to fetch WASM module from ${wasmPath}: ${response.status} ${response.statusText}`;
+                if (response.status === 404) {
+                    throw new Error(`${errorMsg}. Check that the WASM file exists and the path is correct.`);
+                } else if (response.status >= 500) {
+                    throw new Error(`${errorMsg}. Server error - check server logs and try again.`);
+                } else {
+                    throw new Error(`${errorMsg}. Check network connectivity and server configuration.`);
+                }
             }
             
             const wasmBytes = await response.arrayBuffer();
@@ -90,13 +116,21 @@ export class WasmLoader {
      * @private
      */
     _validateModuleExports(instance, moduleId) {
-        const requiredExports = ['init', 'alloc', 'run_task', 'memory'];
         const exports = instance.exports;
+        const missingExports = [];
         
-        for (const exportName of requiredExports) {
+        for (const exportName of this.REQUIRED_EXPORTS) {
             if (!(exportName in exports)) {
-                throw new Error(`Module ${moduleId} missing required export: ${exportName}`);
+                missingExports.push(exportName);
             }
+        }
+        
+        if (missingExports.length > 0) {
+            throw new Error(
+                `Module ${moduleId} missing required exports: [${missingExports.join(', ')}]. ` +
+                `Available exports: [${Object.keys(exports).join(', ')}]. ` +
+                `Ensure the WASM module was compiled with the correct interface.`
+            );
         }
 
         // Validate function signatures
@@ -165,7 +199,7 @@ export class WasmLoader {
 
         const memory = instance.exports.memory;
         return {
-            pages: memory.buffer.byteLength / 65536,
+            pages: memory.buffer.byteLength / this.WASM_PAGE_SIZE,
             bytes: memory.buffer.byteLength,
             maxPages: memory.maximum || 'unlimited'
         };
@@ -178,10 +212,42 @@ export class WasmLoader {
      * @returns {number} Pointer to allocated data
      */
     writeDataToMemory(instance, data) {
-        const ptr = instance.exports.alloc(data.length);
-        const memView = new Uint8Array(instance.exports.memory.buffer);
-        memView.set(data, ptr);
-        return ptr;
+        // Input validation
+        if (!instance || !instance.exports) {
+            throw new Error('writeDataToMemory: invalid WebAssembly instance');
+        }
+        if (!(data instanceof Uint8Array)) {
+            throw new Error('writeDataToMemory: data must be a Uint8Array');
+        }
+        if (data.length === 0) {
+            throw new Error('writeDataToMemory: data cannot be empty');
+        }
+        if (data.length > this.MAX_DATA_SIZE) {
+            throw new Error(`writeDataToMemory: data size ${data.length} exceeds maximum ${this.MAX_DATA_SIZE} bytes`);
+        }
+        if (!instance.exports.alloc || typeof instance.exports.alloc !== 'function') {
+            throw new Error('writeDataToMemory: instance missing alloc function');
+        }
+        if (!instance.exports.memory) {
+            throw new Error('writeDataToMemory: instance missing memory export');
+        }
+
+        try {
+            const ptr = instance.exports.alloc(data.length);
+            if (ptr === 0) {
+                throw new Error('writeDataToMemory: allocation failed - returned null pointer');
+            }
+            
+            const memView = new Uint8Array(instance.exports.memory.buffer);
+            if (ptr + data.length > memView.length) {
+                throw new Error(`writeDataToMemory: allocated memory ${ptr}+${data.length} exceeds buffer size ${memView.length}`);
+            }
+            
+            memView.set(data, ptr);
+            return ptr;
+        } catch (error) {
+            throw new Error(`writeDataToMemory: failed to write data - ${error.message}`);
+        }
     }
 
     /**

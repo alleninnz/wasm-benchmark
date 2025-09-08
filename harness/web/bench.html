@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebAssembly Benchmark Harness</title>
+    <!-- Prevent favicon.ico 404 errors during testing -->
+    <link rel="icon" href="data:,">
     <style>
         body {
             font-family: 'Courier New', monospace;
@@ -130,7 +132,12 @@
             failedRuns: 0,
             results: [],
             memoryUsage: 0,
-            startTime: performance.now()
+            startTime: performance.now(),
+            // Additional state for improved error handling
+            lastError: null,
+            errorCount: 0,
+            detailedMetrics: false,
+            taskTimeout: 30000
         };
         
         // Update UI elements
@@ -154,14 +161,40 @@
             }
         }
         
-        // Log function for results
+        // Log function for results with improved error tracking
         window.logResult = function(message, type = 'log') {
-            const resultsDiv = document.getElementById('results');
-            const logDiv = document.createElement('div');
-            logDiv.className = `log ${type}`;
-            logDiv.textContent = `[${new Date().toISOString().slice(11, 23)}] ${message}`;
-            resultsDiv.appendChild(logDiv);
-            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+            try {
+                const resultsDiv = document.getElementById('results');
+                if (!resultsDiv) {
+                    console.warn('Results div not found, falling back to console:', message);
+                    console.log(`[${type.toUpperCase()}]`, message);
+                    return;
+                }
+                
+                const logDiv = document.createElement('div');
+                logDiv.className = `log ${type}`;
+                logDiv.textContent = `[${new Date().toISOString().slice(11, 23)}] ${message}`;
+                resultsDiv.appendChild(logDiv);
+                resultsDiv.scrollTop = resultsDiv.scrollHeight;
+                
+                // Track errors for debugging
+                if (type === 'error') {
+                    window.benchmarkState.lastError = message;
+                    window.benchmarkState.errorCount++;
+                }
+                
+                // Limit log entries to prevent memory issues
+                const logEntries = resultsDiv.getElementsByClassName('log');
+                if (logEntries.length > 1000) {
+                    for (let i = 0; i < 100; i++) {
+                        if (logEntries[0]) {
+                            resultsDiv.removeChild(logEntries[0]);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to log result:', error, 'Original message:', message);
+            }
         };
         
         // Periodic UI updates
@@ -169,8 +202,19 @@
         
         // Expose benchmark runner functions globally for tests
         window.runTask = async function(taskName, language, taskData) {
+            // Input validation
+            if (typeof taskName !== 'string' || !taskName.trim()) {
+                throw new Error('runTask: taskName must be a non-empty string');
+            }
+            if (typeof language !== 'string' || !language.trim()) {
+                throw new Error('runTask: language must be a non-empty string');
+            }
+            if (!taskData || typeof taskData !== 'object') {
+                throw new Error('runTask: taskData must be a valid object');
+            }
+            
             if (!window.benchmarkRunner) {
-                throw new Error('Benchmark runner not initialized');
+                throw new Error('Benchmark runner not initialized. Wait for initialization to complete.');
             }
             
             // Create task configuration from test data
@@ -183,17 +227,39 @@
                         small: taskData
                     }
                 },
-                warmupRuns: 3,
-                measureRuns: 10,
-                timeout: 30000
+                warmupRuns: 0,  // Skip warmup for tests
+                measureRuns: 1, // Single run for tests
+                timeout: window.benchmarkState.taskTimeout || 30000
             };
             
             try {
                 const results = await window.benchmarkRunner.runTaskBenchmark(config);
-                return results[0]; // Return first result for single task execution
+                if (results && results.length > 0) {
+                    return results[0]; // Return first result for single task execution
+                } else {
+                    // Return error result if no results
+                    return {
+                        success: false,
+                        error: 'No results returned from benchmark',
+                        task: taskName,
+                        language: language,
+                        executionTime: 0,
+                        memoryUsed: 0,
+                        resultHash: 0
+                    };
+                }
             } catch (error) {
                 window.logResult(`runTask failed: ${error.message}`, 'error');
-                throw error;
+                return {
+                    success: false,
+                    error: error.message,
+                    errorType: 'execution_error',
+                    task: taskName,
+                    language: language,
+                    executionTime: 0,
+                    memoryUsed: 0,
+                    resultHash: 0
+                };
             }
         };
         
@@ -201,6 +267,11 @@
         window.enableDetailedMetrics = function(enable) {
             window.benchmarkState.detailedMetrics = enable;
             window.logResult(`Detailed metrics ${enable ? 'enabled' : 'disabled'}`);
+        };
+        
+        window.setTaskTimeout = function(timeoutMs) {
+            window.benchmarkState.taskTimeout = timeoutMs;
+            window.logResult(`Task timeout set to ${timeoutMs}ms`);
         };
         
         window.getSystemMetrics = function() {

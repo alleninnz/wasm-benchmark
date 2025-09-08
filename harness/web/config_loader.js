@@ -16,7 +16,7 @@ export class ConfigLoader {
      */
     async loadConfig(configPath = null) {
         // Use pre-generated JSON configuration from configs directory
-        const jsonPath = '../../configs/bench.json';
+        const jsonPath = '/configs/bench.json';
         
         try {
             window.logResult(`Loading pre-generated configuration from: ${jsonPath}`, 'info');
@@ -24,7 +24,19 @@ export class ConfigLoader {
             // Fetch the pre-generated JSON file
             const response = await fetch(jsonPath);
             if (!response.ok) {
-                throw new Error(`Failed to fetch config file: ${response.status} ${response.statusText}. Make sure 'npm run build:config' was executed to generate configs/bench.json`);
+                let errorMsg = `Failed to fetch configuration from ${jsonPath}: ${response.status} ${response.statusText}`;
+                
+                if (response.status === 404) {
+                    errorMsg += '. Configuration file not found. Run "npm run build:config" to generate the required config file.';
+                } else if (response.status === 403) {
+                    errorMsg += '. Access denied to configuration file. Check server permissions and CORS settings.';
+                } else if (response.status >= 500) {
+                    errorMsg += '. Server error occurred. Check server logs and try again.';
+                } else {
+                    errorMsg += '. Check network connectivity and server status.';
+                }
+                
+                throw new Error(errorMsg);
             }
             
             // Parse JSON content directly - no YAML service needed!
@@ -119,20 +131,32 @@ export class ConfigLoader {
         // Pre-processed config is already optimized, just add legacy compatibility
         const config = this.config;
         
-        // Add legacy compatibility fields
-        config.warmupRuns = config.environment.warmupRuns;
-        config.measureRuns = config.environment.measureRuns;
-        config.timeout = config.environment.timeout;
-        config.taskTimeouts = config.environment.taskTimeouts;
-        config.gcThreshold = config.environment.gcThreshold;
-        config.memoryMonitoring = config.environment.memoryMonitoring;
-        config.gcMonitoring = config.environment.gcMonitoring;
+        // Validate environment section exists
+        if (!config.environment) {
+            throw new Error('Configuration missing environment section');
+        }
+        
+        // Add legacy compatibility fields with safe fallbacks
+        config.warmupRuns = config.environment.warmupRuns || 3;
+        config.measureRuns = config.environment.measureRuns || 10;
+        config.timeout = config.environment.timeout || 60000;
+        config.taskTimeouts = config.environment.taskTimeouts || {};
+        config.gcThreshold = config.environment.gcThreshold || 100;
+        config.memoryMonitoring = config.environment.memoryMonitoring || false;
+        config.gcMonitoring = config.environment.gcMonitoring || false;
         
         // Legacy arrays (already present in optimized config)
-        config.tasks = config.taskNames;
-        config.languages = config.enabledLanguages;
+        config.tasks = config.taskNames || [];
+        config.languages = config.enabledLanguages || [];
+        config.scales = config.availableScales || ['small', 'medium', 'large'];
         
-        // Task and language configs are already properly structured
+        // Validate critical arrays are populated
+        if (config.tasks.length === 0) {
+            throw new Error('Configuration has no tasks defined');
+        }
+        if (config.languages.length === 0) {
+            throw new Error('Configuration has no languages enabled');
+        }
         
         window.logResult('Configuration processing completed (pre-optimized)', 'success');
     }
