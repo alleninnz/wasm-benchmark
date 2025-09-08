@@ -1,28 +1,24 @@
 # Build artifacts
 builds/
 target/
-dist/
 
 # Dependencies
 node_modules/
-.venv/
 __pycache__/
 *.pyc
-*.pyo
 
-# Results and logs
-results/20*/
-!results/20250821-1430/
+# Generated configuration (dynamic config)
+configs/bench.json
+
+# Runtime logs and temporary files
 *.log
 *.tmp
 
 # Analysis outputs
 analysis/figures/*.png
 analysis/figures/*.svg
-analysis/analysis_log.txt
-analysis/statistical_analysis.json
 
-# Environment files
+# Environment and AI assistant files
 .env
 .env.local
 .claude/
@@ -32,60 +28,20 @@ analysis/statistical_analysis.json
 .vscode/
 .idea/
 *.swp
-*.swo
 *~
 
 # OS files
 .DS_Store
 Thumbs.db
-desktop.ini
 
 # Cache directories
 .cache/
 .npm/
 .cargo/
-.rustup/
 
-# Jupyter notebooks
-.ipynb_checkpoints/
-*.ipynb
-
-# Coverage reports
-htmlcov/
-.coverage
-coverage.xml
-
-# Temporary files
-temp/
-tmp/
-
-# Lock files (except versions.lock which is intentional)
-Cargo.lock
-package-lock.json
-yarn.lock
-poetry.lock
+# Testing artifacts
+test-results.json
 
 # Backup files
 *.bak
-*.backup
-*.old
 
-# Testing artifacts
-.pytest_cache/
-test-results/
-test-results.json
-
-# Generated reference files
-reference_hashes.json
-
-# Benchmark data backups
-*.csv.bak
-*.json.bak
-
-# System monitoring
-.benchmarks/
-.profiler/
-
-# Public directory symlinks (these are generated)
-public/builds
-public/harness
