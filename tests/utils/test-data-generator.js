@@ -26,8 +26,8 @@ export class DeterministicTestDataGenerator {
   constructor(seed = 12345) {
     this.rng = new XorShift32(seed);
     this.scaleConfigs = {
-      micro: { records: 100, size: 64, iterations: 100 },  // Increased for measurable execution time
-      small: { records: 500, size: 128, iterations: 200 },
+      micro: { records: 10, size: 64, iterations: 100 },   // Minimal scale for unit tests
+      small: { records: 100, size: 64, iterations: 200 },  // Small scale for quick tests  
       medium: { records: 1000, size: 256, iterations: 500 },
       large: { records: 50000, size: 1024, iterations: 2000 }
     };

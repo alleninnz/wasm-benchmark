@@ -55,8 +55,8 @@ export class BrowserTestHarness {
         }
       });
       
-      // Navigate to benchmark page
-      await this.page.goto('http://localhost:2025/bench.html', { 
+      // Navigate to benchmark page  
+      await this.page.goto('http://localhost:2025/', { 
         waitUntil: 'networkidle0',
         timeout: this.config.navigationTimeout || 30000
       });

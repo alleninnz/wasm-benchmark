@@ -36,8 +36,10 @@ export default defineConfig({
       }
     },
     
-    // Enhanced reporting
-    reporters: ['verbose', 'json'],
+    // Enhanced reporting - environment-aware
+    reporters: process.env.VITEST_REPORTER === 'minimal' 
+      ? [['default', { summary: false }]] 
+      : ['verbose', 'json'],
     outputFile: {
       json: './test-results.json'
     },

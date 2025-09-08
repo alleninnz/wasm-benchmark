@@ -8,6 +8,7 @@ import DeterministicTestDataGenerator from '../utils/test-data-generator.js';
 
 describe('Cross-Language Consistency', () => {
   let harness;
+  let page;
   let testDataGen;
 
   beforeEach(async () => {
@@ -16,7 +17,7 @@ describe('Cross-Language Consistency', () => {
     
     // Use shared browser harness with integration configuration
     harness = new BrowserTestHarness(TEST_CONFIGS.integration);
-    await harness.setup();
+    page = await harness.setup();
   });
 
   afterEach(async () => {
@@ -246,16 +247,13 @@ describe('Cross-Language Consistency', () => {
         return result.resultHash;
       }, testData);
 
-      // Close and reopen browser
-      await browser.close();
-      browser = await puppeteer.launch(global.testBrowserConfig);
-      const newPage = await browser.newPage();
-      await newPage.goto('http://localhost:2025/bench.html', { 
-        waitUntil: 'networkidle0' 
-      });
+      // Close and reopen browser using harness
+      await harness.teardown();
+      harness = new BrowserTestHarness(TEST_CONFIGS.integration);
+      page = await harness.setup();
 
       // Get hash from new session
-      const secondHash = await newPage.evaluate(async (data) => {
+      const secondHash = await page.evaluate(async (data) => {
         const result = await window.runTask('json_parse', 'rust', data);
         return result.resultHash;
       }, testData);
