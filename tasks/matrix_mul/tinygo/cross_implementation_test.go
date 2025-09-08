@@ -1,3 +1,5 @@
+// Package main provides cross-implementation validation tests for matrix multiplication
+// WebAssembly module, ensuring compatibility between TinyGo and Rust implementations.
 package main
 
 import (
@@ -9,32 +11,79 @@ import (
 	"unsafe"
 )
 
-// CrossImplementationTestVector represents a test vector for cross-language validation
+// Test configuration constants
+const (
+	// Default test vector file path relative to this test file
+	defaultTestVectorFile = "../../../data/reference_hashes/matrix_mul.json"
+)
+
+// CrossImplementationTestVector represents a test vector for validating compatibility
+// between TinyGo and Rust matrix multiplication implementations.
 type CrossImplementationTestVector struct {
-	Name         string             `json:"name"`
-	Description  string             `json:"description"`
-	Params       SerializableParams `json:"params"`
-	ExpectedHash uint32             `json:"expected_hash"`
-	Category     string             `json:"category"`
+	Name         string             `json:"name"`          // Unique test case identifier
+	Description  string             `json:"description"`   // Human-readable test description
+	Params       SerializableParams `json:"params"`        // Matrix computation parameters
+	ExpectedHash uint32             `json:"expected_hash"` // Expected hash from Rust reference
+	Category     string             `json:"category"`      // Test category classification
 }
 
-// loadRustReferenceHashes loads reference hashes from the Rust implementation
-func loadRustReferenceHashes() ([]CrossImplementationTestVector, error) {
-	// Navigate to rust directory relative to current tinygo directory
-	rustHashesPath := filepath.Join("..", "rust", "reference_hashes.json")
+// TestResult encapsulates the results of a single cross-implementation test
+type TestResult struct {
+	Vector     CrossImplementationTestVector
+	Passed     bool
+	ActualHash uint32
+	Error      error
+}
 
-	data, err := os.ReadFile(rustHashesPath)
+// Validate checks if the test vector parameters are within acceptable ranges
+func (v CrossImplementationTestVector) Validate() error {
+	if v.Name == "" {
+		return fmt.Errorf("test vector missing required 'name' field")
+	}
+	if v.Params.Dimension == 0 {
+		return fmt.Errorf("dimension must be greater than 0, got %d", v.Params.Dimension)
+	}
+	// Note: Seed can be any uint32 value including 0
+	return nil
+}
+
+// loadRustReferenceHashes loads reference hashes from the centralized data directory
+func loadRustReferenceHashes() ([]CrossImplementationTestVector, error) {
+	// Use centralized reference hashes location
+	absPath, err := filepath.Abs(defaultTestVectorFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to resolve absolute path for %s: %w", defaultTestVectorFile, err)
+	}
+
+	data, err := os.ReadFile(absPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read test vectors file %s: %w", absPath, err)
 	}
 
 	var vectors []CrossImplementationTestVector
-	err = json.Unmarshal(data, &vectors)
-	if err != nil {
-		return nil, err
+	if err := json.Unmarshal(data, &vectors); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON from %s: %w", absPath, err)
+	}
+
+	if len(vectors) == 0 {
+		return nil, fmt.Errorf("no test vectors found in %s", absPath)
+	}
+
+	// Validate each test vector
+	for i, vector := range vectors {
+		if err := vector.Validate(); err != nil {
+			return nil, fmt.Errorf("test vector %d (%s) has invalid parameters: %w", i, vector.Name, err)
+		}
 	}
 
 	return vectors, nil
+}
+
+// runTaskWithParams is a helper function that converts MatrixMulParams to the format
+// expected by the runTask WebAssembly export function
+func runTaskWithParams(params MatrixMulParams) uint32 {
+	ptr := uintptr(unsafe.Pointer(&params))
+	return runTask(ptr)
 }
 
 // TestCrossImplementationCompatibility verifies that TinyGo produces same hashes as Rust
@@ -62,7 +111,7 @@ func TestCrossImplementationCompatibility(t *testing.T) {
 		}
 
 		// Compute hash using TinyGo implementation
-		tinygoHash := computeReferenceHash(params)
+		tinygoHash := runTaskWithParams(params)
 
 		if tinygoHash == rustVector.ExpectedHash {
 			passCount++
@@ -111,13 +160,13 @@ func TestSpecificCrossImplementationCases(t *testing.T) {
 			}
 
 			// Test that we can compute hash without errors
-			hash := computeReferenceHash(params)
+			hash := runTaskWithParams(params)
 			if hash == 0 && validateParameters(&params) {
 				t.Errorf("Valid parameters produced zero hash for %s", testCase.reason)
 			}
 
 			// Test determinism - same params should produce same hash
-			hash2 := computeReferenceHash(params)
+			hash2 := runTaskWithParams(params)
 			if hash != hash2 {
 				t.Errorf("Non-deterministic hash for %s: %d != %d", testCase.reason, hash, hash2)
 			}
@@ -190,7 +239,7 @@ func BenchmarkCrossImplementationPerformance(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = computeReferenceHash(params)
+				_ = runTaskWithParams(params)
 			}
 		})
 	}
@@ -222,7 +271,7 @@ func TestCrossImplementationHashMatching(t *testing.T) {
 		}
 
 		// Compute hash using TinyGo implementation
-		tinygoHash := computeReferenceHash(params)
+		tinygoHash := runTaskWithParams(params)
 
 		if tinygoHash == rustVector.ExpectedHash {
 			passCount++
@@ -253,7 +302,7 @@ func TestTinyGoSpecificOptimizations(t *testing.T) {
 			if ptr == 0 {
 				t.Errorf("Failed to allocate %d bytes", size)
 			} else {
-				t.Logf("Successfully allocated %d bytes at %p", size, unsafe.Pointer(ptr))
+				t.Logf("Successfully allocated %d bytes at address 0x%x", size, ptr)
 			}
 		}
 
