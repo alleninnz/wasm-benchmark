@@ -99,6 +99,13 @@ wasm-benchmark/
 │   ├── json_parse/{rust,tinygo}/
 │   └── matrix_mul/{rust,tinygo}/
 ├── 
+├── 📊 data/                    # Centralized test data
+│   └── reference_hashes/       # Cross-language validation hashes
+│       ├── index.json          # Migration metadata
+│       ├── mandelbrot.json     # 320 test vectors
+│       ├── json_parse.json     # 112 test vectors
+│       └── matrix_mul.json     # 17 test vectors
+├── 
 ├── 📦 builds/                  # Generated WASM modules
 │   ├── rust/*.wasm
 │   ├── tinygo/*.wasm
