@@ -2,10 +2,32 @@
  * Standardized Test Assertions
  * Provides consistent assertion patterns for benchmark testing
  * Includes domain-specific validation logic and error messaging
+ * 
+ * This module provides specialized assertions for WebAssembly benchmark validation,
+ * cross-language consistency checking, and statistical significance testing.
+ * All assertions include detailed error messages for debugging and validation.
+ * 
+ * @module TestAssertions
+ * @requires vitest
+ * @requires ./statistical-power.js
  */
 
 import { expect } from 'vitest';
 import PowerAnalysis from './statistical-power.js';
+
+// Constants for validation limits and defaults
+const VALIDATION_CONSTANTS = {
+  MIN_EXECUTION_TIME: 0.1,
+  MAX_EXECUTION_TIME: 30000,
+  MAX_MEMORY_USAGE: 100 * 1024 * 1024, // 100MB
+  MAX_COEFFICIENT_OF_VARIATION: 0.3,
+  MIN_MEASUREMENTS: 3,
+  DEFAULT_ALPHA: 0.05,
+  DEFAULT_TARGET_EFFECT_SIZE: 0.2,
+  DEFAULT_TARGET_POWER: 0.8,
+  MAX_MEMORY_PRESSURE: 0.8,
+  MIN_MEMORY_LIMIT: 100 * 1024 * 1024 // 100MB
+};
 
 const powerAnalysis = new PowerAnalysis();
 
@@ -16,14 +38,40 @@ const powerAnalysis = new PowerAnalysis();
  * @param {Object} options - Additional validation options
  */
 export function assertBenchmarkResult(result, expectedHash = null, options = {}) {
+  // Input validation
+  if (!result || typeof result !== 'object') {
+    throw new Error('assertBenchmarkResult: result must be a valid object');
+  }
+  
+  if (expectedHash !== null && (typeof expectedHash !== 'string' && typeof expectedHash !== 'number')) {
+    throw new Error('assertBenchmarkResult: expectedHash must be null, string, or number');
+  }
+  
+  if (options && typeof options !== 'object') {
+    throw new Error('assertBenchmarkResult: options must be an object');
+  }
+
   const {
     expectSuccess = true,
-    minExecutionTime = global.validationRules?.executionTime?.min || 0.1,
-    maxExecutionTime = global.validationRules?.executionTime?.max || 30000,
-    maxMemoryUsage = global.validationRules?.memoryUsage?.max || 100 * 1024 * 1024,
+    minExecutionTime = global.validationRules?.executionTime?.min || VALIDATION_CONSTANTS.MIN_EXECUTION_TIME,
+    maxExecutionTime = global.validationRules?.executionTime?.max || VALIDATION_CONSTANTS.MAX_EXECUTION_TIME,
+    maxMemoryUsage = global.validationRules?.memoryUsage?.max || VALIDATION_CONSTANTS.MAX_MEMORY_USAGE,
     task = 'unknown',
     language = 'unknown'
   } = options;
+  
+  // Validate option parameters
+  if (typeof expectSuccess !== 'boolean') {
+    throw new Error('assertBenchmarkResult: expectSuccess must be boolean');
+  }
+  
+  if (typeof minExecutionTime !== 'number' || minExecutionTime < 0) {
+    throw new Error('assertBenchmarkResult: minExecutionTime must be a positive number');
+  }
+  
+  if (typeof maxExecutionTime !== 'number' || maxExecutionTime <= minExecutionTime) {
+    throw new Error('assertBenchmarkResult: maxExecutionTime must be greater than minExecutionTime');
+  }
 
   // Structure validation
   expect(result, `Benchmark result should have required structure for ${task}:${language}`)
@@ -84,6 +132,18 @@ export function assertBenchmarkResult(result, expectedHash = null, options = {})
  * @param {string} task - Task name for context
  */
 export function assertCrossLanguageConsistency(rustResult, tinygoResult, task) {
+  // Input validation
+  if (!rustResult || typeof rustResult !== 'object') {
+    throw new Error('assertCrossLanguageConsistency: rustResult must be a valid object');
+  }
+  
+  if (!tinygoResult || typeof tinygoResult !== 'object') {
+    throw new Error('assertCrossLanguageConsistency: tinygoResult must be a valid object');
+  }
+  
+  if (typeof task !== 'string' || !task.trim()) {
+    throw new Error('assertCrossLanguageConsistency: task must be a non-empty string');
+  }
   // Both should have same success status
   expect(rustResult.success,
     `Cross-language success consistency failed for ${task}. Rust: ${rustResult.success}, TinyGo: ${tinygoResult.success}`
@@ -115,12 +175,30 @@ export function assertCrossLanguageConsistency(rustResult, tinygoResult, task) {
  * @param {Object} options - Validation options
  */
 export function assertPerformanceConsistency(measurements, options = {}) {
+  // Input validation
+  if (!Array.isArray(measurements)) {
+    throw new Error('assertPerformanceConsistency: measurements must be an array');
+  }
+  
+  if (options && typeof options !== 'object') {
+    throw new Error('assertPerformanceConsistency: options must be an object');
+  }
+
   const {
-    maxCoefficientOfVariation = global.validationRules?.executionTime?.variationCoeff || 0.3,
-    minMeasurements = 3,
+    maxCoefficientOfVariation = global.validationRules?.executionTime?.variationCoeff || VALIDATION_CONSTANTS.MAX_COEFFICIENT_OF_VARIATION,
+    minMeasurements = VALIDATION_CONSTANTS.MIN_MEASUREMENTS,
     task = 'unknown',
     language = 'unknown'
   } = options;
+  
+  // Validate option parameters
+  if (typeof maxCoefficientOfVariation !== 'number' || maxCoefficientOfVariation <= 0) {
+    throw new Error('assertPerformanceConsistency: maxCoefficientOfVariation must be a positive number');
+  }
+  
+  if (typeof minMeasurements !== 'number' || minMeasurements < 1) {
+    throw new Error('assertPerformanceConsistency: minMeasurements must be at least 1');
+  }
 
   expect(measurements,
     `Performance measurements should be an array for ${task}:${language}`

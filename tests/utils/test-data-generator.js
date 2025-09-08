@@ -24,6 +24,21 @@ class XorShift32 {
 
 export class DeterministicTestDataGenerator {
   constructor(seed = 12345) {
+    // Input validation
+    if (typeof seed !== 'number' || seed < 0 || seed > 0xFFFFFFFF || !Number.isInteger(seed)) {
+      throw new Error('DeterministicTestDataGenerator: seed must be a positive integer within 32-bit range');
+    }
+
+    // Constants for validation and limits
+    this.MIN_RECORDS = 1;
+    this.MAX_RECORDS = 1000000;
+    this.MIN_SIZE = 1;
+    this.MAX_SIZE = 4096;
+    this.MIN_ITERATIONS = 1;
+    this.MAX_ITERATIONS = 100000;
+    this.VALID_SCALES = ['micro', 'small', 'medium', 'large'];
+    this.VALID_TASKS = ['mandelbrot', 'json_parse', 'matrix_mul'];
+
     this.rng = new XorShift32(seed);
     this.scaleConfigs = {
       micro: { records: 10, size: 64, iterations: 100 },   // Minimal scale for unit tests
@@ -31,11 +46,89 @@ export class DeterministicTestDataGenerator {
       medium: { records: 1000, size: 256, iterations: 500 },
       large: { records: 50000, size: 1024, iterations: 2000 }
     };
+
+    // Validate scale configurations
+    this._validateScaleConfigs();
+  }
+
+  /**
+   * Validate scale configurations for safety
+   * @private
+   */
+  _validateScaleConfigs() {
+    for (const [scale, config] of Object.entries(this.scaleConfigs)) {
+      if (!this.VALID_SCALES.includes(scale)) {
+        throw new Error(`Invalid scale: ${scale}`);
+      }
+      
+      if (typeof config.records !== 'number' || 
+          config.records < this.MIN_RECORDS || 
+          config.records > this.MAX_RECORDS) {
+        throw new Error(`Scale ${scale}: records must be between ${this.MIN_RECORDS} and ${this.MAX_RECORDS}`);
+      }
+      
+      if (typeof config.size !== 'number' || 
+          config.size < this.MIN_SIZE || 
+          config.size > this.MAX_SIZE) {
+        throw new Error(`Scale ${scale}: size must be between ${this.MIN_SIZE} and ${this.MAX_SIZE}`);
+      }
+      
+      if (typeof config.iterations !== 'number' || 
+          config.iterations < this.MIN_ITERATIONS || 
+          config.iterations > this.MAX_ITERATIONS) {
+        throw new Error(`Scale ${scale}: iterations must be between ${this.MIN_ITERATIONS} and ${this.MAX_ITERATIONS}`);
+      }
+    }
   }
   
   generateScaledDataset(task, scale, options = {}) {
-    const config = { ...this.scaleConfigs[scale], ...options };
-    return this.generators[task](config);
+    // Input validation
+    if (typeof task !== 'string' || !this.VALID_TASKS.includes(task)) {
+      throw new Error(`generateScaledDataset: invalid task "${task}". Valid tasks: ${this.VALID_TASKS.join(', ')}`);
+    }
+    
+    if (typeof scale !== 'string' || !this.VALID_SCALES.includes(scale)) {
+      throw new Error(`generateScaledDataset: invalid scale "${scale}". Valid scales: ${this.VALID_SCALES.join(', ')}`);
+    }
+    
+    if (options && typeof options !== 'object') {
+      throw new Error('generateScaledDataset: options must be an object or undefined');
+    }
+
+    try {
+      const config = { ...this.scaleConfigs[scale], ...options };
+      
+      // Validate merged configuration
+      this._validateGeneratorConfig(config);
+      
+      return this.generators[task](config);
+    } catch (error) {
+      throw new Error(`generateScaledDataset: failed to generate ${task} data for ${scale} scale - ${error.message}`);
+    }
+  }
+
+  /**
+   * Validate generator configuration
+   * @private
+   */
+  _validateGeneratorConfig(config) {
+    if (typeof config.records !== 'number' || 
+        config.records < this.MIN_RECORDS || 
+        config.records > this.MAX_RECORDS) {
+      throw new Error(`records must be between ${this.MIN_RECORDS} and ${this.MAX_RECORDS}`);
+    }
+    
+    if (typeof config.size !== 'number' || 
+        config.size < this.MIN_SIZE || 
+        config.size > this.MAX_SIZE) {
+      throw new Error(`size must be between ${this.MIN_SIZE} and ${this.MAX_SIZE}`);
+    }
+    
+    if (typeof config.iterations !== 'number' || 
+        config.iterations < this.MIN_ITERATIONS || 
+        config.iterations > this.MAX_ITERATIONS) {
+      throw new Error(`iterations must be between ${this.MIN_ITERATIONS} and ${this.MAX_ITERATIONS}`);
+    }
   }
   
   generators = {
