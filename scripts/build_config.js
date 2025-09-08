@@ -44,7 +44,12 @@ async function loadYamlConfig() {
  * Optimize configuration for browser use
  */
 function optimizeConfig(config) {
-    console.log(chalk.yellow('⚡ Optimizing configuration for browser use...'));
+    // Suppress logging during tests to avoid console pollution
+    const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST;
+    
+    if (!isTestEnv) {
+        console.log(chalk.yellow('⚡ Optimizing configuration for browser use...'));
+    }
     
     // Extract only essential data for browser
     const optimized = {
@@ -99,10 +104,12 @@ function optimizeConfig(config) {
     );
     optimized.scales = ['small', 'medium', 'large'];
     
-    console.log(`📊 Optimization complete:`);
-    console.log(`   Tasks: ${optimized.taskNames.join(', ')}`);
-    console.log(`   Languages: ${optimized.enabledLanguages.join(', ')}`);
-    console.log(`   Scales: ${optimized.scales.join(', ')}`);
+    if (!isTestEnv) {
+        console.log(`📊 Optimization complete:`);
+        console.log(`   Tasks: ${optimized.taskNames.join(', ')}`);
+        console.log(`   Languages: ${optimized.enabledLanguages.join(', ')}`);
+        console.log(`   Scales: ${optimized.scales.join(', ')}`);
+    }
     
     return optimized;
 }
@@ -143,7 +150,12 @@ async function writeJsonConfig(config) {
  * Validate generated configuration
  */
 function validateConfig(config) {
-    console.log(`🔍 Validating generated configuration...`);
+    // Suppress logging during tests to avoid console pollution
+    const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST;
+    
+    if (!isTestEnv) {
+        console.log(`🔍 Validating generated configuration...`);
+    }
     
     const errors = [];
     
@@ -177,12 +189,16 @@ function validateConfig(config) {
     }
     
     if (errors.length > 0) {
-        console.error(chalk.red('❌ Configuration validation failed:'));
-        errors.forEach(error => console.error(chalk.red(`   - ${error}`)));
+        if (!isTestEnv) {
+            console.error(chalk.red('❌ Configuration validation failed:'));
+            errors.forEach(error => console.error(chalk.red(`   - ${error}`)));
+        }
         throw new Error(`Configuration validation failed: ${errors.join(', ')}`);
     }
     
-    console.log(chalk.green('✅ Configuration validation passed'));
+    if (!isTestEnv) {
+        console.log(chalk.green('✅ Configuration validation passed'));
+    }
 }
 
 /**
