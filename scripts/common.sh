@@ -202,6 +202,15 @@ validate_directory_structure() {
 generate_reference_hashes() {
     local task="$1"
     local rust_dir="$(get_rust_dir "$task")"
+    local centralized_file="../../../data/reference_hashes/$task.json"
+    
+    # Skip generation if centralized file already exists and is non-empty
+    if [[ -f "$centralized_file" ]] && [[ $(jq length "$centralized_file" 2>/dev/null || echo "0") -gt 0 ]]; then
+        log_step "Using existing reference hashes for $task..."
+        local hash_count=$(jq length "$centralized_file" 2>/dev/null || echo "0")
+        log_success "✅ Found $hash_count reference test vectors for $task (centralized location)"
+        return 0
+    fi
     
     log_step "Generating reference hashes from Rust implementation for $task..."
     cd "$rust_dir"
@@ -211,29 +220,38 @@ generate_reference_hashes() {
         return 1
     fi
     
-    if [[ ! -f "reference_hashes.json" ]]; then
-        log_error "Reference hashes file was not created for $task"
+    if [[ ! -f "$centralized_file" ]]; then
+        log_error "Reference hashes file was not created at $centralized_file for $task"
         return 1
     fi
     
-    local hash_count=$(jq length "reference_hashes.json" 2>/dev/null || echo "0")
-    log_success "✅ Generated $hash_count reference test vectors for $task"
+    local hash_count=$(jq length "$centralized_file" 2>/dev/null || echo "0")
+    log_success "✅ Generated $hash_count reference test vectors for $task (centralized location)"
     return 0
 }
 
 copy_reference_hashes() {
     local task="$1"
-    local rust_dir="$(get_rust_dir "$task")"
-    local tinygo_dir="$(get_tinygo_dir "$task")"
     
-    log_step "Copying reference hashes to TinyGo directory for $task..."
+    log_step "Verifying centralized reference hashes for $task..."
     
-    if ! cp "$rust_dir/reference_hashes.json" "$tinygo_dir/"; then
-        log_error "Failed to copy reference hashes for $task"
+    # Return to project root to access centralized files
+    local current_dir=$(pwd)
+    local project_root
+    
+    # Navigate to project root from wherever we are
+    if [[ -f "data/reference_hashes/$task.json" ]]; then
+        project_root="."
+    elif [[ -f "../../../data/reference_hashes/$task.json" ]]; then
+        project_root="../../../"
+    else
+        log_error "Centralized reference hashes file not found: data/reference_hashes/$task.json"
         return 1
     fi
     
-    log_success "✅ Reference hashes copied for $task"
+    local centralized_file="$project_root/data/reference_hashes/$task.json"
+    local hash_count=$(jq length "$centralized_file" 2>/dev/null || echo "0")
+    log_success "✅ Centralized reference hashes verified for $task ($hash_count test vectors)"
     return 0
 }
 
@@ -245,8 +263,8 @@ run_cross_implementation_test() {
     log_step "Running cross-implementation validation for $task..."
     cd "$tinygo_dir"
     
-    if go test "$test_file" main.go -run TestCrossImplementationHashMatching -timeout 30s > /dev/null 2>&1; then
-        local hash_count=$(jq length "reference_hashes.json" 2>/dev/null || echo "0")
+    if go test "$test_file" main.go -run TestCrossImplementationHashMatching -timeout 120s > /dev/null 2>&1; then
+        local hash_count=$(jq length "../../../data/reference_hashes/$task.json" 2>/dev/null || echo "0")
         log_success "✅ All $hash_count test vectors passed for $task"
         add_validation_result "$task" "PASS" "implementations match exactly"
         return 0

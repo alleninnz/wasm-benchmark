@@ -1,0 +1,172 @@
+[
+  {
+    "name": "small_2x2",
+    "description": "Basic 2x2 matrix multiplication",
+    "params": {
+      "dimension": 2,
+      "seed": 12345
+    },
+    "expected_hash": 1708139940,
+    "category": "small_matrices"
+  },
+  {
+    "name": "small_3x3",
+    "description": "Basic 3x3 matrix multiplication",
+    "params": {
+      "dimension": 3,
+      "seed": 54321
+    },
+    "expected_hash": 2319415099,
+    "category": "small_matrices"
+  },
+  {
+    "name": "small_4x4",
+    "description": "Basic 4x4 matrix multiplication",
+    "params": {
+      "dimension": 4,
+      "seed": 98765
+    },
+    "expected_hash": 3697236173,
+    "category": "small_matrices"
+  },
+  {
+    "name": "small_8x8",
+    "description": "Small 8x8 matrix for algorithm verification",
+    "params": {
+      "dimension": 8,
+      "seed": 11111
+    },
+    "expected_hash": 1576805855,
+    "category": "small_matrices"
+  },
+  {
+    "name": "medium_16x16",
+    "description": "Medium 16x16 matrix for performance baseline",
+    "params": {
+      "dimension": 16,
+      "seed": 12345
+    },
+    "expected_hash": 2415874122,
+    "category": "medium_matrices"
+  },
+  {
+    "name": "medium_32x32",
+    "description": "Medium 32x32 matrix multiplication",
+    "params": {
+      "dimension": 32,
+      "seed": 67890
+    },
+    "expected_hash": 2751251846,
+    "category": "medium_matrices"
+  },
+  {
+    "name": "medium_64x64",
+    "description": "Medium 64x64 matrix for computational load",
+    "params": {
+      "dimension": 64,
+      "seed": 24680
+    },
+    "expected_hash": 2404073284,
+    "category": "medium_matrices"
+  },
+  {
+    "name": "medium_128x128",
+    "description": "Large computation 128x128 matrix",
+    "params": {
+      "dimension": 128,
+      "seed": 13579
+    },
+    "expected_hash": 4276752396,
+    "category": "medium_matrices"
+  },
+  {
+    "name": "edge_1x1_seed_0",
+    "description": "Minimal 1x1 matrix with zero seed",
+    "params": {
+      "dimension": 1,
+      "seed": 0
+    },
+    "expected_hash": 2473609544,
+    "category": "edge_cases"
+  },
+  {
+    "name": "edge_1x1",
+    "description": "Minimal 1x1 matrix multiplication",
+    "params": {
+      "dimension": 1,
+      "seed": 12345
+    },
+    "expected_hash": 158222968,
+    "category": "edge_cases"
+  },
+  {
+    "name": "edge_2x2_seed_0",
+    "description": "Small matrix with zero seed",
+    "params": {
+      "dimension": 2,
+      "seed": 0
+    },
+    "expected_hash": 514132780,
+    "category": "edge_cases"
+  },
+  {
+    "name": "edge_max_seed",
+    "description": "Matrix with maximum seed value",
+    "params": {
+      "dimension": 16,
+      "seed": 4294967295
+    },
+    "expected_hash": 3917476213,
+    "category": "edge_cases"
+  },
+  {
+    "name": "seed_var_1",
+    "description": "16x16 matrix with seed 1",
+    "params": {
+      "dimension": 16,
+      "seed": 1
+    },
+    "expected_hash": 2730147107,
+    "category": "seed_variations"
+  },
+  {
+    "name": "seed_var_2",
+    "description": "16x16 matrix with seed 42",
+    "params": {
+      "dimension": 16,
+      "seed": 42
+    },
+    "expected_hash": 3642298899,
+    "category": "seed_variations"
+  },
+  {
+    "name": "seed_var_3",
+    "description": "16x16 matrix with seed 1337",
+    "params": {
+      "dimension": 16,
+      "seed": 1337
+    },
+    "expected_hash": 1791141429,
+    "category": "seed_variations"
+  },
+  {
+    "name": "seed_var_4",
+    "description": "16x16 matrix with seed 999999",
+    "params": {
+      "dimension": 16,
+      "seed": 999999
+    },
+    "expected_hash": 2628046622,
+    "category": "seed_variations"
+  },
+  {
+    "name": "seed_var_5",
+    "description": "16x16 matrix with seed 2147483647",
+    "params": {
+      "dimension": 16,
+      "seed": 2147483647
+    },
+    "expected_hash": 2331277446,
+    "category": "seed_variations"
+  }
+]

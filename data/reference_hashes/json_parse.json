@@ -1,0 +1,1122 @@
+[
+  {
+    "name": "systematic_0_0",
+    "description": "records=0, seed=0",
+    "params": {
+      "record_count": 0,
+      "seed": 0
+    },
+    "expected_hash": 2166136261,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_0_1",
+    "description": "records=0, seed=1",
+    "params": {
+      "record_count": 0,
+      "seed": 1
+    },
+    "expected_hash": 2166136261,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_0_2",
+    "description": "records=0, seed=42",
+    "params": {
+      "record_count": 0,
+      "seed": 42
+    },
+    "expected_hash": 2166136261,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_0_3",
+    "description": "records=0, seed=12345",
+    "params": {
+      "record_count": 0,
+      "seed": 12345
+    },
+    "expected_hash": 2166136261,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_0_4",
+    "description": "records=0, seed=54321",
+    "params": {
+      "record_count": 0,
+      "seed": 54321
+    },
+    "expected_hash": 2166136261,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_0_5",
+    "description": "records=0, seed=999999",
+    "params": {
+      "record_count": 0,
+      "seed": 999999
+    },
+    "expected_hash": 2166136261,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_0_6",
+    "description": "records=0, seed=4294967295",
+    "params": {
+      "record_count": 0,
+      "seed": 4294967295
+    },
+    "expected_hash": 2166136261,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_1_0",
+    "description": "records=1, seed=0",
+    "params": {
+      "record_count": 1,
+      "seed": 0
+    },
+    "expected_hash": 1725785466,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_1_1",
+    "description": "records=1, seed=1",
+    "params": {
+      "record_count": 1,
+      "seed": 1
+    },
+    "expected_hash": 934742696,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_1_2",
+    "description": "records=1, seed=42",
+    "params": {
+      "record_count": 1,
+      "seed": 42
+    },
+    "expected_hash": 2565254483,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_1_3",
+    "description": "records=1, seed=12345",
+    "params": {
+      "record_count": 1,
+      "seed": 12345
+    },
+    "expected_hash": 2570755639,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_1_4",
+    "description": "records=1, seed=54321",
+    "params": {
+      "record_count": 1,
+      "seed": 54321
+    },
+    "expected_hash": 363944045,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_1_5",
+    "description": "records=1, seed=999999",
+    "params": {
+      "record_count": 1,
+      "seed": 999999
+    },
+    "expected_hash": 2978379703,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_1_6",
+    "description": "records=1, seed=4294967295",
+    "params": {
+      "record_count": 1,
+      "seed": 4294967295
+    },
+    "expected_hash": 3680759593,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_2_0",
+    "description": "records=5, seed=0",
+    "params": {
+      "record_count": 5,
+      "seed": 0
+    },
+    "expected_hash": 446202088,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_2_1",
+    "description": "records=5, seed=1",
+    "params": {
+      "record_count": 5,
+      "seed": 1
+    },
+    "expected_hash": 3050009739,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_2_2",
+    "description": "records=5, seed=42",
+    "params": {
+      "record_count": 5,
+      "seed": 42
+    },
+    "expected_hash": 196198558,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_2_3",
+    "description": "records=5, seed=12345",
+    "params": {
+      "record_count": 5,
+      "seed": 12345
+    },
+    "expected_hash": 1948219125,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_2_4",
+    "description": "records=5, seed=54321",
+    "params": {
+      "record_count": 5,
+      "seed": 54321
+    },
+    "expected_hash": 2618344647,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_2_5",
+    "description": "records=5, seed=999999",
+    "params": {
+      "record_count": 5,
+      "seed": 999999
+    },
+    "expected_hash": 3128248766,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_2_6",
+    "description": "records=5, seed=4294967295",
+    "params": {
+      "record_count": 5,
+      "seed": 4294967295
+    },
+    "expected_hash": 2294106104,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_3_0",
+    "description": "records=10, seed=0",
+    "params": {
+      "record_count": 10,
+      "seed": 0
+    },
+    "expected_hash": 1711477539,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_3_1",
+    "description": "records=10, seed=1",
+    "params": {
+      "record_count": 10,
+      "seed": 1
+    },
+    "expected_hash": 315923459,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_3_2",
+    "description": "records=10, seed=42",
+    "params": {
+      "record_count": 10,
+      "seed": 42
+    },
+    "expected_hash": 1872716393,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_3_3",
+    "description": "records=10, seed=12345",
+    "params": {
+      "record_count": 10,
+      "seed": 12345
+    },
+    "expected_hash": 1236814759,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_3_4",
+    "description": "records=10, seed=54321",
+    "params": {
+      "record_count": 10,
+      "seed": 54321
+    },
+    "expected_hash": 250223002,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_3_5",
+    "description": "records=10, seed=999999",
+    "params": {
+      "record_count": 10,
+      "seed": 999999
+    },
+    "expected_hash": 3419923714,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_3_6",
+    "description": "records=10, seed=4294967295",
+    "params": {
+      "record_count": 10,
+      "seed": 4294967295
+    },
+    "expected_hash": 3883069239,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_4_0",
+    "description": "records=50, seed=0",
+    "params": {
+      "record_count": 50,
+      "seed": 0
+    },
+    "expected_hash": 635075339,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_4_1",
+    "description": "records=50, seed=1",
+    "params": {
+      "record_count": 50,
+      "seed": 1
+    },
+    "expected_hash": 1220297300,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_4_2",
+    "description": "records=50, seed=42",
+    "params": {
+      "record_count": 50,
+      "seed": 42
+    },
+    "expected_hash": 3275752129,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_4_3",
+    "description": "records=50, seed=12345",
+    "params": {
+      "record_count": 50,
+      "seed": 12345
+    },
+    "expected_hash": 1519955685,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_4_4",
+    "description": "records=50, seed=54321",
+    "params": {
+      "record_count": 50,
+      "seed": 54321
+    },
+    "expected_hash": 3402987386,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_4_5",
+    "description": "records=50, seed=999999",
+    "params": {
+      "record_count": 50,
+      "seed": 999999
+    },
+    "expected_hash": 218989978,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_4_6",
+    "description": "records=50, seed=4294967295",
+    "params": {
+      "record_count": 50,
+      "seed": 4294967295
+    },
+    "expected_hash": 1267351279,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_5_0",
+    "description": "records=100, seed=0",
+    "params": {
+      "record_count": 100,
+      "seed": 0
+    },
+    "expected_hash": 2806255192,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_5_1",
+    "description": "records=100, seed=1",
+    "params": {
+      "record_count": 100,
+      "seed": 1
+    },
+    "expected_hash": 516928209,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_5_2",
+    "description": "records=100, seed=42",
+    "params": {
+      "record_count": 100,
+      "seed": 42
+    },
+    "expected_hash": 480775395,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_5_3",
+    "description": "records=100, seed=12345",
+    "params": {
+      "record_count": 100,
+      "seed": 12345
+    },
+    "expected_hash": 3865461418,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_5_4",
+    "description": "records=100, seed=54321",
+    "params": {
+      "record_count": 100,
+      "seed": 54321
+    },
+    "expected_hash": 121184703,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_5_5",
+    "description": "records=100, seed=999999",
+    "params": {
+      "record_count": 100,
+      "seed": 999999
+    },
+    "expected_hash": 3461670830,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_5_6",
+    "description": "records=100, seed=4294967295",
+    "params": {
+      "record_count": 100,
+      "seed": 4294967295
+    },
+    "expected_hash": 818964305,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_6_0",
+    "description": "records=1000, seed=0",
+    "params": {
+      "record_count": 1000,
+      "seed": 0
+    },
+    "expected_hash": 3366120216,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_6_1",
+    "description": "records=1000, seed=1",
+    "params": {
+      "record_count": 1000,
+      "seed": 1
+    },
+    "expected_hash": 1385830497,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_6_2",
+    "description": "records=1000, seed=42",
+    "params": {
+      "record_count": 1000,
+      "seed": 42
+    },
+    "expected_hash": 1250090440,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_6_3",
+    "description": "records=1000, seed=12345",
+    "params": {
+      "record_count": 1000,
+      "seed": 12345
+    },
+    "expected_hash": 3892727684,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_6_4",
+    "description": "records=1000, seed=54321",
+    "params": {
+      "record_count": 1000,
+      "seed": 54321
+    },
+    "expected_hash": 1646044917,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_6_5",
+    "description": "records=1000, seed=999999",
+    "params": {
+      "record_count": 1000,
+      "seed": 999999
+    },
+    "expected_hash": 2760801820,
+    "category": "systematic"
+  },
+  {
+    "name": "systematic_6_6",
+    "description": "records=1000, seed=4294967295",
+    "params": {
+      "record_count": 1000,
+      "seed": 4294967295
+    },
+    "expected_hash": 1668854938,
+    "category": "systematic"
+  },
+  {
+    "name": "empty_array",
+    "description": "Empty JSON array - edge case for parsing",
+    "params": {
+      "record_count": 0,
+      "seed": 42
+    },
+    "expected_hash": 2166136261,
+    "category": "critical"
+  },
+  {
+    "name": "single_record",
+    "description": "Single record - minimal JSON structure",
+    "params": {
+      "record_count": 1,
+      "seed": 12345
+    },
+    "expected_hash": 2570755639,
+    "category": "critical"
+  },
+  {
+    "name": "large_dataset",
+    "description": "Large dataset - performance and memory test",
+    "params": {
+      "record_count": 10000,
+      "seed": 999
+    },
+    "expected_hash": 3257681744,
+    "category": "critical"
+  },
+  {
+    "name": "zero_seed",
+    "description": "Zero seed - deterministic generation edge case",
+    "params": {
+      "record_count": 100,
+      "seed": 0
+    },
+    "expected_hash": 2806255192,
+    "category": "critical"
+  },
+  {
+    "name": "max_seed",
+    "description": "Maximum seed value - LCG boundary test",
+    "params": {
+      "record_count": 50,
+      "seed": 4294967295
+    },
+    "expected_hash": 1267351279,
+    "category": "critical"
+  },
+  {
+    "name": "power_of_two_records",
+    "description": "Power of 2 record count - memory alignment test",
+    "params": {
+      "record_count": 1024,
+      "seed": 2048
+    },
+    "expected_hash": 3853599084,
+    "category": "critical"
+  },
+  {
+    "name": "prime_number_records",
+    "description": "Prime number record count - hash distribution test",
+    "params": {
+      "record_count": 997,
+      "seed": 1009
+    },
+    "expected_hash": 3734653185,
+    "category": "critical"
+  },
+  {
+    "name": "alternating_pattern_seed",
+    "description": "Alternating bit pattern seed - LCG stress test",
+    "params": {
+      "record_count": 200,
+      "seed": 2863311530
+    },
+    "expected_hash": 1189055266,
+    "category": "critical"
+  },
+  {
+    "name": "sequential_seeds_case_0",
+    "description": "Sequential seed values - pattern detection - records=10, seed=1",
+    "params": {
+      "record_count": 10,
+      "seed": 1
+    },
+    "expected_hash": 315923459,
+    "category": "rng_validation"
+  },
+  {
+    "name": "sequential_seeds_case_1",
+    "description": "Sequential seed values - pattern detection - records=10, seed=2",
+    "params": {
+      "record_count": 10,
+      "seed": 2
+    },
+    "expected_hash": 186350191,
+    "category": "rng_validation"
+  },
+  {
+    "name": "sequential_seeds_case_2",
+    "description": "Sequential seed values - pattern detection - records=10, seed=3",
+    "params": {
+      "record_count": 10,
+      "seed": 3
+    },
+    "expected_hash": 3547367089,
+    "category": "rng_validation"
+  },
+  {
+    "name": "sequential_seeds_case_3",
+    "description": "Sequential seed values - pattern detection - records=10, seed=4",
+    "params": {
+      "record_count": 10,
+      "seed": 4
+    },
+    "expected_hash": 1701635184,
+    "category": "rng_validation"
+  },
+  {
+    "name": "sequential_seeds_case_4",
+    "description": "Sequential seed values - pattern detection - records=10, seed=5",
+    "params": {
+      "record_count": 10,
+      "seed": 5
+    },
+    "expected_hash": 105066453,
+    "category": "rng_validation"
+  },
+  {
+    "name": "sequential_seeds_case_5",
+    "description": "Sequential seed values - pattern detection - records=10, seed=6",
+    "params": {
+      "record_count": 10,
+      "seed": 6
+    },
+    "expected_hash": 3214911893,
+    "category": "rng_validation"
+  },
+  {
+    "name": "sequential_seeds_case_6",
+    "description": "Sequential seed values - pattern detection - records=10, seed=7",
+    "params": {
+      "record_count": 10,
+      "seed": 7
+    },
+    "expected_hash": 2413877997,
+    "category": "rng_validation"
+  },
+  {
+    "name": "sequential_seeds_case_7",
+    "description": "Sequential seed values - pattern detection - records=10, seed=8",
+    "params": {
+      "record_count": 10,
+      "seed": 8
+    },
+    "expected_hash": 950180587,
+    "category": "rng_validation"
+  },
+  {
+    "name": "sequential_seeds_case_8",
+    "description": "Sequential seed values - pattern detection - records=10, seed=9",
+    "params": {
+      "record_count": 10,
+      "seed": 9
+    },
+    "expected_hash": 2438350073,
+    "category": "rng_validation"
+  },
+  {
+    "name": "sequential_seeds_case_9",
+    "description": "Sequential seed values - pattern detection - records=10, seed=10",
+    "params": {
+      "record_count": 10,
+      "seed": 10
+    },
+    "expected_hash": 4273208594,
+    "category": "rng_validation"
+  },
+  {
+    "name": "fixed_record_varying_seed_case_0",
+    "description": "Fixed record count, varying seeds - seed sensitivity - records=100, seed=1",
+    "params": {
+      "record_count": 100,
+      "seed": 1
+    },
+    "expected_hash": 516928209,
+    "category": "rng_validation"
+  },
+  {
+    "name": "fixed_record_varying_seed_case_1",
+    "description": "Fixed record count, varying seeds - seed sensitivity - records=100, seed=100",
+    "params": {
+      "record_count": 100,
+      "seed": 100
+    },
+    "expected_hash": 2532764552,
+    "category": "rng_validation"
+  },
+  {
+    "name": "fixed_record_varying_seed_case_2",
+    "description": "Fixed record count, varying seeds - seed sensitivity - records=100, seed=1000",
+    "params": {
+      "record_count": 100,
+      "seed": 1000
+    },
+    "expected_hash": 2285886683,
+    "category": "rng_validation"
+  },
+  {
+    "name": "fixed_record_varying_seed_case_3",
+    "description": "Fixed record count, varying seeds - seed sensitivity - records=100, seed=10000",
+    "params": {
+      "record_count": 100,
+      "seed": 10000
+    },
+    "expected_hash": 4147356152,
+    "category": "rng_validation"
+  },
+  {
+    "name": "fixed_record_varying_seed_case_4",
+    "description": "Fixed record count, varying seeds - seed sensitivity - records=100, seed=100000",
+    "params": {
+      "record_count": 100,
+      "seed": 100000
+    },
+    "expected_hash": 1102175901,
+    "category": "rng_validation"
+  },
+  {
+    "name": "fixed_record_varying_seed_case_5",
+    "description": "Fixed record count, varying seeds - seed sensitivity - records=100, seed=1000000",
+    "params": {
+      "record_count": 100,
+      "seed": 1000000
+    },
+    "expected_hash": 2641190296,
+    "category": "rng_validation"
+  },
+  {
+    "name": "varying_record_fixed_seed_case_0",
+    "description": "Varying record count, fixed seed - scalability test - records=1, seed=42",
+    "params": {
+      "record_count": 1,
+      "seed": 42
+    },
+    "expected_hash": 2565254483,
+    "category": "rng_validation"
+  },
+  {
+    "name": "varying_record_fixed_seed_case_1",
+    "description": "Varying record count, fixed seed - scalability test - records=10, seed=42",
+    "params": {
+      "record_count": 10,
+      "seed": 42
+    },
+    "expected_hash": 1872716393,
+    "category": "rng_validation"
+  },
+  {
+    "name": "varying_record_fixed_seed_case_2",
+    "description": "Varying record count, fixed seed - scalability test - records=100, seed=42",
+    "params": {
+      "record_count": 100,
+      "seed": 42
+    },
+    "expected_hash": 480775395,
+    "category": "rng_validation"
+  },
+  {
+    "name": "varying_record_fixed_seed_case_3",
+    "description": "Varying record count, fixed seed - scalability test - records=500, seed=42",
+    "params": {
+      "record_count": 500,
+      "seed": 42
+    },
+    "expected_hash": 2084692302,
+    "category": "rng_validation"
+  },
+  {
+    "name": "varying_record_fixed_seed_case_4",
+    "description": "Varying record count, fixed seed - scalability test - records=1000, seed=42",
+    "params": {
+      "record_count": 1000,
+      "seed": 42
+    },
+    "expected_hash": 1250090440,
+    "category": "rng_validation"
+  },
+  {
+    "name": "varying_record_fixed_seed_case_5",
+    "description": "Varying record count, fixed seed - scalability test - records=5000, seed=42",
+    "params": {
+      "record_count": 5000,
+      "seed": 42
+    },
+    "expected_hash": 1197155050,
+    "category": "rng_validation"
+  },
+  {
+    "name": "lcg_cycle_detection_case_0",
+    "description": "LCG cycle boundary values - mathematical validation - records=50, seed=1664525",
+    "params": {
+      "record_count": 50,
+      "seed": 1664525
+    },
+    "expected_hash": 3053150939,
+    "category": "rng_validation"
+  },
+  {
+    "name": "lcg_cycle_detection_case_1",
+    "description": "LCG cycle boundary values - mathematical validation - records=50, seed=1013904223",
+    "params": {
+      "record_count": 50,
+      "seed": 1013904223
+    },
+    "expected_hash": 3968755123,
+    "category": "rng_validation"
+  },
+  {
+    "name": "lcg_cycle_detection_case_2",
+    "description": "LCG cycle boundary values - mathematical validation - records=50, seed=3329050",
+    "params": {
+      "record_count": 50,
+      "seed": 3329050
+    },
+    "expected_hash": 2710062902,
+    "category": "rng_validation"
+  },
+  {
+    "name": "lcg_cycle_detection_case_3",
+    "description": "LCG cycle boundary values - mathematical validation - records=50, seed=2166136261",
+    "params": {
+      "record_count": 50,
+      "seed": 2166136261
+    },
+    "expected_hash": 4121689368,
+    "category": "rng_validation"
+  },
+  {
+    "name": "lcg_cycle_detection_case_4",
+    "description": "LCG cycle boundary values - mathematical validation - records=50, seed=16777619",
+    "params": {
+      "record_count": 50,
+      "seed": 16777619
+    },
+    "expected_hash": 2694988264,
+    "category": "rng_validation"
+  },
+  {
+    "name": "boolean_distribution_test",
+    "description": "Test case with expected boolean distribution",
+    "params": {
+      "record_count": 1000,
+      "seed": 123456
+    },
+    "expected_hash": 3207425340,
+    "category": "parsing_validation"
+  },
+  {
+    "name": "negative_value_heavy",
+    "description": "Seed producing many negative values",
+    "params": {
+      "record_count": 500,
+      "seed": 2147483648
+    },
+    "expected_hash": 2889628469,
+    "category": "parsing_validation"
+  },
+  {
+    "name": "positive_value_heavy",
+    "description": "Seed producing mainly positive values",
+    "params": {
+      "record_count": 500,
+      "seed": 2147483647
+    },
+    "expected_hash": 3187704744,
+    "category": "parsing_validation"
+  },
+  {
+    "name": "string_pattern_test",
+    "description": "Test string generation pattern consistency",
+    "params": {
+      "record_count": 100,
+      "seed": 987654
+    },
+    "expected_hash": 4173091869,
+    "category": "parsing_validation"
+  },
+  {
+    "name": "json_structure_stress",
+    "description": "Large JSON structure parsing stress test",
+    "params": {
+      "record_count": 2000,
+      "seed": 555555
+    },
+    "expected_hash": 3686254803,
+    "category": "parsing_validation"
+  },
+  {
+    "name": "hash_collision_resistance",
+    "description": "Test hash function collision resistance",
+    "params": {
+      "record_count": 1000,
+      "seed": 314159
+    },
+    "expected_hash": 1552346185,
+    "category": "parsing_validation"
+  },
+  {
+    "name": "memory_efficiency_test",
+    "description": "Memory allocation pattern validation",
+    "params": {
+      "record_count": 10000,
+      "seed": 271828
+    },
+    "expected_hash": 3490908608,
+    "category": "parsing_validation"
+  },
+  {
+    "name": "boundary_record_counts_case_0",
+    "description": "Boundary record count values - records=0, seed=42",
+    "params": {
+      "record_count": 0,
+      "seed": 42
+    },
+    "expected_hash": 2166136261,
+    "category": "edge_case"
+  },
+  {
+    "name": "boundary_record_counts_case_1",
+    "description": "Boundary record count values - records=1, seed=42",
+    "params": {
+      "record_count": 1,
+      "seed": 42
+    },
+    "expected_hash": 2565254483,
+    "category": "edge_case"
+  },
+  {
+    "name": "boundary_record_counts_case_2",
+    "description": "Boundary record count values - records=2, seed=42",
+    "params": {
+      "record_count": 2,
+      "seed": 42
+    },
+    "expected_hash": 2076342680,
+    "category": "edge_case"
+  },
+  {
+    "name": "boundary_record_counts_case_3",
+    "description": "Boundary record count values - records=3, seed=42",
+    "params": {
+      "record_count": 3,
+      "seed": 42
+    },
+    "expected_hash": 1590970320,
+    "category": "edge_case"
+  },
+  {
+    "name": "boundary_record_counts_case_4",
+    "description": "Boundary record count values - records=65535, seed=42",
+    "params": {
+      "record_count": 65535,
+      "seed": 42
+    },
+    "expected_hash": 3177252951,
+    "category": "edge_case"
+  },
+  {
+    "name": "boundary_seeds_case_0",
+    "description": "Boundary seed values - records=10, seed=0",
+    "params": {
+      "record_count": 10,
+      "seed": 0
+    },
+    "expected_hash": 1711477539,
+    "category": "edge_case"
+  },
+  {
+    "name": "boundary_seeds_case_1",
+    "description": "Boundary seed values - records=10, seed=1",
+    "params": {
+      "record_count": 10,
+      "seed": 1
+    },
+    "expected_hash": 315923459,
+    "category": "edge_case"
+  },
+  {
+    "name": "boundary_seeds_case_2",
+    "description": "Boundary seed values - records=10, seed=4294967295",
+    "params": {
+      "record_count": 10,
+      "seed": 4294967295
+    },
+    "expected_hash": 3883069239,
+    "category": "edge_case"
+  },
+  {
+    "name": "boundary_seeds_case_3",
+    "description": "Boundary seed values - records=10, seed=4294967294",
+    "params": {
+      "record_count": 10,
+      "seed": 4294967294
+    },
+    "expected_hash": 2794895345,
+    "category": "edge_case"
+  },
+  {
+    "name": "boundary_seeds_case_4",
+    "description": "Boundary seed values - records=10, seed=2147483647",
+    "params": {
+      "record_count": 10,
+      "seed": 2147483647
+    },
+    "expected_hash": 441526071,
+    "category": "edge_case"
+  },
+  {
+    "name": "power_of_two_values_case_0",
+    "description": "Power of 2 test values - records=1, seed=1",
+    "params": {
+      "record_count": 1,
+      "seed": 1
+    },
+    "expected_hash": 934742696,
+    "category": "edge_case"
+  },
+  {
+    "name": "power_of_two_values_case_1",
+    "description": "Power of 2 test values - records=2, seed=2",
+    "params": {
+      "record_count": 2,
+      "seed": 2
+    },
+    "expected_hash": 16404690,
+    "category": "edge_case"
+  },
+  {
+    "name": "power_of_two_values_case_2",
+    "description": "Power of 2 test values - records=4, seed=4",
+    "params": {
+      "record_count": 4,
+      "seed": 4
+    },
+    "expected_hash": 1162765421,
+    "category": "edge_case"
+  },
+  {
+    "name": "power_of_two_values_case_3",
+    "description": "Power of 2 test values - records=8, seed=8",
+    "params": {
+      "record_count": 8,
+      "seed": 8
+    },
+    "expected_hash": 3268858856,
+    "category": "edge_case"
+  },
+  {
+    "name": "power_of_two_values_case_4",
+    "description": "Power of 2 test values - records=16, seed=16",
+    "params": {
+      "record_count": 16,
+      "seed": 16
+    },
+    "expected_hash": 3155365622,
+    "category": "edge_case"
+  },
+  {
+    "name": "power_of_two_values_case_5",
+    "description": "Power of 2 test values - records=32, seed=32",
+    "params": {
+      "record_count": 32,
+      "seed": 32
+    },
+    "expected_hash": 3645322935,
+    "category": "edge_case"
+  },
+  {
+    "name": "power_of_two_values_case_6",
+    "description": "Power of 2 test values - records=64, seed=64",
+    "params": {
+      "record_count": 64,
+      "seed": 64
+    },
+    "expected_hash": 3401873778,
+    "category": "edge_case"
+  },
+  {
+    "name": "power_of_two_values_case_7",
+    "description": "Power of 2 test values - records=128, seed=128",
+    "params": {
+      "record_count": 128,
+      "seed": 128
+    },
+    "expected_hash": 2832112481,
+    "category": "edge_case"
+  },
+  {
+    "name": "power_of_two_values_case_8",
+    "description": "Power of 2 test values - records=256, seed=256",
+    "params": {
+      "record_count": 256,
+      "seed": 256
+    },
+    "expected_hash": 261942813,
+    "category": "edge_case"
+  },
+  {
+    "name": "power_of_two_values_case_9",
+    "description": "Power of 2 test values - records=512, seed=512",
+    "params": {
+      "record_count": 512,
+      "seed": 512
+    },
+    "expected_hash": 1292818986,
+    "category": "edge_case"
+  },
+  {
+    "name": "power_of_two_values_case_10",
+    "description": "Power of 2 test values - records=1024, seed=1024",
+    "params": {
+      "record_count": 1024,
+      "seed": 1024
+    },
+    "expected_hash": 3578074523,
+    "category": "edge_case"
+  }
+]
