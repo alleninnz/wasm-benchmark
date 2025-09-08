@@ -369,8 +369,10 @@ mod tests {
 
         let vectors = generate_all_vectors();
 
-        // Export to JSON file for TinyGo validation
-        if let Err(e) = export_vectors_to_json(&vectors, "reference_hashes.json") {
+        // Export to centralized JSON file for TinyGo validation
+        if let Err(e) =
+            export_vectors_to_json(&vectors, "../../../data/reference_hashes/json_parse.json")
+        {
             panic!("Failed to export reference hashes: {}", e);
         }
 
@@ -394,7 +396,7 @@ mod tests {
             "
 ✅ Reference hash generation completed successfully"
         );
-        println!("📁 Output file: reference_hashes.json");
+        println!("📁 Output file: ../../../data/reference_hashes/json_parse.json");
         println!("🔗 Use this file for cross-implementation validation with TinyGo");
     }
 }

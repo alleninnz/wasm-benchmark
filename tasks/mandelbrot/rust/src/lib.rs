@@ -89,13 +89,36 @@ mod tests {
     #[ignore]
     fn generate_reference_hashes() {
         use crate::reference::*;
+        use std::path::Path;
+
+        let output_path = "../../../data/reference_hashes/mandelbrot.json";
+
+        // Check if reference file already exists and is recent
+        if Path::new(output_path).exists() {
+            if let Ok(metadata) = std::fs::metadata(output_path) {
+                if let Ok(modified) = metadata.modified() {
+                    if let Ok(elapsed) = modified.elapsed() {
+                        // If file was modified less than 24 hours ago, skip generation
+                        if elapsed.as_secs() < 24 * 60 * 60 {
+                            println!("Reference hashes are up-to-date (modified < 24h ago), skipping generation");
+                            println!("To force regeneration, delete the file: {}", output_path);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
 
         println!("Generating reference test vectors...");
         let vectors = generate_all_vectors();
 
-        // Export to JSON file
-        export_vectors_to_json(&vectors, "reference_hashes.json")
-            .expect("Failed to export reference hashes");
+        // Create directory if it doesn't exist
+        if let Some(parent) = Path::new(output_path).parent() {
+            std::fs::create_dir_all(parent).expect("Failed to create output directory");
+        }
+
+        // Export to centralized JSON file
+        export_vectors_to_json(&vectors, output_path).expect("Failed to export reference hashes");
 
         println!("Reference hash generation complete!");
 
