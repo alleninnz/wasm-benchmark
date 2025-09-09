@@ -84,7 +84,7 @@ export class WasmLoader {
             const wasmBytes = await response.arrayBuffer();
             window.logResult(`Fetched ${wasmBytes.byteLength} bytes for ${moduleId}`);
             
-            // Instantiate the WASM module with minimal imports
+            // Instantiate the WASM module with imports for both Rust and TinyGo
             const imports = {
                 env: {
                     // Standard library functions that might be needed
@@ -94,6 +94,54 @@ export class WasmLoader {
                     trace: (ptr, len) => {
                         console.log(`WASM trace: ptr=${ptr}, len=${len}`);
                     }
+                },
+                // WASI imports for TinyGo compatibility
+                wasi_snapshot_preview1: {
+                    proc_exit: (code) => {
+                        console.log(`WASI proc_exit: ${code}`);
+                    },
+                    environ_get: () => { return 0; },
+                    environ_sizes_get: () => { return 0; },
+                    fd_close: () => { return 0; },
+                    fd_read: () => { return 0; },
+                    fd_seek: () => { return 0; },
+                    fd_write: () => { return 0; },
+                    path_open: () => { return 0; },
+                    random_get: (ptr, len) => {
+                        // Simple random implementation for testing - will be updated after instantiation
+                        console.log(`WASI random_get called: ptr=${ptr}, len=${len}`);
+                        return 0;
+                    },
+                    clock_time_get: (id, precision, ptr) => {
+                        // Return current time in nanoseconds - will be updated after instantiation
+                        console.log(`WASI clock_time_get called: id=${id}, precision=${precision}, ptr=${ptr}`);
+                        return 0;
+                    }
+                },
+                // Go JS runtime imports for TinyGo with JS interop
+                gojs: {
+                    // Runtime functions
+                    'runtime.ticks': () => { return performance.now(); },
+                    'runtime.sleepTicks': (ms) => { console.log(`sleep ${ms}ms`); },
+                    'runtime.getRandomData': (ptr, len) => { return 0; },
+                    // Syscall/js functions - comprehensive set for TinyGo
+                    'syscall/js.valueGet': () => { return 0; },
+                    'syscall/js.valueSet': () => { },
+                    'syscall/js.valueNew': () => { return 0; },
+                    'syscall/js.valueLength': () => { return 0; },
+                    'syscall/js.valuePrepareString': () => { return 0; },
+                    'syscall/js.valueLoadString': () => { return 0; },
+                    'syscall/js.valueCall': () => { return 0; },
+                    'syscall/js.finalizeRef': () => { },
+                    'syscall/js.stringVal': () => { return 0; },
+                    'syscall/js.valueIndex': () => { return 0; },
+                    'syscall/js.valueSetIndex': () => { },
+                    'syscall/js.valueDelete': () => { },
+                    'syscall/js.valueInvoke': () => { return 0; },
+                    'syscall/js.valueInstanceOf': () => { return 0; },
+                    'syscall/js.copyBytesToGo': () => { return 0; },
+                    'syscall/js.copyBytesToJS': () => { return 0; },
+                    'debug': () => { }
                 }
             };
 
