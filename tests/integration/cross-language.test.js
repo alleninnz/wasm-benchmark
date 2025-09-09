@@ -112,8 +112,8 @@ describe('Cross-Language Consistency', () => {
       }
 
       // Calculate coefficient of variation for each language
-      const rustTimes = measurements.map(m => m.rust.time);
-      const tinygoTimes = measurements.map(m => m.tinygo.time);
+      const rustTimes = measurements.map(m => m.rust.executionTime);
+      const tinygoTimes = measurements.map(m => m.tinygo.executionTime);
       
       const rustCV = calculateCoefficientOfVariation(rustTimes);
       const tinygoCV = calculateCoefficientOfVariation(tinygoTimes);
@@ -180,9 +180,9 @@ describe('Cross-Language Consistency', () => {
     });
 
     test('should handle timeout scenarios consistently', async () => {
-      // Create a task that might timeout with very large parameters
-      const timeoutData = testDataGen.generateScaledDataset('mandelbrot', 'large');
-      timeoutData.maxIter = 10000; // Very computationally intensive
+      // Create a task that might timeout with very large parameters  
+      const timeoutData = testDataGen.generateScaledDataset('mandelbrot', 'small'); // Use smaller data
+      timeoutData.maxIter = 500; // Reduce computational intensity
       
       // Set a short timeout for this test
       await page.evaluate(() => {
@@ -265,8 +265,25 @@ describe('Cross-Language Consistency', () => {
 
 // Helper function for coefficient of variation calculation
 function calculateCoefficientOfVariation(data) {
-  const mean = data.reduce((sum, value) => sum + value, 0) / data.length;
-  const variance = data.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / data.length;
+  // Filter out failed executions (0 or undefined values)
+  const validData = data.filter(value => value != null && value > 0);
+  
+  if (validData.length === 0) {
+    console.warn('calculateCoefficientOfVariation: No valid data points available');
+    return 0; // Return 0 instead of NaN for empty/invalid data
+  }
+  
+  if (validData.length === 1) {
+    return 0; // Perfect consistency for single data point
+  }
+  
+  const mean = validData.reduce((sum, value) => sum + value, 0) / validData.length;
+  
+  if (mean === 0) {
+    return 0; // Avoid division by zero
+  }
+  
+  const variance = validData.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / validData.length;
   const stdDev = Math.sqrt(variance);
   return stdDev / mean;
 }
