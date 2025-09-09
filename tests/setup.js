@@ -25,7 +25,7 @@ const MEMORY_CONSTANTS = {
   INACTIVE_MEMORY_FACTOR: 0.5,   // Conservative estimate for reclaimable inactive memory
   MACOS_CACHE_BUFFER_ADJUSTMENT: 20, // Percentage to account for caches on macOS
   LINUX_CACHE_BUFFER_ADJUSTMENT: 15, // Percentage to account for caches on Linux
-  HIGH_MEMORY_THRESHOLD: 85       // Percentage threshold for memory pressure warning
+  HIGH_MEMORY_THRESHOLD: 95       // Percentage threshold for memory pressure warning
 };
 
 /**

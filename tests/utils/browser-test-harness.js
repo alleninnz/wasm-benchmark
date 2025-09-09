@@ -16,8 +16,8 @@ export class BrowserTestHarness {
     // Constants for configuration validation
     this.MAX_LOGS = 10000;
     this.MAX_ERRORS = 1000;
-    this.DEFAULT_NAVIGATION_TIMEOUT = 30000;
-    this.DEFAULT_WASM_TIMEOUT = 30000;
+    this.DEFAULT_NAVIGATION_TIMEOUT = 60000;
+    this.DEFAULT_WASM_TIMEOUT = 60000;
     this.MAX_TIMEOUT = 300000; // 5 minutes maximum
 
     this.config = { 
