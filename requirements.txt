@@ -1,39 +1,31 @@
 # Python Dependencies for WebAssembly Benchmark Analysis
 # Install with: pip install -r requirements.txt
 
-# Core scientific computing libraries
-numpy>=2.3.2,<3.0.0
-scipy>=1.16.1,<2.0.0  
-pandas>=2.3.2,<3.0.0
+# Core data processing (ESSENTIAL)
+numpy>=1.21.0                  # Numerical operations and array processing
+pandas>=1.5.0                  # Data manipulation and JSON/CSV handling
+pyyaml>=6.0                    # Configuration and YAML parsing
 
-# Statistical analysis
-statsmodels>=0.14.5,<1.0.0
+# Statistical analysis (ESSENTIAL for benchmarking)
+scipy>=1.9.0                   # Statistical tests and analysis
+statsmodels>=0.13.0            # Regression and statistical modeling
 
-# Visualization
-matplotlib>=3.10.5,<4.0.0
-seaborn>=0.13.2,<1.0.0
+# Visualization (ESSENTIAL for benchmark reports)
+matplotlib>=3.3.0              # Charts and plotting
+seaborn>=0.11.0                # Statistical visualizations
+plotly>=5.0.0                  # Interactive plots and web visualizations
 
-# Data processing utilities
-pyyaml>=6.0.2,<7.0.0
+# Benchmark analysis utilities (ESSENTIAL)
+psutil>=5.8.0                  # System monitoring and resource tracking
+tabulate>=0.8.0                # Pretty table formatting for reports
+tqdm>=4.50.0                   # Progress bars for long operations
+click>=8.0.0                   # Command-line interface for analysis scripts
 
-# Optional: Jupyter notebook support (for interactive analysis)
-jupyter>=1.1.1,<2.0.0
-ipykernel>=6.30.1,<7.0.0
+# Development and testing (RECOMMENDED)
+pytest>=7.0.0                  # Unit testing framework
+black>=22.0.0                  # Code formatting
+ruff>=0.1.0                    # Fast linting (replaces flake8)
 
-# Optional: Enhanced statistical functions
-pingouin>=0.5.5,<1.0.0
-
-# Optional: Performance profiling
-memory-profiler>=0.61.0,<1.0.0
-
-# Development and testing
-pytest>=8.4.1,<9.0.0
-pytest-cov>=6.2.1,<7.0.0
-
-# Code quality
-black>=25.1.0,<26.0.0
-flake8>=7.3.0,<8.0.0
-
-# Documentation generation (optional)
-sphinx>=8.2.3,<9.0.0
-sphinx-rtd-theme>=3.0.2,<4.0.0
+# Optional analysis enhancements
+jupyter>=1.0.0                 # Interactive analysis notebooks
+memory-profiler>=0.60.0        # Memory usage analysis
