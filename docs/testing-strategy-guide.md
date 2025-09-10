@@ -4,12 +4,12 @@
 
 ### **Testing Strategy Direction**
 
-**Q: Do you prefer granular unit tests with extensive mocking, or integration-heavy tests that validate real service interactions?**
+**Q: Preferred balance between granular unit tests with mocking and integration-heavy tests that validate real service interactions?**
 
 **A: Integration-heavy tests (80%) + Selective unit tests (20%)**
 
 **理由:**
-- 你的实验核心价值在于测量**真实 WebAssembly 运行时性能**
+- 实验核心价值在于测量**真实 WebAssembly 运行时性能**
 - Mock 会破坏实验的科学性和有效性
 - 集成测试能验证完整的数据采集链路：`Browser → WebAssembly → Performance Measurement → Data Collection`
 - 单元测试仅用于纯逻辑函数（统计计算、数据转换、配置解析）
@@ -142,7 +142,7 @@ const testDataGenerator = {
 **原因:**
 - 确保测试结果可重现
 - 便于跨语言结果对比验证
-- 符合你实验中的确定性要求
+- 符合实验对确定性的要求
 
 ---
 
@@ -177,7 +177,7 @@ const validationRules = {
 
 ---
 
-**Q: What's your approach to testing async/timeout scenarios?**
+**Q: Recommended approach to testing async/timeout scenarios?**
 
 **A: 分级超时 + 优雅降级测试**
 
@@ -218,32 +218,6 @@ describe('异步和超时场景', () => {
 
 ### **Testing Infrastructure 深度分析**
 
-#### **CI/CD Integration 策略** [TODO: 暂时不实现]
-
-**推荐方案：GitHub Actions + Headless Chrome**
-
-**理由分析：**
-- ✅ **成本效益最优** - 无需维护专门的测试基础设施
-- ✅ **环境一致性** - Ubuntu runners 提供标准化的测试环境
-- ✅ **WebAssembly 支持完备** - Chrome 的 V8 引擎对 WebAssembly 支持最成熟
-- ✅ **性能基线可控** - GitHub Actions runners 有相对稳定的硬件规格
-
-**实施策略：**
-```yaml
-# .github/workflows/test.yml
-- name: Setup Chrome
-  uses: browser-actions/setup-chrome@latest
-- name: Run Integration Tests
-  run: npm run test:integration
-  env:
-    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: false
-    CI: true
-```
-
-**重要区分：**
-- CI 环境的性能测量结果**不能直接用于科学分析**
-- CI 测试重点应该是**功能正确性验证**，而非性能基准
-- 真正的性能数据收集仍需在你的 MacBook Pro M4 上进行
 
 #### **Test Data Generator 工具设计**
 
@@ -279,7 +253,7 @@ class DeterministicTestDataGenerator {
 ```
 
 **价值分析：**
-- ✅ **跨环境一致性** - 开发、测试、CI 环境使用相同数据
+- ✅ **跨环境一致性** - 开发与测试环境使用相同数据
 - ✅ **规模可控性** - 快速生成不同规模的测试数据
 - ✅ **哈希验证支持** - 确保跨语言实现的算法正确性验证
 - ✅ **实验设计灵活性** - 支持添加新的测试场景
@@ -291,8 +265,8 @@ class DeterministicTestDataGenerator {
 **重要性：确保实验科学严谨性的关键**ßßß
 
 **核心问题解决：**
-- 你目前计划每个条件收集 100 个样本，但这个样本量是否足够检测出有意义的性能差异？
-- 如果 Rust 比 TinyGo 快 10%，你的测试设计能否以 80% 的把握检测出这种差异？
+- 当前计划每个条件收集 100 个样本，但该样本量是否足以检测出具有实际意义的性能差异？
+- 如果 Rust 比 TinyGo 快 10%，现有测试设计能否以 80% 的统计功效检测出该差异？
 
 **实施方案：**
 ```javascript
@@ -331,29 +305,12 @@ class PowerAnalysis {
 
 **实际应用价值：**
 - 避免"花费大量时间收集数据，最后发现样本量不足以得出可靠结论"
-- 为你的实验设计提供科学依据
+- 为实验设计提供科学依据
 - 增强研究结果在学术界的可信度
 
 #### **Environment Control 分层策略**
 
-**核心理念：CI 环境与实验环境采用不同控制策略**
-
-**CI 环境控制（功能验证优先）：**
-```javascript
-const ciTestConfig = {
-  toleranceMultiplier: 3.0,  // 放宽性能要求
-  focusOnCorrectness: true,  // 主要验证算法正确性
-  systemMonitoring: 'basic', // 基础资源监控即可
-  
-  environmentChecks: {
-    cpuUsage: { max: 50, critical: 80 },
-    memoryUsage: { max: 70, critical: 90 },
-    skipIfOverloaded: true
-  }
-};
-```
-
-**实验环境控制（精确测量优先）：**
+**实验环境控制策略（精确测量优先）：**
 ```javascript
 const experimentConfig = {
   systemChecks: {
@@ -421,7 +378,6 @@ class ExperimentEnvironmentMonitor {
    - 直接影响性能测量的准确性
    - 实施复杂度：高
 
-4. **📈 中优先级** - CI/CD Integration
    - 支持持续开发，但不影响核心实验
    - 实施复杂度：低
 
@@ -438,9 +394,8 @@ class ExperimentEnvironmentMonitor {
 - 建立测量基线
 
 **Phase 3：Development Infrastructure (Week 4)**
-- 配置 CI/CD pipeline
 - 建立持续验证机制
-- 文档和培训
+- 文档与内部使用指南
 
 这些精进措施将显著提升WebAssembly 性能实验的科学严谨性和可信度，特别是 **Test Data Generator** 和 **Statistical Power Analysis**，它们是确保实验结果具有学术价值的关键基础设施。
 
