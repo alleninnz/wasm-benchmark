@@ -1,0 +1,135 @@
+# Quick Development Testing Configuration
+# Optimized for fast feedback during development - NOT for research accuracy
+
+experiment:
+  name: "Quick Development Testing - Rust vs TinyGo"
+  version: "2.0-quick"
+  description: "Minimal configuration for fast development feedback and validation"
+
+# Minimal measurement parameters for speed
+environment:
+  # Ultra-fast warmup and measurement
+  warmup_runs: 3               # Minimal warmup - just enough for basic JIT
+  measure_runs: 15             # Basic statistical sampling - sufficient for trend detection
+  repetitions: 1               # Single run for maximum speed
+  
+  # Reduced timeouts for quick feedback
+  timeout_ms: 30000           # 30s max per task
+  task_timeouts:
+    mandelbrot_micro: 5000    # 5s for micro mandelbrot
+    json_parse_micro: 3000    # 3s for micro json parsing  
+    matrix_mul_micro: 2000    # 2s for micro matrix multiplication
+    
+  # Minimal monitoring overhead
+  memory_monitoring: false     # Disable for speed
+  gc_monitoring: false        # Disable for speed
+  timeout_as_data: false      # Treat timeouts as failures for quick feedback
+
+# Micro-scale tasks optimized for development speed
+tasks:
+  mandelbrot:
+    description: "Micro-scale CPU computation for quick validation"
+    scales:
+      micro:                  # Ultra-fast scale for development
+        width: 64             # 64x64 grid (16x smaller than small)
+        height: 64
+        max_iter: 100         # Reduced iterations
+        memory_est_mb: 0.02   # Minimal memory footprint
+    # Skip medium/large scales entirely
+    fixed_params:
+      center_real: -0.743643887037
+      center_imag: 0.131825904205
+      scale_factor: 3
+
+  json_parse:
+    description: "Micro-scale JSON processing for quick validation"
+    scales:
+      micro:                  # Ultra-fast scale
+        record_count: 500     # 500 records (12x smaller than small)
+        memory_est_mb: 0.03   # Minimal memory usage
+    schema:
+      fields: ["id", "value", "flag", "name"]
+      id_sequential: true
+      value_random: true
+      flag_derived: true
+      name_pattern: "user_{id}"
+
+  matrix_mul:
+    description: "Micro-scale matrix multiplication for quick validation"
+    scales:
+      micro:                  # Ultra-fast scale
+        dimension: 64         # 64x64 matrices (4x smaller than small)
+        memory_est_mb: 0.03   # Minimal memory footprint
+    computation:
+      data_type: "f32"
+      algorithm: "naive_triple_loop"
+      precision_digits: 6
+
+# Same language configurations but will be much faster
+languages:
+  rust:
+    enabled: true
+    target: "wasm32-unknown-unknown"
+    optimization_levels:
+      - name: "research_optimized"
+        cargo_flags: "--release"
+        cargo_config:
+          opt_level: 3
+          lto: "fat"
+          codegen_units: 1
+          panic: "abort"
+          strip: "debuginfo"
+    post_processing:
+      - "wasm-strip"
+      - "wasm-opt -O3"
+
+  tinygo:
+    enabled: true
+    target: "wasm"
+    optimization_levels:
+      - name: "research_optimized"
+        build_flags:
+          - "-opt=3"
+          - "-panic=trap"
+          - "-no-debug"
+          - "-scheduler=none"
+    post_processing:
+      - "wasm-strip"
+      - "wasm-opt -Oz"
+
+# Relaxed quality control for development
+qc:
+  max_coefficient_variation: 0.2       # More permissive for quick testing
+  outlier_iqr_multiplier: 2.0          # More permissive
+  severe_outlier_iqr_multiplier: 4     # More permissive
+  min_valid_samples: 10                # Fewer samples needed
+  timeout_handling:
+    treat_timeout_as: "failure"        # Quick feedback on issues
+    max_timeout_rate: 0.5              # More permissive
+    timeout_analysis: false            # Skip for speed
+
+# Basic statistics for trends
+statistics:
+  confidence_level: 0.90               # Lower confidence for speed
+  significance_alpha: 0.05             # Relaxed significance
+  statistical_power: 0.8               # Lower power requirement
+  multiple_comparison_correction: "none" # Skip for speed
+  effect_size_metric: "cohens_d"
+  normality_test: "none"               # Skip for speed
+  effect_size_thresholds:
+    small: 0.3
+    medium: 0.6
+    large: 1.0
+  minimum_detectable_effect: 0.3
+  performance_boundary_analysis:
+    enabled: false                     # Disable for speed
+    timeout_patterns: false
+    scalability_metrics: false
+    gc_impact_analysis: false
+
+# Verification with relaxed precision for speed
+verification:
+  hash_algorithm: "fnv1a"
+  hash_offset_basis: 2166136261
+  hash_prime: 16777619
+  floating_point_precision: 4          # Reduced precision for speed

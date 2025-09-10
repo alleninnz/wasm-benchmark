@@ -8,7 +8,7 @@ __pycache__/
 *.pyc
 
 # Generated configuration (dynamic config)
-configs/bench.json
+configs/*.json
 
 # Runtime logs and temporary files
 *.log

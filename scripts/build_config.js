@@ -12,21 +12,44 @@ import yaml from 'yaml';
 import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 
+// Configuration constants
+const DEFAULT_TIMEOUT_MS = 300000;
+const DEFAULT_GC_THRESHOLD_MB = 10;
+const DEFAULT_REPETITIONS = 1;
+
+// Environment detection
+const EXCLUDED_ENV_KEYS = [
+    'warmup_runs', 'measure_runs', 'warmupRuns', 'measureRuns', 
+    'repetitions', 'timeout_ms', 'task_timeouts', 'gc_threshold_mb', 
+    'memory_monitoring', 'gc_monitoring', 'timeout_as_data'
+];
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Support both normal and quick configurations
+const configType = process.argv.includes('--quick') ? 'quick' : 'normal';
+
 const CONFIG_PATHS = {
-    input: path.join(__dirname, '..', 'configs', 'bench.yaml'),
-    output: path.join(__dirname, '..', 'configs', 'bench.json')
+    normal: {
+        input: path.join(__dirname, '..', 'configs', 'bench.yaml'),
+        output: path.join(__dirname, '..', 'configs', 'bench.json')
+    },
+    quick: {
+        input: path.join(__dirname, '..', 'configs', 'bench-quick.yaml'),
+        output: path.join(__dirname, '..', 'configs', 'bench-quick.json')
+    }
 };
+
+const currentConfig = CONFIG_PATHS[configType];
 
 /**
  * Load and parse YAML configuration
  */
 async function loadYamlConfig() {
     try {
-        console.log(chalk.blue('📖 Reading YAML config:'), CONFIG_PATHS.input);
-        const yamlContent = await fs.readFile(CONFIG_PATHS.input, 'utf8');
+        console.log(chalk.blue('📖 Reading YAML config:'), currentConfig.input);
+        const yamlContent = await fs.readFile(currentConfig.input, 'utf8');
         
         console.log(chalk.cyan('🔄 Parsing YAML content...'));
         const config = yaml.parse(yamlContent);
@@ -41,11 +64,44 @@ async function loadYamlConfig() {
 }
 
 /**
+ * Check if running in test environment
+ */
+function isTestEnvironment() {
+    return process.env.NODE_ENV === 'test' || process.env.VITEST;
+}
+
+/**
+ * Create optimized environment configuration
+ */
+function createOptimizedEnvironment(config) {
+    const env = config.environment || {};
+    
+    // Core environment settings with enhanced timeout support
+    const optimizedEnv = {
+        warmupRuns: env.warmup_runs || env.warmupRuns,
+        measureRuns: env.measure_runs || env.measureRuns,
+        repetitions: env.repetitions || DEFAULT_REPETITIONS,
+        timeout: env.timeout_ms || DEFAULT_TIMEOUT_MS,
+        taskTimeouts: env.task_timeouts || {},
+        gcThreshold: env.gc_threshold_mb || DEFAULT_GC_THRESHOLD_MB,
+        memoryMonitoring: env.memory_monitoring || true,
+        gcMonitoring: env.gc_monitoring || true,
+        timeoutAsData: env.timeout_as_data || false
+    };
+    
+    // Preserve other environment settings not handled above
+    const additionalEnvSettings = Object.fromEntries(
+        Object.entries(env).filter(([key]) => !EXCLUDED_ENV_KEYS.includes(key))
+    );
+    
+    return { ...optimizedEnv, ...additionalEnvSettings };
+}
+
+/**
  * Optimize configuration for browser use
  */
 function optimizeConfig(config) {
-    // Suppress logging during tests to avoid console pollution
-    const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST;
+    const isTestEnv = isTestEnvironment();
     
     if (!isTestEnv) {
         console.log(chalk.yellow('⚡ Optimizing configuration for browser use...'));
@@ -57,22 +113,7 @@ function optimizeConfig(config) {
         experiment: config.experiment,
         
         // Environment settings with enhanced timeout support
-        environment: {
-            warmupRuns: config.environment.warmup_runs || config.environment.warmupRuns,
-            measureRuns: config.environment.measure_runs || config.environment.measureRuns,
-            repetitions: config.environment.repetitions || 1,
-            timeout: config.environment.timeout_ms || 300000,
-            taskTimeouts: config.environment.task_timeouts || {},
-            gcThreshold: config.environment.gc_threshold_mb || 10,
-            memoryMonitoring: config.environment.memory_monitoring || true,
-            gcMonitoring: config.environment.gc_monitoring || true,
-            timeoutAsData: config.environment.timeout_as_data || false,
-            // Preserve nested objects
-            ...Object.fromEntries(
-                Object.entries(config.environment || {})
-                    .filter(([key]) => !['warmup_runs', 'measure_runs', 'warmupRuns', 'measureRuns', 'repetitions', 'timeout_ms', 'task_timeouts', 'gc_threshold_mb', 'memory_monitoring', 'gc_monitoring', 'timeout_as_data'].includes(key))
-            )
-        },
+        environment: createOptimizedEnvironment(config),
         
         // Task configurations
         tasks: config.tasks,
@@ -119,10 +160,10 @@ function optimizeConfig(config) {
  */
 async function writeJsonConfig(config) {
     try {
-        console.log(chalk.blue('💾 Writing JSON config:'), CONFIG_PATHS.output);
+        console.log(chalk.blue('💾 Writing JSON config:'), currentConfig.output);
         
         // Ensure output directory exists
-        const outputDir = path.dirname(CONFIG_PATHS.output);
+        const outputDir = path.dirname(currentConfig.output);
         await fs.mkdir(outputDir, { recursive: true });
         
         // Create JSON with DO NOT EDIT header
@@ -135,9 +176,9 @@ async function writeJsonConfig(config) {
         
         // Write formatted JSON
         const jsonContent = JSON.stringify(configWithHeader, null, 2);
-        await fs.writeFile(CONFIG_PATHS.output, jsonContent, 'utf8');
+        await fs.writeFile(currentConfig.output, jsonContent, 'utf8');
         
-        const stats = await fs.stat(CONFIG_PATHS.output);
+        const stats = await fs.stat(currentConfig.output);
         console.log(chalk.green('✅ JSON config written:'), `${(stats.size / 1024).toFixed(1)}KB`);
         
     } catch (error) {
@@ -150,8 +191,7 @@ async function writeJsonConfig(config) {
  * Validate generated configuration
  */
 function validateConfig(config) {
-    // Suppress logging during tests to avoid console pollution
-    const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST;
+    const isTestEnv = isTestEnvironment();
     
     if (!isTestEnv) {
         console.log(`🔍 Validating generated configuration...`);
@@ -223,7 +263,7 @@ async function buildConfig() {
         
         const duration = ((performance.now() - startTime) / 1000).toFixed(2);
         console.log(`🎉 Configuration build completed in ${duration}s`);
-        console.log(`📁 Output: ${CONFIG_PATHS.output}`);
+        console.log(`📁 Output: ${currentConfig.output}`);
         
         return optimizedConfig;
         
@@ -237,9 +277,9 @@ async function buildConfig() {
  * Watch mode for development
  */
 async function watchMode() {
-    console.log(`👀 Starting watch mode for: ${CONFIG_PATHS.input}`);
+    console.log(`👀 Starting watch mode for: ${currentConfig.input}`);
     
-    const watcher = fs.watch(CONFIG_PATHS.input, { persistent: true });
+    const watcher = fs.watch(currentConfig.input, { persistent: true });
     
     for await (const event of watcher) {
         if (event.eventType === 'change') {
