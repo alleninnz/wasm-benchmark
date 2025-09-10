@@ -4,7 +4,7 @@
 # Declare all phony targets (targets that don't create files)
 .PHONY: help init python-deps build build-rust build-tinygo build-all run run-headed run-quick \
         collect analyze report all all-clean all-quick clean clean-results clean-all \
-        dev-setup lint lint-python lint-rust lint-go format format-python format-rust format-go \
+        lint lint-python lint-rust lint-go format format-python format-rust format-go \
         test status info check-deps
 
 .DEFAULT_GOAL := help
@@ -304,16 +304,6 @@ clean-all: clean clean-results ## Clean everything including dependencies
 # ============================================================================
 # Development Targets
 # ============================================================================
-
-dev-setup: init ## Setup development environment with additional tools
-	$(call log_step,Setting up development environment...)
-	@if [ -f setup.py ] || [ -f pyproject.toml ]; then \
-		python3 -m pip install --user -e .; \
-		$(call log_success,Development environment ready); \
-	else \
-		$(call log_warning,No setup.py or pyproject.toml found, skipping editable install); \
-		$(call log_success,Basic development environment ready); \
-	fi
 
 lint: lint-python lint-rust lint-go ## Run all code quality checks
 	$(call log_success,All linting completed)
