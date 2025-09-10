@@ -66,6 +66,23 @@ app.get('/', (req, res) => {
   }
 });
 
+// Serve JavaScript files at root level for bench.html compatibility
+// This fixes the 404 errors when bench.html loads ./wasm_loader.js, ./config_loader.js, ./bench.js
+const webJSFiles = ['wasm_loader.js', 'config_loader.js', 'bench.js'];
+webJSFiles.forEach(fileName => {
+  app.get(`/${fileName}`, (req, res) => {
+    const filePath = path.join(__dirname, '../harness/web', fileName);
+    console.log(`📄 Serving root JS file: ${fileName} -> ${filePath}`);
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        console.log(`❌ Failed to serve ${fileName}: ${err.message}`);
+        res.status(404).send(`File not found: ${fileName}`);
+      }
+    });
+  });
+});
+
 // Serve harness directory (web assets, scripts, etc.)
 app.use('/harness', express.static(path.join(__dirname, '../harness'), {
   maxAge: 0, // No caching in development
