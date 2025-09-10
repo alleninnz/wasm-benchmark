@@ -184,20 +184,20 @@ func TestCrossLanguagePrecisionConsistency(t *testing.T) {
 
 	for _, tc := range testCases {
 		result := lcgToFloatRange(tc.lcgValue, tc.min, tc.max)
-		
+
 		// Ensure result is in valid range
 		if result < tc.min || result > tc.max {
-			t.Errorf("Value %f should be in range [%f, %f] for LCG %d", 
+			t.Errorf("Value %f should be in range [%f, %f] for LCG %d",
 				result, tc.min, tc.max, tc.lcgValue)
 		}
-		
+
 		// The result should be deterministic
 		result2 := lcgToFloatRange(tc.lcgValue, tc.min, tc.max)
 		if result != result2 {
-			t.Errorf("Results should be deterministic: %f != %f for LCG %d", 
+			t.Errorf("Results should be deterministic: %f != %f for LCG %d",
 				result, result2, tc.lcgValue)
 		}
-		
+
 		t.Logf("LCG %d -> %.10f", tc.lcgValue, result)
 	}
 }

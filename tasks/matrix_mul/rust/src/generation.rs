@@ -96,13 +96,13 @@ mod tests {
 
         for (lcg_value, min, max) in test_cases {
             let result = lcg_to_float_range(lcg_value, min, max);
-            
+
             // Ensure result is in valid range
             assert!(
                 result >= min && result <= max,
                 "Value {result} should be in range [{min}, {max}] for LCG {lcg_value}"
             );
-            
+
             // The result should be deterministic
             let result2 = lcg_to_float_range(lcg_value, min, max);
             assert_eq!(result, result2, "Results should be deterministic");
