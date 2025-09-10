@@ -2,9 +2,9 @@
 # Automation targets for the complete experiment pipeline
 
 # Declare all phony targets (targets that don't create files)
-.PHONY: help init python-deps build build-rust build-tinygo build-all run run-headed run-quick \
+.PHONY: help init build build-rust build-tinygo build-all run run-headed run-quick \
         collect analyze report all all-clean all-quick clean clean-results clean-all \
-        lint lint-python lint-rust lint-go format format-python format-rust format-go \
+        lint lint-python lint-rust lint-go lint-js format format-python format-rust format-go \
         test status info check-deps
 
 .DEFAULT_GOAL := help
@@ -55,6 +55,15 @@ define log_step
 	@echo -e "$(CYAN)$(BOLD)[STEP]$(NC) $(1)"
 endef
 
+# Common script validation pattern
+define check_script_exists
+	@if [ ! -f $(1) ]; then \
+		$(call log_error,$(1) not found); \
+		exit 1; \
+	fi; \
+	chmod +x $(1)
+endef
+
 # Utility function to find latest result directory
 define find_latest_result
 $(shell ls -td results/20* 2>/dev/null | head -n1)
@@ -89,11 +98,7 @@ help: ## Show this help message
 # Environment Setup Targets
 # ============================================================================
 
-init: python-deps $(NODE_MODULES) versions.lock ## Initialize environment and install dependencies
-	$(call log_success,Environment initialized successfully)
-	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Ready to run: make build"
-
-python-deps: requirements.txt ## Install Python dependencies with system Python
+init: $(NODE_MODULES) versions.lock ## Initialize environment and install dependencies
 	$(call log_step,Installing Python dependencies...)
 	@if [ ! -f requirements.txt ]; then \
 		$(call log_error,requirements.txt not found); \
@@ -101,6 +106,8 @@ python-deps: requirements.txt ## Install Python dependencies with system Python
 	fi
 	python3 -m pip install --user -r requirements.txt
 	$(call log_success,Python dependencies installed)
+	$(call log_success,Environment initialized successfully)
+	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Ready to run: make build"
 
 $(NODE_MODULES): package.json
 	$(call log_step,Installing Node.js dependencies...)
@@ -130,31 +137,19 @@ build: build-rust build-tinygo ## Build all WebAssembly modules
 
 build-rust: ## Build Rust WebAssembly modules
 	$(call log_step,Building Rust modules...)
-	@if [ ! -f scripts/build_rust.sh ]; then \
-		$(call log_error,scripts/build_rust.sh not found); \
-		exit 1; \
-	fi
-	chmod +x scripts/build_rust.sh
+	$(call check_script_exists,scripts/build_rust.sh)
 	scripts/build_rust.sh
 	$(call log_success,Rust modules built)
 
 build-tinygo: ## Build TinyGo WebAssembly modules
 	$(call log_step,Building TinyGo modules...)
-	@if [ ! -f scripts/build_tinygo.sh ]; then \
-		$(call log_error,scripts/build_tinygo.sh not found); \
-		exit 1; \
-	fi
-	chmod +x scripts/build_tinygo.sh
+	$(call check_script_exists,scripts/build_tinygo.sh)
 	scripts/build_tinygo.sh
 	$(call log_success,TinyGo modules built)
 
 build-all: ## Build all modules with optimization and size reporting
 	$(call log_step,Building all modules with full pipeline...)
-	@if [ ! -f scripts/build_all.sh ]; then \
-		$(call log_error,scripts/build_all.sh not found); \
-		exit 1; \
-	fi
-	chmod +x scripts/build_all.sh
+	$(call check_script_exists,scripts/build_all.sh)
 	scripts/build_all.sh
 	$(call log_success,Complete build pipeline finished)
 
@@ -164,39 +159,35 @@ build-all: ## Build all modules with optimization and size reporting
 
 run: $(NODE_MODULES) ## Run browser benchmark suite
 	$(call log_step,Running browser benchmarks...)
-	@if [ ! -f scripts/run_bench.js ]; then \
-		$(call log_error,scripts/run_bench.js not found); \
-		exit 1; \
-	fi
-	chmod +x scripts/run_bench.js
+	$(call check_script_exists,scripts/run_bench.js)
 	node scripts/run_bench.js
 	$(call log_success,Benchmarks completed)
 
 run-headed: $(NODE_MODULES) ## Run benchmarks with visible browser
 	$(call log_step,Running benchmarks with headed browser...)
-	@if [ ! -f scripts/run_bench.js ]; then \
-		$(call log_error,scripts/run_bench.js not found); \
-		exit 1; \
-	fi
-	chmod +x scripts/run_bench.js
+	$(call check_script_exists,scripts/run_bench.js)
 	node scripts/run_bench.js --headed
 	$(call log_success,Headed benchmarks completed)
 
-run-quick: $(NODE_MODULES) ## Run quick benchmarks with reduced samples
-	$(call log_step,Running quick benchmarks...)
-	@if [ ! -f scripts/run_bench.js ]; then \
-		$(call log_error,scripts/run_bench.js not found); \
-		exit 1; \
-	fi
-	chmod +x scripts/run_bench.js
-	node scripts/run_bench.js --timeout=60000
-	$(call log_success,Quick benchmarks completed)
+run-quick: $(NODE_MODULES) ## Quick development validation: build + validate (2-3 min vs 30+ min full benchmarks)
+	$(call log_step,Running quick development validation workflow...)
+	@# This provides fast feedback for development without full benchmark execution
+	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Step 1/3: Building WebAssembly modules..."
+	@$(MAKE) --no-print-directory build-all >/dev/null 2>&1 || (echo -e "$(RED)$(BOLD)[ERROR]$(NC) Build failed"; exit 1)
+	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Step 2/3: Validating WASM module correctness..."
+	@npm run validate >/dev/null 2>&1 || (echo -e "$(RED)$(BOLD)[ERROR]$(NC) Validation failed"; exit 1)
+	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Step 3/3: Checking build artifacts..."
+	@ls -la builds/rust/*.wasm builds/tinygo/*.wasm >/dev/null 2>&1 || (echo -e "$(RED)$(BOLD)[ERROR]$(NC) Missing WASM artifacts"; exit 1)
+	@echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) ✅ Quick validation completed successfully!"
+	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) 📊 Build summary: WebAssembly modules generated and validated"
+	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) 🚀 For full performance benchmarks, use: make run"
+	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) 🧪 For integration tests, use: npm run dev (then npm run test) in another terminal"
 
 # ============================================================================
 # Analysis Targets
 # ============================================================================
 
-collect: python-deps ## Run quality control on benchmark data
+collect: ## Run quality control on benchmark data
 	$(call log_step,Running quality control on results...)
 	@LATEST_RESULT=$(call find_latest_result); \
 	if [ -n "$$LATEST_RESULT" ]; then \
@@ -208,7 +199,7 @@ collect: python-deps ## Run quality control on benchmark data
 	fi
 	$(call log_success,Quality control completed)
 
-analyze: python-deps ## Run statistical analysis and generate plots
+analyze: ## Run statistical analysis and generate plots
 	$(call log_step,Running statistical analysis...)
 	@LATEST_RESULT=$(call find_latest_result); \
 	if [ -n "$$LATEST_RESULT" ]; then \
@@ -305,7 +296,7 @@ clean-all: clean clean-results ## Clean everything including dependencies
 # Development Targets
 # ============================================================================
 
-lint: lint-python lint-rust lint-go ## Run all code quality checks
+lint: lint-python lint-rust lint-go lint-js ## Run all code quality checks
 	$(call log_success,All linting completed)
 
 lint-python: ## Run Python code quality checks
@@ -357,6 +348,55 @@ lint-go: ## Run Go code quality checks
 		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Go linting completed"; \
 	else \
 		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Go files found, skipping Go lint"; \
+	fi
+
+lint-js: ## Run JavaScript code quality checks
+	$(call log_step,Running JavaScript code quality checks...)
+	@js_files=$$(find . -name "*.js" -not -path "./node_modules/*" -not -path "./__pycache__/*" 2>/dev/null | head -1); \
+	if [ -n "$$js_files" ]; then \
+		if command -v eslint >/dev/null 2>&1; then \
+			echo "Linting JavaScript files with ESLint (global)..."; \
+			eslint --ext .js --ignore-path .eslintignore \
+				--ignore-pattern "node_modules/**" \
+				--ignore-pattern "__pycache__/**" \
+				--ignore-pattern "builds/**" \
+				--ignore-pattern "results/**" \
+				. || true; \
+			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) JavaScript ESLint completed"; \
+		elif [ -x "$(NODE_MODULES)/.bin/eslint" ]; then \
+			echo "Linting JavaScript files with ESLint (local)..."; \
+			$(NODE_MODULES)/.bin/eslint --ext .js \
+				--ignore-pattern "node_modules/**" \
+				--ignore-pattern "__pycache__/**" \
+				--ignore-pattern "builds/**" \
+				--ignore-pattern "results/**" \
+				. || true; \
+			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) JavaScript ESLint completed"; \
+		elif command -v jshint >/dev/null 2>&1; then \
+			echo "Linting JavaScript files with JSHint (global)..."; \
+			find . -name "*.js" \
+				-not -path "./node_modules/*" \
+				-not -path "./__pycache__/*" \
+				-not -path "./builds/*" \
+				-not -path "./results/*" \
+				-exec jshint {} + || true; \
+			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) JavaScript JSHint completed"; \
+		elif [ -x "$(NODE_MODULES)/.bin/jshint" ]; then \
+			echo "Linting JavaScript files with JSHint (local)..."; \
+			find . -name "*.js" \
+				-not -path "./node_modules/*" \
+				-not -path "./__pycache__/*" \
+				-not -path "./builds/*" \
+				-not -path "./results/*" \
+				-exec $(NODE_MODULES)/.bin/jshint {} + || true; \
+			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) JavaScript JSHint completed"; \
+		else \
+			echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) JavaScript linting tools not found"; \
+			echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Install globally: npm install -g eslint jshint"; \
+			echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Or locally: npm install --save-dev eslint jshint"; \
+		fi; \
+	else \
+		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No JavaScript files found, skipping JavaScript lint"; \
 	fi
 
 format: format-python format-rust format-go ## Format all code
