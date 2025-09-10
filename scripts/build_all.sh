@@ -9,6 +9,20 @@ source "${SCRIPT_DIR}/common.sh"
 
 # Configuration (BUILDS_DIR already defined in common.sh)
 
+# Portable size formatting function for cross-platform compatibility
+format_size() {
+    local size=$1
+    if [ "$size" -ge 1073741824 ]; then
+        printf "%.1fGiB" $(echo "scale=1; $size / 1073741824" | bc -l)
+    elif [ "$size" -ge 1048576 ]; then
+        printf "%.1fMiB" $(echo "scale=1; $size / 1048576" | bc -l)
+    elif [ "$size" -ge 1024 ]; then
+        printf "%.1fKiB" $(echo "scale=1; $size / 1024" | bc -l)
+    else
+        printf "%dB" "$size"
+    fi
+}
+
 # Print usage
 usage() {
     cat << EOF
@@ -187,10 +201,10 @@ display_summary() {
     
     echo "Language    | Tasks | Total Size"
     echo "------------|-------|------------"
-    printf "%-11s | %5d | %10s\n" "Rust" "${rust_count}" "$(numfmt --to=iec-i --suffix=B ${total_rust_size})"
-    printf "%-11s | %5d | %10s\n" "TinyGo" "${tinygo_count}" "$(numfmt --to=iec-i --suffix=B ${total_tinygo_size})"
+    printf "%-11s | %5d | %10s\n" "Rust" "${rust_count}" "$(format_size ${total_rust_size})"
+    printf "%-11s | %5d | %10s\n" "TinyGo" "${tinygo_count}" "$(format_size ${total_tinygo_size})"
     echo "------------|-------|------------"
-    printf "%-11s | %5d | %10s\n" "Total" "$((rust_count + tinygo_count))" "$(numfmt --to=iec-i --suffix=B $((total_rust_size + total_tinygo_size)))"
+    printf "%-11s | %5d | %10s\n" "Total" "$((rust_count + tinygo_count))" "$(format_size $((total_rust_size + total_tinygo_size)))"
     echo
     
     if [[ -f "${BUILDS_DIR}/sizes.csv" ]]; then

@@ -9,7 +9,7 @@ source "${SCRIPT_DIR}/common.sh"
 
 # Configuration
 TASKS_DIR="${PROJECT_ROOT}/tasks"
-TINYGO_OUTPUT_DIR="${BUILDS_DIR}/tinygo"
+TINYGO_BUILDS_DIR="${BUILDS_DIR}/tinygo"
 WASM_TARGET="wasm"
 
 # Check if Go and TinyGo toolchain is available
