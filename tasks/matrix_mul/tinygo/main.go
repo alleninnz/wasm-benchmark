@@ -156,11 +156,16 @@ func linearCongruentialGenerator(seed *uint32) uint32 {
 }
 
 // lcgToFloatRange converts LCG value to float32 in specified range [min, max]
+// Uses standardized precision to ensure cross-language consistency
 func lcgToFloatRange(lcgValue uint32, min, max float32) float32 {
-	// Convert uint32 to [0, 1] range
+	// Convert uint32 to [0, 1] range with explicit f64 precision
 	normalized := float64(lcgValue) / float64(math.MaxUint32)
-	// Scale to [min, max] range
-	return float32(float64(min) + normalized*float64(max-min))
+	// Pre-convert range to f64 for identical behavior with Rust
+	minF64 := float64(min)
+	maxF64 := float64(max)
+	rangeF64 := maxF64 - minF64
+	// Scale to [min, max] range with identical precision
+	return float32(minF64 + normalized*rangeF64)
 }
 
 // Hash computation

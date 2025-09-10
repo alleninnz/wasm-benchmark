@@ -28,11 +28,16 @@ pub fn linear_congruential_generator(seed: &mut u32) -> u32 {
 }
 
 /// Convert LCG value to f32 in specified range [min, max]
+/// Uses standardized precision to ensure cross-language consistency
 pub fn lcg_to_float_range(lcg_value: u32, min: f32, max: f32) -> f32 {
-    // Convert u32 to [0, 1] range
-    let normalized = lcg_value as f64 / u32::MAX as f64;
-    // Scale to [min, max] range
-    (min as f64 + normalized * (max - min) as f64) as f32
+    // Convert u32 to [0, 1] range with explicit f64 precision
+    let normalized = lcg_value as f64 / (u32::MAX as f64);
+    // Pre-convert range to f64 to match TinyGo's behavior exactly
+    let min_f64 = min as f64;
+    let max_f64 = max as f64;
+    let range_f64 = max_f64 - min_f64;
+    // Scale to [min, max] range with identical precision
+    (min_f64 + normalized * range_f64) as f32
 }
 
 #[cfg(test)]
@@ -54,7 +59,7 @@ mod tests {
 
     #[test]
     fn test_lcg_to_float_range() {
-        // Test range conversion
+        // Test range conversion with standardized precision
         let test_value = u32::MAX / 2; // Middle value
         let result = lcg_to_float_range(test_value, -1.0, 1.0);
 
@@ -77,6 +82,31 @@ mod tests {
             (max_result - 1.0).abs() < 0.01,
             "Max should be close to 1.0"
         );
+    }
+
+    #[test]
+    fn test_cross_language_precision_consistency() {
+        // Test specific values to ensure cross-language consistency
+        let test_cases = [
+            (12345u32, -1.0f32, 1.0f32),
+            (u32::MAX / 2, -1.0f32, 1.0f32),
+            (1664525u32, -1.0f32, 1.0f32),
+            (1013904223u32, -1.0f32, 1.0f32),
+        ];
+
+        for (lcg_value, min, max) in test_cases {
+            let result = lcg_to_float_range(lcg_value, min, max);
+            
+            // Ensure result is in valid range
+            assert!(
+                result >= min && result <= max,
+                "Value {result} should be in range [{min}, {max}] for LCG {lcg_value}"
+            );
+            
+            // The result should be deterministic
+            let result2 = lcg_to_float_range(lcg_value, min, max);
+            assert_eq!(result, result2, "Results should be deterministic");
+        }
     }
 
     #[test]

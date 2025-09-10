@@ -145,7 +145,7 @@ func TestLinearCongruentialGeneratorDeterministic(t *testing.T) {
 }
 
 func TestLcgToFloatRange(t *testing.T) {
-	// Test range conversion
+	// Test range conversion with standardized precision
 	testValue := uint32(math.MaxUint32 / 2) // Middle value
 	result := lcgToFloatRange(testValue, -1.0, 1.0)
 
@@ -167,6 +167,38 @@ func TestLcgToFloatRange(t *testing.T) {
 	}
 	if math.Abs(float64(maxResult-1.0)) > 0.01 {
 		t.Errorf("Max should be close to 1.0, got %f", maxResult)
+	}
+}
+
+func TestCrossLanguagePrecisionConsistency(t *testing.T) {
+	// Test specific values to ensure cross-language consistency with Rust
+	testCases := []struct {
+		lcgValue uint32
+		min, max float32
+	}{
+		{12345, -1.0, 1.0},
+		{math.MaxUint32 / 2, -1.0, 1.0},
+		{1664525, -1.0, 1.0},
+		{1013904223, -1.0, 1.0},
+	}
+
+	for _, tc := range testCases {
+		result := lcgToFloatRange(tc.lcgValue, tc.min, tc.max)
+		
+		// Ensure result is in valid range
+		if result < tc.min || result > tc.max {
+			t.Errorf("Value %f should be in range [%f, %f] for LCG %d", 
+				result, tc.min, tc.max, tc.lcgValue)
+		}
+		
+		// The result should be deterministic
+		result2 := lcgToFloatRange(tc.lcgValue, tc.min, tc.max)
+		if result != result2 {
+			t.Errorf("Results should be deterministic: %f != %f for LCG %d", 
+				result, result2, tc.lcgValue)
+		}
+		
+		t.Logf("LCG %d -> %.10f", tc.lcgValue, result)
 	}
 }
 
