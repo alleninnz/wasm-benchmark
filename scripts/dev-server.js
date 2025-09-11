@@ -94,8 +94,8 @@ app.get('/favicon.ico', (req, res) => {
   res.status(204).end(); // No Content - prevents 404 error
 });
 
-// Root route - serve bench.html directly
-app.get('/', (req, res) => {
+// Shared bench.html serving logic
+function serveBenchHtml(res) {
   const benchPath = path.join(__dirname, '../harness/web/bench.html');
   
   if (fs.existsSync(benchPath)) {
@@ -108,6 +108,16 @@ app.get('/', (req, res) => {
       <p>Please ensure the harness is built and available.</p>
     `);
   }
+}
+
+// Root route - serve bench.html directly
+app.get('/', (req, res) => {
+  serveBenchHtml(res);
+});
+
+// Direct bench.html route for compatibility with test files
+app.get('/bench.html', (req, res) => {
+  serveBenchHtml(res);
 });
 
 // Serve JavaScript files at root level for bench.html compatibility
@@ -238,12 +248,26 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Graceful shutdown handling
-process.on('SIGTERM', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
-  await writeLog('SERVER SHUTDOWN - SIGTERM received');
-  process.exit(0);
-});
+// Test-environment-aware shutdown handling
+function isTestEnvironment() {
+  return process.env.NODE_ENV === 'test' || 
+         process.env.npm_lifecycle_event?.includes('test') ||
+         process.argv.some(arg => arg.includes('vitest') || arg.includes('test'));
+}
+
+// Graceful shutdown handling - be less aggressive in test environments
+if (!isTestEnvironment()) {
+  process.on('SIGTERM', async () => {
+    console.log('\n🛑 Shutting down gracefully...');
+    await writeLog('SERVER SHUTDOWN - SIGTERM received');
+    process.exit(0);
+  });
+} else {
+  process.on('SIGTERM', async () => {
+    console.log('\n⚠️  SIGTERM received in test environment - ignoring');
+    await writeLog('SERVER SIGTERM ignored in test environment');
+  });
+}
 
 process.on('SIGINT', async () => {
   console.log('\n🛑 Shutting down gracefully...');

@@ -23,6 +23,16 @@ const SERVER_STARTUP_TIMEOUT = 30000; // 30 seconds
 const SERVER_POLL_INTERVAL = 500;     // 500ms
 
 /**
+ * Detect if we're running in a test environment
+ * @returns {boolean} True if in test environment
+ */
+function isTestEnvironment() {
+  return process.env.NODE_ENV === 'test' || 
+         process.env.npm_lifecycle_event?.includes('test') ||
+         process.argv.some(arg => arg.includes('vitest') || arg.includes('test'));
+}
+
+/**
  * Server status checker
  * @param {number} port - Server port to check
  * @returns {Promise<boolean>} Server running status
@@ -68,10 +78,13 @@ async function startServer(port = null) {
   
   return new Promise((resolve) => {
     // Start server with PORT environment variable
+    // In test environments, detach process to prevent signal inheritance
+    const shouldDetach = isTestEnvironment();
+    
     serverProcess = spawn('npm', ['run', 'serve'], {
       env: { ...process.env, PORT: targetPort.toString() },
       stdio: ['ignore', 'pipe', 'pipe'],
-      detached: false
+      detached: shouldDetach
     });
 
     let serverStarted = false;
@@ -170,16 +183,27 @@ function cleanupServerProcess() {
   }
 }
 
-// Optional: cleanup on process exit
-process.on('exit', cleanupServerProcess);
-process.on('SIGINT', () => {
-  cleanupServerProcess();
-  process.exit(0);
-});
-process.on('SIGTERM', () => {
-  cleanupServerProcess();
-  process.exit(0);
-});
+// Test-aware cleanup: only cleanup on actual process termination, not worker transitions
+// Only register cleanup for main process termination in non-test environments
+// In test environments, let the test runner manage server lifecycle
+if (!isTestEnvironment()) {
+  process.on('exit', cleanupServerProcess);
+  process.on('SIGINT', () => {
+    cleanupServerProcess();
+    process.exit(0);
+  });
+  process.on('SIGTERM', () => {
+    cleanupServerProcess();
+    process.exit(0);
+  });
+} else {
+  // In test environments, only cleanup on explicit SIGINT (Ctrl+C)
+  process.on('SIGINT', () => {
+    console.log(chalk.yellow('🛑 Received SIGINT, cleaning up server...'));
+    cleanupServerProcess();
+    process.exit(0);
+  });
+}
 
 /**
  * Determines if current test run requires server
