@@ -8,7 +8,7 @@ export class WasmLoader {
         this.loadedModules = new Map();
         this.moduleCache = new Map();
         this.loadingPromises = new Map();
-        
+
         // Constants
         this.REQUIRED_EXPORTS = ['init', 'alloc', 'run_task', 'memory'];
         this.WASM_PAGE_SIZE = 65536;
@@ -67,7 +67,7 @@ export class WasmLoader {
     async _loadModuleInternal(wasmPath, moduleId) {
         try {
             window.logResult(`Loading WASM module: ${moduleId} from ${wasmPath}`);
-            
+
             // Fetch the WASM bytes
             const response = await fetch(wasmPath);
             if (!response.ok) {
@@ -80,10 +80,10 @@ export class WasmLoader {
                     throw new Error(`${errorMsg}. Check network connectivity and server configuration.`);
                 }
             }
-            
+
             const wasmBytes = await response.arrayBuffer();
             window.logResult(`Fetched ${wasmBytes.byteLength} bytes for ${moduleId}`);
-            
+
             // Instantiate the WASM module with imports for both Rust and TinyGo
             const imports = {
                 env: {
@@ -146,13 +146,13 @@ export class WasmLoader {
             };
 
             const { instance } = await WebAssembly.instantiate(wasmBytes, imports);
-            
+
             // Validate required exports
             this._validateModuleExports(instance, moduleId);
-            
+
             window.logResult(`Successfully loaded ${moduleId}`, 'success');
             return instance;
-            
+
         } catch (error) {
             window.logResult(`Failed to load ${moduleId}: ${error.message}`, 'error');
             throw error;
@@ -164,15 +164,15 @@ export class WasmLoader {
      * @private
      */
     _validateModuleExports(instance, moduleId) {
-        const exports = instance.exports;
+        const { exports } = instance;
         const missingExports = [];
-        
+
         for (const exportName of this.REQUIRED_EXPORTS) {
             if (!(exportName in exports)) {
                 missingExports.push(exportName);
             }
         }
-        
+
         if (missingExports.length > 0) {
             throw new Error(
                 `Module ${moduleId} missing required exports: [${missingExports.join(', ')}]. ` +
@@ -198,7 +198,7 @@ export class WasmLoader {
 
     /**
      * Get a loaded module instance
-     * @param {string} moduleId 
+     * @param {string} moduleId
      * @returns {WebAssembly.Instance|null}
      */
     getModule(moduleId) {
@@ -207,18 +207,18 @@ export class WasmLoader {
 
     /**
      * Unload a module and free its resources
-     * @param {string} moduleId 
+     * @param {string} moduleId
      */
     unloadModule(moduleId) {
         if (this.loadedModules.has(moduleId)) {
             window.logResult(`Unloading module: ${moduleId}`);
-            
+
             const instance = this.loadedModules.get(moduleId);
-            
+
             // Clear any cached data for this module
             this.moduleCache.delete(moduleId);
             this.loadedModules.delete(moduleId);
-            
+
             // Clean up WASM memory if possible
             try {
                 // Some WASM modules may export cleanup functions
@@ -228,7 +228,7 @@ export class WasmLoader {
             } catch (e) {
                 // Ignore cleanup errors, not all modules have cleanup
             }
-            
+
             // Force garbage collection if available
             if (typeof window.gc === 'function') {
                 window.gc();
@@ -238,14 +238,14 @@ export class WasmLoader {
 
     /**
      * Get memory usage statistics for a module
-     * @param {string} moduleId 
+     * @param {string} moduleId
      * @returns {Object|null}
      */
     getModuleMemoryStats(moduleId) {
         const instance = this.getModule(moduleId);
         if (!instance) return null;
 
-        const memory = instance.exports.memory;
+        const { memory } = instance.exports;
         return {
             pages: memory.buffer.byteLength / this.WASM_PAGE_SIZE,
             bytes: memory.buffer.byteLength,
@@ -255,8 +255,8 @@ export class WasmLoader {
 
     /**
      * Write data to WASM memory
-     * @param {WebAssembly.Instance} instance 
-     * @param {Uint8Array} data 
+     * @param {WebAssembly.Instance} instance
+     * @param {Uint8Array} data
      * @returns {number} Pointer to allocated data
      */
     writeDataToMemory(instance, data) {
@@ -285,12 +285,12 @@ export class WasmLoader {
             if (ptr === 0) {
                 throw new Error('writeDataToMemory: allocation failed - returned null pointer');
             }
-            
+
             const memView = new Uint8Array(instance.exports.memory.buffer);
             if (ptr + data.length > memView.length) {
                 throw new Error(`writeDataToMemory: allocated memory ${ptr}+${data.length} exceeds buffer size ${memView.length}`);
             }
-            
+
             memView.set(data, ptr);
             return ptr;
         } catch (error) {
@@ -300,9 +300,9 @@ export class WasmLoader {
 
     /**
      * Read data from WASM memory
-     * @param {WebAssembly.Instance} instance 
-     * @param {number} ptr 
-     * @param {number} length 
+     * @param {WebAssembly.Instance} instance
+     * @param {number} ptr
+     * @param {number} length
      * @returns {Uint8Array}
      */
     readDataFromMemory(instance, ptr, length) {
@@ -318,7 +318,7 @@ export class WasmLoader {
         this.loadedModules.clear();
         this.moduleCache.clear();
         this.loadingPromises.clear();
-        
+
         // Force garbage collection if available
         if (typeof window.gc === 'function') {
             window.gc();

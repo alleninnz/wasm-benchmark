@@ -13,7 +13,7 @@ export class LoggingService extends ILoggingService {
         this.enableColors = options.enableColors !== false;
         this.enableTimestamp = options.enableTimestamp === true;
         this.prefix = options.prefix || '';
-        
+
         // Log levels hierarchy: error < warn < info < debug
         this.levels = {
             error: 0,
@@ -56,16 +56,16 @@ export class LoggingService extends ILoggingService {
      */
     info(message, ...args) {
         if (!this.shouldLog('info')) return;
-        
+
         const formattedMessage = this.enableColors
             ? chalk.blue('[INFO]')
             : '[INFO]';
-        
+
         console.log(
-            this.getTimestamp() + 
-            this.getPrefix() + 
-            formattedMessage + ' ' + 
-            message,
+            `${this.getTimestamp() +
+            this.getPrefix() +
+            formattedMessage} ${
+                message}`,
             ...args
         );
     }
@@ -77,16 +77,16 @@ export class LoggingService extends ILoggingService {
      */
     success(message, ...args) {
         if (!this.shouldLog('info')) return;
-        
+
         const formattedMessage = this.enableColors
             ? chalk.green('[SUCCESS]')
             : '[SUCCESS]';
-        
+
         console.log(
-            this.getTimestamp() + 
-            this.getPrefix() + 
-            formattedMessage + ' ' + 
-            message,
+            `${this.getTimestamp() +
+            this.getPrefix() +
+            formattedMessage} ${
+                message}`,
             ...args
         );
     }
@@ -98,16 +98,16 @@ export class LoggingService extends ILoggingService {
      */
     warn(message, ...args) {
         if (!this.shouldLog('warn')) return;
-        
+
         const formattedMessage = this.enableColors
             ? chalk.yellow('[WARNING]')
             : '[WARNING]';
-        
+
         console.warn(
-            this.getTimestamp() + 
-            this.getPrefix() + 
-            formattedMessage + ' ' + 
-            message,
+            `${this.getTimestamp() +
+            this.getPrefix() +
+            formattedMessage} ${
+                message}`,
             ...args
         );
     }
@@ -119,16 +119,16 @@ export class LoggingService extends ILoggingService {
      */
     error(message, ...args) {
         if (!this.shouldLog('error')) return;
-        
+
         const formattedMessage = this.enableColors
             ? chalk.red('[ERROR]')
             : '[ERROR]';
-        
+
         console.error(
-            this.getTimestamp() + 
-            this.getPrefix() + 
-            formattedMessage + ' ' + 
-            message,
+            `${this.getTimestamp() +
+            this.getPrefix() +
+            formattedMessage} ${
+                message}`,
             ...args
         );
     }
@@ -140,16 +140,16 @@ export class LoggingService extends ILoggingService {
      */
     debug(message, ...args) {
         if (!this.shouldLog('debug')) return;
-        
+
         const formattedMessage = this.enableColors
             ? chalk.gray('[DEBUG]')
             : '[DEBUG]';
-        
+
         console.log(
-            this.getTimestamp() + 
-            this.getPrefix() + 
-            formattedMessage + ' ' + 
-            message,
+            `${this.getTimestamp() +
+            this.getPrefix() +
+            formattedMessage} ${
+                message}`,
             ...args
         );
     }
@@ -160,12 +160,12 @@ export class LoggingService extends ILoggingService {
      */
     section(message) {
         if (!this.shouldLog('info')) return;
-        
+
         console.log();
         const line = '======================================';
         const formattedLine = this.enableColors ? chalk.magenta(line) : line;
         const formattedMessage = this.enableColors ? chalk.magenta(` ${message}`) : ` ${message}`;
-        
+
         console.log(this.getTimestamp() + this.getPrefix() + formattedLine);
         console.log(this.getTimestamp() + this.getPrefix() + formattedMessage);
         console.log(this.getTimestamp() + this.getPrefix() + formattedLine);
@@ -180,20 +180,20 @@ export class LoggingService extends ILoggingService {
      */
     progress(message, current, total) {
         if (!this.shouldLog('info')) return;
-        
+
         const percentage = total > 0 ? ((current / total) * 100).toFixed(1) : '0.0';
         const progressBar = this.createProgressBar(current, total);
-        
+
         const formattedMessage = this.enableColors
             ? chalk.cyan('[PROGRESS]')
             : '[PROGRESS]';
-        
+
         console.log(
-            this.getTimestamp() + 
-            this.getPrefix() + 
-            formattedMessage + ' ' + 
-            message + ' ' + 
-            progressBar + ' ' + 
+            `${this.getTimestamp() +
+            this.getPrefix() +
+            formattedMessage} ${
+                message} ${
+                progressBar} ` +
             `${percentage}% (${current}/${total})`
         );
     }
@@ -206,10 +206,10 @@ export class LoggingService extends ILoggingService {
      */
     createProgressBar(current, total, width = 20) {
         if (total === 0) return '[]';
-        
+
         const filled = Math.round((current / total) * width);
         const empty = width - filled;
-        
+
         const bar = '█'.repeat(filled) + '░'.repeat(empty);
         return this.enableColors ? chalk.blue(`[${bar}]`) : `[${bar}]`;
     }
@@ -219,7 +219,7 @@ export class LoggingService extends ILoggingService {
      * @param {string} level - New log level (error, warn, info, debug)
      */
     setLogLevel(level) {
-        if (this.levels.hasOwnProperty(level)) {
+        if (Object.prototype.hasOwnProperty.call(this.levels, level)) {
             this.logLevel = level;
         } else {
             this.warn(`Invalid log level: ${level}. Using 'info' instead.`);

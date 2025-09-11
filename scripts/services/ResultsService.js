@@ -62,7 +62,7 @@ export class ResultsService extends IResultsService {
      */
     updateSummary(result) {
         this.summary.totalTasks++;
-        
+
         if (result.success) {
             this.summary.successfulTasks++;
         } else {
@@ -74,8 +74,8 @@ export class ResultsService extends IResultsService {
         }
 
         // Update success rate
-        this.summary.successRate = this.summary.totalTasks > 0 
-            ? (this.summary.successfulTasks / this.summary.totalTasks) 
+        this.summary.successRate = this.summary.totalTasks > 0
+            ? (this.summary.successfulTasks / this.summary.totalTasks)
             : 0;
     }
 
@@ -87,8 +87,8 @@ export class ResultsService extends IResultsService {
         this.endTime = Date.now();
         this.summary.endTime = new Date(this.endTime).toISOString();
         this.summary.totalExecutionTime = this.endTime - this.startTime;
-        this.summary.averageTaskDuration = this.summary.totalTasks > 0 
-            ? this.summary.totalDuration / this.summary.totalTasks 
+        this.summary.averageTaskDuration = this.summary.totalTasks > 0
+            ? this.summary.totalDuration / this.summary.totalTasks
             : 0;
 
         // Add any additional metadata
@@ -209,7 +209,7 @@ export class ResultsService extends IResultsService {
      */
     generateTextReport(data) {
         const { summary, results } = data;
-        let report = [];
+        const report = [];
 
         // Summary section
         report.push('='.repeat(60));
@@ -229,7 +229,7 @@ export class ResultsService extends IResultsService {
         if (results.length > 0) {
             report.push('DETAILED RESULTS');
             report.push('-'.repeat(40));
-            
+
             results.forEach((result, index) => {
                 report.push(`${index + 1}. ${result.name || 'Unnamed Task'}`);
                 report.push(`   Status: ${result.success ? 'SUCCESS' : 'FAILED'}`);
@@ -253,7 +253,7 @@ export class ResultsService extends IResultsService {
      */
     generateCSVReport(data) {
         const { results } = data;
-        
+
         if (results.length === 0) {
             return 'No results to export';
         }
@@ -324,7 +324,7 @@ export class ResultsService extends IResultsService {
         try {
             const content = await fs.readFile(filepath, 'utf8');
             const data = JSON.parse(content);
-            
+
             if (data.results) {
                 this.results = data.results;
             }
@@ -355,7 +355,7 @@ export class ResultsService extends IResultsService {
      */
     validateResult(result) {
         const required = ['name', 'success'];
-        return required.every(field => result.hasOwnProperty(field));
+        return required.every(field => Object.prototype.hasOwnProperty.call(result, field));
     }
 
     /**
@@ -398,8 +398,8 @@ export class ResultsService extends IResultsService {
     calculateMedian(arr) {
         const sorted = [...arr].sort((a, b) => a - b);
         const mid = Math.floor(sorted.length / 2);
-        return sorted.length % 2 === 0 
-            ? (sorted[mid - 1] + sorted[mid]) / 2 
+        return sorted.length % 2 === 0
+            ? (sorted[mid - 1] + sorted[mid]) / 2
             : sorted[mid];
     }
 }

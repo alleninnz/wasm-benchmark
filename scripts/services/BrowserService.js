@@ -22,7 +22,7 @@ export class BrowserService extends IBrowserService {
      */
     async initialize(browserConfig = {}) {
         this.puppeteer = (await import('puppeteer')).default;
-        
+
         const config = {
             headless: true,
             args: [
@@ -42,10 +42,10 @@ export class BrowserService extends IBrowserService {
         try {
             this.browser = await this.puppeteer.launch(config);
             this.page = await this.browser.newPage();
-            
+
             // Set default timeout
             this.page.setDefaultTimeout(30000);
-            
+
             // Configure console logging
             this.page.on('console', msg => {
                 const type = msg.type();
@@ -83,10 +83,10 @@ export class BrowserService extends IBrowserService {
 
         try {
             await this.page.goto(url, navigationOptions);
-            
+
             // Wait for basic page elements
             await this.page.waitForSelector('body', { timeout: 10000 });
-            
+
         } catch (error) {
             throw new Error(`Failed to navigate to ${url}: ${error.message}`);
         }
@@ -313,7 +313,7 @@ export class BrowserService extends IBrowserService {
             }
         } catch (error) {
             console.warn(chalk.yellow('Browser cleanup warning:'), error.message);
-            
+
             // Force kill if close fails
             if (this.browser && this.browser.process()) {
                 try {
@@ -335,13 +335,13 @@ export class BrowserService extends IBrowserService {
      */
     async emergencyCleanup() {
         console.warn(chalk.yellow('Performing emergency browser cleanup...'));
-        
+
         try {
             // Force close any remaining browser instances
             if (this.browser && this.browser.isConnected && this.browser.isConnected()) {
                 await this.browser.close();
             }
-            
+
         } catch (error) {
             console.warn(chalk.yellow('Emergency cleanup error:'), error.message);
         }

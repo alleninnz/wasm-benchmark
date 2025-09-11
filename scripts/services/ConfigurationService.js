@@ -27,10 +27,10 @@ export class ConfigurationService extends IConfigurationService {
 
             const configContent = fs.readFileSync(configPath, 'utf8');
             const config = JSON.parse(configContent);
-            
+
             // Validate required fields
             this.validateConfig(config);
-            
+
             this.config = this.addDefaults(config);
             return this.config;
         } catch (error) {
@@ -46,7 +46,7 @@ export class ConfigurationService extends IConfigurationService {
     validateConfig(config) {
         const required = ['benchmarks', 'output'];
         const missing = required.filter(field => !config[field]);
-        
+
         if (missing.length > 0) {
             throw new Error(`Missing required config fields: ${missing.join(', ')}`);
         }
@@ -70,7 +70,7 @@ export class ConfigurationService extends IConfigurationService {
     validateBenchmarkConfig(benchmark, index) {
         const required = ['name', 'implementations'];
         const missing = required.filter(field => !benchmark[field]);
-        
+
         if (missing.length > 0) {
             throw new Error(`Benchmark ${index}: Missing required fields: ${missing.join(', ')}`);
         }
@@ -138,7 +138,7 @@ export class ConfigurationService extends IConfigurationService {
      */
     mergeDefaults(config, defaults) {
         const result = { ...config };
-        
+
         for (const [key, value] of Object.entries(defaults)) {
             if (!(key in result)) {
                 result[key] = value;
@@ -146,7 +146,7 @@ export class ConfigurationService extends IConfigurationService {
                 result[key] = this.mergeDefaults(result[key] || {}, value);
             }
         }
-        
+
         return result;
     }
 
@@ -252,9 +252,9 @@ export class ConfigurationService extends IConfigurationService {
             throw new Error('[ConfigurationService] Invalid maxParallel: must be a positive number');
         }
 
-        if (options.failureThreshold && 
-            (typeof options.failureThreshold !== 'number' || 
-             options.failureThreshold < 0 || 
+        if (options.failureThreshold &&
+            (typeof options.failureThreshold !== 'number' ||
+             options.failureThreshold < 0 ||
              options.failureThreshold > 1)) {
             throw new Error('[ConfigurationService] Invalid failureThreshold: must be a number between 0 and 1');
         }

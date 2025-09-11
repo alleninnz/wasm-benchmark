@@ -27,18 +27,18 @@ const __dirname = path.dirname(__filename);
 function parseArgumentValue(args, prefix, parser, defaultValue, validator = null) {
     const arg = args.find(arg => arg.startsWith(prefix));
     if (!arg) return defaultValue;
-    
+
     const value = parser(arg.split('=')[1]);
     if (isNaN(value)) {
         console.warn(`Invalid ${prefix} value, using default: ${defaultValue}`);
         return defaultValue;
     }
-    
+
     if (validator && !validator(value)) {
         console.warn(`${prefix} value out of range, using default: ${defaultValue}`);
         return defaultValue;
     }
-    
+
     return value;
 }
 
@@ -47,7 +47,7 @@ function parseArgumentValue(args, prefix, parser, defaultValue, validator = null
  */
 function parseOptions(args) {
     const isQuick = args.includes('--quick');
-    
+
     return {
         headless: !args.includes('--headed'),
         devtools: args.includes('--devtools'),
@@ -55,23 +55,23 @@ function parseOptions(args) {
         parallel: args.includes('--parallel'),
         quick: isQuick,
         timeout: parseArgumentValue(
-            args, 
-            '--timeout=', 
-            parseInt, 
+            args,
+            '--timeout=',
+            parseInt,
             isQuick ? QUICK_TIMEOUT_MS : DEFAULT_TIMEOUT_MS,
             val => val > 0 && val <= 600000
         ),
         maxParallel: parseArgumentValue(
-            args, 
-            '--max-concurrent=', 
-            parseInt, 
+            args,
+            '--max-concurrent=',
+            parseInt,
             DEFAULT_MAX_PARALLEL,
             val => val > 0 && val <= 20
         ),
         failureThreshold: parseArgumentValue(
-            args, 
-            '--failure-threshold=', 
-            parseFloat, 
+            args,
+            '--failure-threshold=',
+            parseFloat,
             DEFAULT_FAILURE_THRESHOLD,
             val => val >= 0 && val <= 1
         )
@@ -84,7 +84,7 @@ function parseOptions(args) {
 async function main() {
     const args = process.argv.slice(2);
     const options = parseOptions(args);
-    
+
     if (args.includes('--help') || args.includes('-h')) {
         console.log(`
 Usage: node run_bench.js [options]
@@ -113,67 +113,67 @@ Examples:
         return;
     }
 
-    // Initialize services with dependency injection  
-    const logger = new LoggingService({ 
+    // Initialize services with dependency injection
+    const logger = new LoggingService({
         logLevel: options.verbose ? 'debug' : 'info',
         enableColors: true,
         enableTimestamp: false
     });
-    
+
     const configService = new ConfigurationService();
     const browserService = new BrowserService();
     const resultsService = new ResultsService();
     const orchestrator = new BenchmarkOrchestrator(configService, browserService, resultsService);
-    
+
     try {
         logger.section('Initializing Pure Service Architecture');
-        
+
         // Initialize orchestrator with appropriate config
         const configFilename = options.quick ? 'bench-quick.json' : 'bench.json';
         const configPath = path.join(__dirname, '..', 'configs', configFilename);
-        
+
         // Ensure config exists
         if (!fs.existsSync(configPath)) {
             logger.error(`Configuration file not found: ${configPath}`);
             logger.info(`Please run: npm run build:config${options.quick ? ' -- --quick' : ''}`);
             process.exit(1);
         }
-        
+
         await orchestrator.initialize(configPath);
-        
+
         // Execute benchmarks
         const results = await orchestrator.executeBenchmarks(options);
-        
+
         // Save results
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const outputPath = path.join(__dirname, '..', 'results', `benchmark-results-${timestamp}.json`);
         await orchestrator.saveResults(outputPath, 'json');
-        
+
         logger.section('Benchmark Process Completed Successfully');
         logger.success(`Results saved to: ${outputPath}`);
         logger.success(`Total benchmarks: ${results.summary.totalTasks}`);
         logger.success(`Successful: ${results.summary.successfulTasks}`);
         logger.success(`Success rate: ${(results.summary.successRate * 100).toFixed(1)}%`);
-        
+
         if (results.summary.failedTasks > 0) {
             logger.warn(`Failed: ${results.summary.failedTasks}`);
         }
-        
+
         process.exit(0);
-        
+
     } catch (error) {
         logger.error(`Process failed: ${error.message}`);
         if (options.verbose) {
             console.error(error.stack);
         }
-        
+
         // Emergency cleanup
         try {
             await orchestrator.emergencyCleanup();
         } catch (cleanupError) {
             logger.error(`Emergency cleanup failed: ${cleanupError.message}`);
         }
-        
+
         process.exit(1);
     } finally {
         // Graceful cleanup
@@ -185,15 +185,15 @@ Examples:
     }
 }
 
-// Run if executed directly  
+// Run if executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
     main().catch(console.error);
 }
 
 // Export services for external use
-export { 
+export {
     ConfigurationService,
-    BrowserService, 
+    BrowserService,
     ResultsService,
     BenchmarkOrchestrator,
     LoggingService

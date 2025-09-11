@@ -17,15 +17,15 @@ export class ConfigLoader {
     async loadConfig(configPath = null) {
         // Use pre-generated JSON configuration from configs directory
         const jsonPath = '/configs/bench.json';
-        
+
         try {
             window.logResult(`Loading pre-generated configuration from: ${jsonPath}`, 'info');
-            
+
             // Fetch the pre-generated JSON file
             const response = await fetch(jsonPath);
             if (!response.ok) {
                 let errorMsg = `Failed to fetch configuration from ${jsonPath}: ${response.status} ${response.statusText}`;
-                
+
                 if (response.status === 404) {
                     errorMsg += '. Configuration file not found. Run "npm run build:config" to generate the required config file.';
                 } else if (response.status === 403) {
@@ -35,24 +35,24 @@ export class ConfigLoader {
                 } else {
                     errorMsg += '. Check network connectivity and server status.';
                 }
-                
+
                 throw new Error(errorMsg);
             }
-            
+
             // Parse JSON content directly - no YAML service needed!
             this.config = await response.json();
-            
+
             // Validate and process configuration
             this.validateConfig();
             this.processConfig();
-            
+
             window.logResult(`Configuration loaded successfully: ${this.config.experiment.name}`, 'success');
             window.logResult(`Tasks: ${this.config.taskNames.join(', ')}`, 'info');
             window.logResult(`Languages: ${this.config.enabledLanguages.join(', ')}`, 'info');
             window.logResult(`Generated: ${this.config.generated.timestamp}`, 'info');
-            
+
             return this.config;
-            
+
         } catch (error) {
             window.logResult(`Failed to load configuration: ${error.message}`, 'error');
             throw error;
@@ -66,7 +66,7 @@ export class ConfigLoader {
      * @private
      */
     parseValue(value) {
-        if (value.startsWith("'") && value.endsWith("'")) {
+        if (value.startsWith('\'') && value.endsWith('\'')) {
             return value.slice(1, -1);
         }
         if (/^\d+$/.test(value)) {
@@ -80,7 +80,7 @@ export class ConfigLoader {
             const items = value.slice(1, -1).split(',').map(item => item.trim());
             return items.map(item => this.parseValue(item));
         }
-        
+
         return value;
     }
 
@@ -129,13 +129,13 @@ export class ConfigLoader {
      */
     processConfig() {
         // Pre-processed config is already optimized, just add legacy compatibility
-        const config = this.config;
-        
+        const { config } = this;
+
         // Validate environment section exists
         if (!config.environment) {
             throw new Error('Configuration missing environment section');
         }
-        
+
         // Add legacy compatibility fields with safe fallbacks
         config.warmupRuns = config.environment.warmupRuns || 3;
         config.measureRuns = config.environment.measureRuns || 10;
@@ -144,12 +144,12 @@ export class ConfigLoader {
         config.gcThreshold = config.environment.gcThreshold || 100;
         config.memoryMonitoring = config.environment.memoryMonitoring || false;
         config.gcMonitoring = config.environment.gcMonitoring || false;
-        
+
         // Legacy arrays (already present in optimized config)
         config.tasks = config.taskNames || [];
         config.languages = config.enabledLanguages || [];
         config.scales = config.availableScales || ['small', 'medium', 'large'];
-        
+
         // Validate critical arrays are populated
         if (config.tasks.length === 0) {
             throw new Error('Configuration has no tasks defined');
@@ -157,7 +157,7 @@ export class ConfigLoader {
         if (config.languages.length === 0) {
             throw new Error('Configuration has no languages enabled');
         }
-        
+
         window.logResult('Configuration processing completed (pre-optimized)', 'success');
     }
 

@@ -14,14 +14,14 @@ export class BenchmarkRunner {
         this.currentConfig = config;
         this.isRunning = false;
         this.cancelled = false;
-        
+
         // Constants
         this.DEFAULT_RANDOM_SEED = 12345;
         this.MAX_CONFIG_TIMEOUT = 5 * 60 * 1000; // 5 minutes
         this.MAX_RUNS = 1000;
         this.MEMORY_THRESHOLD_MB = 500;
         this.GC_INTERVAL_MS = 100;
-        
+
         // Initialize random number generator (will be configured from config)
         this.randomSeed = this.DEFAULT_RANDOM_SEED;
         this.random = this._xorshift32(this.randomSeed);
@@ -64,13 +64,13 @@ export class BenchmarkRunner {
         } else {
             this.currentConfig = config;
         }
-        
+
         // Apply configuration to instance
         this._applyConfig(config);
-        
+
         window.logResult('Initializing benchmark runner', 'success');
         window.logResult(`Config loaded: ${config.tasks.length} tasks, ${config.languages.length} languages`);
-        
+
         // Update global state
         window.benchmarkState.status = 'initialized';
         window.benchmarkState.totalRuns = this._calculateTotalRuns(config);
@@ -86,7 +86,7 @@ export class BenchmarkRunner {
             this.randomSeed = config.verification.hash_offset_basis;
             this.random = this._xorshift32(this.randomSeed);
         }
-        
+
         // Store config reference for easy access
         this.config = config;
     }
@@ -120,34 +120,34 @@ export class BenchmarkRunner {
         this.isRunning = true;
         this.cancelled = false;
         this.results = [];
-        
+
         try {
             await this.initialize(config);
-            
+
             // Use the initialized configuration
             const activeConfig = this.currentConfig;
-            
+
             window.benchmarkState.status = 'running';
             window.logResult('Starting benchmark suite execution', 'success');
 
             for (const taskName of activeConfig.tasks) {
                 if (this.cancelled) break;
-                
+
                 for (const language of activeConfig.languages) {
                     if (this.cancelled) break;
-                    
+
                     for (const scale of activeConfig.scales) {
                         if (this.cancelled) break;
-                        
+
                         await this._runTaskBenchmark(taskName, language, scale, activeConfig);
                     }
                 }
             }
-            
+
             window.benchmarkState.status = this.cancelled ? 'cancelled' : 'completed';
-            window.logResult(`Benchmark suite ${this.cancelled ? 'cancelled' : 'completed'}`, 
-                           this.cancelled ? 'warning' : 'success');
-            
+            window.logResult(`Benchmark suite ${this.cancelled ? 'cancelled' : 'completed'}`,
+                this.cancelled ? 'warning' : 'success');
+
         } catch (error) {
             window.benchmarkState.status = 'error';
             window.logResult(`Benchmark suite failed: ${error.message}`, 'error');
@@ -155,7 +155,7 @@ export class BenchmarkRunner {
         } finally {
             this.isRunning = false;
         }
-        
+
         return this.results;
     }
 
@@ -166,46 +166,46 @@ export class BenchmarkRunner {
     async _runTaskBenchmark(taskName, language, scale, config) {
         const moduleId = `${taskName}-${language}-${scale}`;
         const wasmPath = `/builds/${language}/${taskName}-${language}-o3.wasm`;
-        
+
         window.benchmarkState.currentTask = taskName;
         window.benchmarkState.currentLang = language;
-        
+
         window.logResult(`Running ${taskName} (${language}, ${scale})`);
-        
+
         try {
             // Load the WASM module
             const instance = await this.loader.loadModule(wasmPath, moduleId);
-            
+
             // Initialize with seed
             instance.exports.init(this.randomSeed);
-            
+
             // Generate input data based on task and scale
             const inputData = this._generateInputData(taskName, scale, config);
-            
+
             // Write input data to WASM memory
             const dataPtr = this.loader.writeDataToMemory(instance, inputData);
-            
+
             // Warmup runs (discard results)
             window.logResult(`Warmup runs: ${config.warmupRuns}`);
             for (let i = 0; i < config.warmupRuns; i++) {
                 if (this.cancelled) return;
-                
+
                 window.benchmarkState.currentRun = i + 1;
                 instance.exports.run_task(dataPtr);
-                
+
                 // Garbage collection hint between warmup runs
                 if (typeof window.gc === 'function') {
                     window.gc();
                 }
             }
-            
+
             // Measurement runs
             window.logResult(`Measurement runs: ${config.measureRuns}`);
             for (let i = 0; i < config.measureRuns; i++) {
                 if (this.cancelled) return;
-                
+
                 window.benchmarkState.currentRun = config.warmupRuns + i + 1;
-                
+
                 const result = await this._measureSingleRun(instance, dataPtr, {
                     task: taskName,
                     language: language,
@@ -214,19 +214,19 @@ export class BenchmarkRunner {
                     moduleId: moduleId,
                     inputData: inputData
                 });
-                
+
                 this.results.push(result);
                 window.benchmarkState.successfulRuns++;
-                
+
                 // Update progress
                 const totalCompleted = window.benchmarkState.successfulRuns + window.benchmarkState.failedRuns;
                 window.benchmarkState.progress = (totalCompleted / window.benchmarkState.totalRuns) * 100;
             }
-            
+
         } catch (error) {
             window.benchmarkState.failedRuns++;
             window.logResult(`Failed ${taskName} (${language}, ${scale}): ${error.message}`, 'error');
-            
+
             // Continue with next task rather than failing completely
             this.results.push({
                 task: taskName,
@@ -251,37 +251,37 @@ export class BenchmarkRunner {
         if (typeof window.gc === 'function') {
             window.gc();
         }
-        
+
         // Short delay to stabilize
         await new Promise(resolve => setTimeout(resolve, 10));
-        
+
         // Capture initial memory state
         const memBefore = performance.memory ? {
             used: performance.memory.usedJSHeapSize,
             total: performance.memory.totalJSHeapSize,
             limit: performance.memory.jsHeapSizeLimit
         } : null;
-        
+
         // Measure execution time
         const timeBefore = performance.now();
         const hash = instance.exports.run_task(dataPtr);
         const timeAfter = performance.now();
-        
+
         // Capture final memory state
         const memAfter = performance.memory ? {
             used: performance.memory.usedJSHeapSize,
             total: performance.memory.totalJSHeapSize,
             limit: performance.memory.jsHeapSizeLimit
         } : null;
-        
+
         const executionTime = timeAfter - timeBefore;
-        const memoryDeltaBytes = memAfter && memBefore ? 
+        const memoryDeltaBytes = memAfter && memBefore ?
             Math.max(1024, memAfter.used - memBefore.used) : 1024; // Minimum 1KB for test compatibility
         const memoryDelta = memoryDeltaBytes / (1024 * 1024);
-        
+
         // Get WASM memory statistics
         const wasmMemStats = this.loader.getModuleMemoryStats(metadata.moduleId);
-        
+
         const result = {
             ...metadata,
             executionTime: executionTime,
@@ -296,7 +296,7 @@ export class BenchmarkRunner {
             // Add task-specific result fields for test compatibility
             ...this._generateTaskSpecificFields(metadata.task, metadata.inputData)
         };
-        
+
         return result;
     }
 
@@ -314,20 +314,20 @@ export class BenchmarkRunner {
                     return { recordsProcessed: recordCount };
                 }
                 return {};
-            
+
             case 'matrix_mul':
-                // Extract matrix dimensions from binary parameter data  
+                // Extract matrix dimensions from binary parameter data
                 if (inputData && inputData.length >= 4) {
                     const view = new DataView(inputData.buffer);
                     const dimension = view.getUint32(0, true);
                     return { resultDimensions: [dimension, dimension] };
                 }
                 return {};
-                
+
             case 'mandelbrot':
                 // Mandelbrot doesn't need additional fields for current tests
                 return {};
-                
+
             default:
                 return {};
         }
@@ -340,7 +340,7 @@ export class BenchmarkRunner {
     _generateInputData(taskName, scale, config) {
         const taskConfig = config.taskConfigs[taskName];
         const scaleConfig = taskConfig.scales[scale];
-        
+
         switch (taskName) {
             case 'mandelbrot':
                 return this._generateMandelbrotParams(scaleConfig);
@@ -365,7 +365,7 @@ export class BenchmarkRunner {
         if (scaleConfig.width <= 0 || scaleConfig.height <= 0) {
             throw new Error('Mandelbrot width and height must be positive integers');
         }
-        
+
         const maxIter = scaleConfig.maxIter || scaleConfig.max_iter || 100;
         if (maxIter <= 0) {
             throw new Error('Mandelbrot maxIter must be a positive integer');
@@ -376,19 +376,19 @@ export class BenchmarkRunner {
         const MANDELBROT_CENTER_REAL = -0.743643887037;
         const MANDELBROT_CENTER_IMAG = 0.131825904205;
         const MANDELBROT_SCALE_FACTOR = 3.0; // Zoom level for the Mandelbrot set view
-        
+
         const params = new ArrayBuffer(MANDELBROT_BUFFER_SIZE);
         const view = new DataView(params);
-        
+
         // MandelbrotParams struct layout matching Rust: Width, Height, MaxIter, CenterReal, CenterImag, ScaleFactor
         view.setUint32(0, scaleConfig.width, true);      // Width: uint32
-        view.setUint32(4, scaleConfig.height, true);     // Height: uint32  
+        view.setUint32(4, scaleConfig.height, true);     // Height: uint32
         view.setUint32(8, maxIter, true);                // MaxIter: uint32
         view.setUint32(12, 0, true);                     // Padding for 8-byte alignment
         view.setFloat64(16, MANDELBROT_CENTER_REAL, true);  // CenterReal: float64
         view.setFloat64(24, MANDELBROT_CENTER_IMAG, true);  // CenterImag: float64
         view.setFloat64(32, MANDELBROT_SCALE_FACTOR, true); // ScaleFactor: float64
-        
+
         return new Uint8Array(params);
     }
 
@@ -400,7 +400,7 @@ export class BenchmarkRunner {
     _generateJsonData(scaleConfig) {
         // Handle both test data generator format and simple config format
         let recordCount;
-        
+
         if (scaleConfig.data && scaleConfig.expectedProperties) {
             // Test data generator format - extract record count
             recordCount = scaleConfig.expectedProperties.recordCount;
@@ -410,24 +410,24 @@ export class BenchmarkRunner {
         } else {
             throw new Error('JSON test data requires either recordCount or pre-generated data structure');
         }
-        
+
         if (recordCount <= 0) {
             throw new Error('JSON test data requires positive recordCount parameter');
         }
         if (recordCount > 1000000) {
             throw new Error('JSON test data recordCount cannot exceed 1,000,000 for safety');
         }
-        
+
         try {
             // Create binary parameter structure for WASM module
             // The JSON task expects: [record_count: u32, seed: u32]
             const JSON_PARAMS_SIZE = 8; // 2 * 4 bytes
             const params = new ArrayBuffer(JSON_PARAMS_SIZE);
             const view = new DataView(params);
-            
+
             view.setUint32(0, recordCount, true); // record_count
             view.setUint32(4, this.randomSeed || 12345, true); // seed
-            
+
             return new Uint8Array(params);
         } catch (error) {
             throw new Error(`Failed to create JSON parameters: ${error.message}`);
@@ -441,7 +441,7 @@ export class BenchmarkRunner {
     _generateMatrixData(scaleConfig) {
         // Handle both test data generator format and simple config format
         let dimension;
-        
+
         if (scaleConfig.expectedProperties && scaleConfig.expectedProperties.dimensions) {
             // Test data generator format - extract dimension from expected properties
             dimension = scaleConfig.expectedProperties.dimensions[0]; // Square matrix
@@ -449,28 +449,28 @@ export class BenchmarkRunner {
             // Simple config format
             dimension = scaleConfig.dimension;
         } else if (scaleConfig.size) {
-            // Alternative naming convention 
+            // Alternative naming convention
             dimension = scaleConfig.size;
         } else {
             throw new Error('Matrix test data requires dimension parameter');
         }
-        
+
         if (dimension <= 0) {
             throw new Error('Matrix dimension must be positive');
         }
         if (dimension > 2000) {
             throw new Error('Matrix dimension cannot exceed 2000 for safety');
         }
-        
+
         // Create binary parameter structure for WASM module
         // The matrix task expects: MatrixMulParams { dimension: u32, seed: u32 }
         const MATRIX_PARAMS_SIZE = 8; // 2 * 4 bytes
         const params = new ArrayBuffer(MATRIX_PARAMS_SIZE);
         const view = new DataView(params);
-        
+
         view.setUint32(0, dimension, true); // dimension: u32
         view.setUint32(4, this.randomSeed || 12345, true); // seed: u32
-        
+
         return new Uint8Array(params);
     }
 
@@ -500,7 +500,7 @@ export class BenchmarkRunner {
 
         // Extract and validate task parameters from config
         const { task, language, scale, taskConfig, scaleConfig, warmupRuns, measureRuns, timeout } = config;
-        
+
         if (!task || typeof task !== 'string') {
             throw new Error('runTaskBenchmark: task must be a non-empty string');
         }
@@ -523,12 +523,12 @@ export class BenchmarkRunner {
         this.isRunning = true;
         this.cancelled = false;
         const taskResults = [];
-        
+
         try {
             // Create a compatible config structure for initialization
             const benchConfig = {
                 tasks: [task],
-                languages: [language], 
+                languages: [language],
                 scales: [scale],
                 taskConfigs: {
                     [task]: taskConfig || {}
@@ -542,27 +542,27 @@ export class BenchmarkRunner {
                     timeout: timeout || 60000
                 }
             };
-            
+
             // Initialize with the compatible configuration
             await this.initialize(benchConfig);
-            
+
             window.benchmarkState.status = 'running';
             window.logResult(`Running single task benchmark: ${task}-${language}-${scale}`, 'success');
-            
+
             // Store original results to filter later
             const originalResultsLength = this.results.length;
-            
+
             // Run the specific task benchmark
             await this._runTaskBenchmark(task, language, scale, this.currentConfig);
-            
+
             // Extract only the results from this specific run
             const newResults = this.results.slice(originalResultsLength);
             taskResults.push(...newResults);
-            
+
             window.benchmarkState.status = this.cancelled ? 'cancelled' : 'completed';
-            window.logResult(`Single task benchmark ${this.cancelled ? 'cancelled' : 'completed'}`, 
-                           this.cancelled ? 'warning' : 'success');
-            
+            window.logResult(`Single task benchmark ${this.cancelled ? 'cancelled' : 'completed'}`,
+                this.cancelled ? 'warning' : 'success');
+
         } catch (error) {
             window.benchmarkState.status = 'error';
             window.logResult(`Single task benchmark failed: ${error.message}`, 'error');
@@ -570,7 +570,7 @@ export class BenchmarkRunner {
         } finally {
             this.isRunning = false;
         }
-        
+
         return taskResults;
     }
 
@@ -608,7 +608,7 @@ window.wasmModulesLoaded = {
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await window.benchmarkRunner.initialize();
-        
+
         // Modules are already marked as loaded for on-demand loading
         window.logResult('Benchmark runner initialized, WASM modules ready for on-demand loading', 'success');
     } catch (error) {
