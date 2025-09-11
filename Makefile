@@ -3,7 +3,7 @@
 
 # Declare all phony targets (targets that don't create files)
 .PHONY: help init build build-rust build-tinygo build-all run run-headed run-quick \
-        collect analyze report all all-clean all-quick clean clean-results clean-all \
+        collect analyze report all all-quick clean clean-results clean-all \
         lint lint-python lint-rust lint-go lint-js format format-python format-rust format-go \
         test status info check-deps
 
@@ -249,9 +249,6 @@ all: init build run analyze report ## Run complete experiment pipeline
 		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Results available in: $$LATEST_RESULT"; \
 	fi
 
-all-clean: clean all ## Clean everything and run complete pipeline
-	$(call log_success,Clean rebuild completed!)
-
 all-quick: init build run-quick analyze ## Run quick experiment for development/testing
 	$(call log_success,Quick experiment pipeline completed!)
 
@@ -261,7 +258,8 @@ all-quick: init build run-quick analyze ## Run quick experiment for development/
 
 clean: ## Clean build artifacts and temporary files
 	$(call log_step,Cleaning build artifacts...)
-	rm -rf builds/rust/*.wasm builds/tinygo/*.wasm 2>/dev/null || true
+	find builds/rust -type f ! -name '.gitkeep' -delete 2>/dev/null || true
+	find builds/tinygo -type f ! -name '.gitkeep' -delete 2>/dev/null || true
 	rm -f builds/checksums.txt builds/sizes.csv 2>/dev/null || true
 	find . -name "*.tmp" -delete 2>/dev/null || true
 	find . -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
@@ -273,19 +271,24 @@ clean-results: ## Clean all benchmark results
 	@read -p "Are you sure? This will delete all results [y/N]: " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		rm -rf results/20* 2>/dev/null || true; \
+		rm -rf results/* 2>/dev/null || true; \
 		$(call log_success,Results cleaned); \
 	else \
 		$(call log_info,Operation cancelled); \
 	fi
 
-clean-all: clean clean-results ## Clean everything including dependencies
-	$(call log_warning,Cleaning everything including dependencies...)
-	@read -p "Are you sure? This will delete node_modules [y/N]: " -n 1 -r; \
+clean-all: clean clean-results ## Clean everything including dependencies and caches
+	$(call log_warning,Cleaning everything including dependencies and caches...)
+	@read -p "Are you sure? This will delete node_modules, caches, and logs [y/N]: " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		rm -rf $(NODE_MODULES) 2>/dev/null || true; \
 		rm -f versions.lock 2>/dev/null || true; \
+		rm -f package-lock.json 2>/dev/null || true; \
+		rm -f *.log 2>/dev/null || true; \
+		rm -f test-results.json 2>/dev/null || true; \
+		find tasks/ -name 'target' -type d -exec rm -rf {} + 2>/dev/null || true; \
+		find tasks/ -name 'Cargo.lock' -delete 2>/dev/null || true; \
 		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Complete cleanup finished"; \
 		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Run 'make init' to reinitialize"; \
 	else \
@@ -446,17 +449,24 @@ format-go: ## Format Go code
 		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Go files found, skipping Go format"; \
 	fi
 
-test: ## Run tests (when implemented)
-	$(call log_step,Running tests...)
-	@if [ -d tests ]; then \
+test: ## Run tests (JavaScript and Python)
+	$(call log_step,Running all available tests...)
+	@TEST_RAN=false; \
+	if [ -d tests ]; then \
 		if command -v npm >/dev/null 2>&1 && [ -f package.json ]; then \
-			npm test; \
-		elif command -v python3 >/dev/null 2>&1 && command -v pytest >/dev/null 2>&1; then \
-			python3 -m pytest tests/ -v; \
+			echo -e "$(CYAN)$(BOLD)[STEP]$(NC) Running JavaScript tests..."; \
+			npm test && TEST_RAN=true; \
+		fi; \
+		if command -v python3 >/dev/null 2>&1 && command -v pytest >/dev/null 2>&1; then \
+			echo -e "$(CYAN)$(BOLD)[STEP]$(NC) Running Python tests..."; \
+			python3 -m pytest tests/ -v && TEST_RAN=true; \
+		fi; \
+		if [ "$$TEST_RAN" = "true" ]; then \
+			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) All tests completed"; \
 		else \
 			echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No suitable test runner found (npm or pytest)"; \
+			echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Install with: npm install or pip install pytest"; \
 		fi; \
-		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Tests completed"; \
 	else \
 		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No tests directory found"; \
 		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Create tests/ directory and add your test files"; \
