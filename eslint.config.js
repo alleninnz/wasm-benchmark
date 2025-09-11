@@ -30,6 +30,7 @@ export default [
                 __dirname: 'readonly',
                 __filename: 'readonly',
                 global: 'readonly',
+                AbortController: 'readonly',
 
                 // WebAssembly globals
                 WebAssembly: 'readonly',
@@ -108,7 +109,15 @@ export default [
         rules: {
             // Relax some rules for test files
             'no-unused-expressions': 'off',
-            'max-len': 'off'
+            'max-len': 'off',
+            'no-unused-vars': 'off' // Test files often have unused imports for future use
+        }
+    },
+    {
+        files: ['scripts/interfaces/**/*.js'],
+        rules: {
+            // Interface definitions often have unused parameters
+            'no-unused-vars': 'off'
         }
     },
     {
@@ -118,7 +127,20 @@ export default [
                 // Additional Node.js globals for scripts
                 require: 'readonly',
                 module: 'readonly',
-                exports: 'readonly'
+                exports: 'readonly',
+                chalk: 'readonly'
+            }
+        }
+    },
+    {
+        files: ['scripts/services/BrowserService.js'],
+        languageOptions: {
+            globals: {
+                // Browser APIs used by BrowserService
+                caches: 'readonly',
+                localStorage: 'readonly',
+                sessionStorage: 'readonly',
+                chalk: 'readonly'
             }
         }
     },
