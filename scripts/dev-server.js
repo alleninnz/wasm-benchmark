@@ -4,23 +4,35 @@
  * Development Server for WASM Benchmark
  * Securely serves only harness/ and builds/ directories
  * Direct access to bench.html at root path
+ * Logs all requests to dev-server.log with minimal terminal output
  */
 
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-console.log('🔄 Initializing WASM Benchmark Development Server...');
-
 const app = express();
 const PORT = process.env.PORT || 2025;
 
-console.log(`📍 Target port: ${PORT}`);
+// Log file path
+const LOG_FILE = path.join(__dirname, '../dev-server.log');
+
+// Async log writing function
+async function writeLog(message) {
+  try {
+    const timestamp = new Date().toISOString();
+    const logEntry = `[${timestamp}] ${message}\n`;
+    await fsPromises.appendFile(LOG_FILE, logEntry);
+  } catch (error) {
+    // Silent failure to prevent server crashes from logging issues
+  }
+}
 
 // Enable CORS for all routes
 app.use(cors({
@@ -37,10 +49,43 @@ app.use((req, res, next) => {
   next();
 });
 
-// Request logging for development
+// Enhanced request logging to file with timing and response details
 app.use((req, res, next) => {
-  const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] ${req.method} ${req.url}`);
+  const startTime = Date.now();
+  const userAgent = req.get('User-Agent') || '-';
+  const shortUA = userAgent.length > 60 ? userAgent.substring(0, 57) + '...' : userAgent;
+  const clientIP = req.ip || req.connection.remoteAddress || '-';
+  
+  // Capture response details
+  const originalEnd = res.end;
+  const originalSend = res.send;
+  
+  let responseSize = 0;
+  
+  // Override end method to capture timing
+  res.end = function(chunk, encoding) {
+    if (chunk) {
+      responseSize += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk, encoding);
+    }
+    
+    const duration = Date.now() - startTime;
+    const sizeStr = responseSize > 0 ? `${(responseSize / 1024).toFixed(1)}KB` : '-';
+    
+    // Log format: [timestamp] METHOD path STATUS duration size userAgent [ip]
+    const logMessage = `${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms ${sizeStr} "${shortUA}" [${clientIP}]`;
+    writeLog(logMessage);
+    
+    originalEnd.call(this, chunk, encoding);
+  };
+  
+  // Override send method to capture response size
+  res.send = function(body) {
+    if (body) {
+      responseSize += Buffer.isBuffer(body) ? body.length : Buffer.byteLength(body.toString());
+    }
+    originalSend.call(this, body);
+  };
+  
   next();
 });
 
@@ -52,12 +97,11 @@ app.get('/favicon.ico', (req, res) => {
 // Root route - serve bench.html directly
 app.get('/', (req, res) => {
   const benchPath = path.join(__dirname, '../harness/web/bench.html');
-  console.log(`🏠 Serving bench.html from: ${benchPath}`);
   
   if (fs.existsSync(benchPath)) {
     res.sendFile(benchPath);
   } else {
-    console.log(`❌ bench.html not found at: ${benchPath}`);
+    writeLog(`ERROR: bench.html not found at: ${benchPath}`);
     res.status(404).send(`
       <h1>Benchmark Harness Not Found</h1>
       <p>Could not find bench.html at: ${benchPath}</p>
@@ -72,11 +116,10 @@ const webJSFiles = ['wasm_loader.js', 'config_loader.js', 'bench.js'];
 webJSFiles.forEach(fileName => {
   app.get(`/${fileName}`, (req, res) => {
     const filePath = path.join(__dirname, '../harness/web', fileName);
-    console.log(`📄 Serving root JS file: ${fileName} -> ${filePath}`);
     res.setHeader('Content-Type', 'application/javascript');
     res.sendFile(filePath, (err) => {
       if (err) {
-        console.log(`❌ Failed to serve ${fileName}: ${err.message}`);
+        writeLog(`ERROR: Failed to serve ${fileName}: ${err.message}`);
         res.status(404).send(`File not found: ${fileName}`);
       }
     });
@@ -110,13 +153,12 @@ app.use('/builds', express.static(path.join(__dirname, '../builds'), {
 // Serve essential config files only (bench.json needed for tests)
 app.get('/configs/bench.json', (req, res) => {
   const configPath = path.join(__dirname, '../configs/bench.json');
-  console.log(`🔧 Serving config: ${configPath}`);
   
   if (fs.existsSync(configPath)) {
     res.setHeader('Content-Type', 'application/json');
     res.sendFile(configPath);
   } else {
-    console.log(`❌ bench.json not found at: ${configPath}`);
+    writeLog(`ERROR: bench.json not found at: ${configPath}`);
     res.status(404).json({
       error: 'Configuration not found',
       message: 'bench.json not found. Run "npm run build:config" to generate it.',
@@ -185,7 +227,10 @@ app.use((req, res) => {
 
 // Error handling middleware
 app.use((error, req, res, next) => {
-  console.error('Server Error:', error);
+  const errorMessage = `INTERNAL ERROR: ${req.method} ${req.originalUrl} - ${error.message}`;
+  writeLog(errorMessage);
+  console.error('🚨 Internal Server Error:', error.message);
+  
   res.status(500).json({
     error: 'Internal Server Error',
     message: 'An unexpected error occurred',
@@ -194,27 +239,26 @@ app.use((error, req, res, next) => {
 });
 
 // Graceful shutdown handling
-process.on('SIGTERM', () => {
-  console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
+process.on('SIGTERM', async () => {
+  console.log('\n🛑 Shutting down gracefully...');
+  await writeLog('SERVER SHUTDOWN - SIGTERM received');
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
-  console.log('\n🛑 Received SIGINT, shutting down gracefully...');
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Shutting down gracefully...');
+  await writeLog('SERVER SHUTDOWN - SIGINT received');
   process.exit(0);
 });
 
 // Start the server
-console.log('🔧 Setting up server...');
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log('🚀 WASM Benchmark Development Server');
-  console.log(`📍 Server running on http://localhost:${PORT}`);
-  console.log('📁 Serving directories:');
-  console.log('   • /harness -> harness/');
-  console.log('   • /builds  -> builds/');
-  console.log('   • /configs -> configs/');
-  console.log('🏠 Direct access: http://localhost:' + PORT + ' → bench.html');
+  console.log(`📍 Server: http://localhost:${PORT}`);
+  console.log('📄 Logs: dev-server.log');
   console.log('⏹️  Press Ctrl+C to stop');
+  
+  // Log server startup
+  await writeLog(`SERVER STARTED on port ${PORT}`);
+  await writeLog(`Serving: /harness -> harness/, /builds -> builds/, /configs -> configs/`);
 });
-
-console.log('✅ Server setup complete, waiting for connections...');

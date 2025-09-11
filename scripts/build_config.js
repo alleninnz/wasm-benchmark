@@ -78,15 +78,15 @@ function createOptimizedEnvironment(config) {
     
     // Core environment settings with enhanced timeout support
     const optimizedEnv = {
-        warmupRuns: env.warmup_runs || env.warmupRuns,
-        measureRuns: env.measure_runs || env.measureRuns,
-        repetitions: env.repetitions || DEFAULT_REPETITIONS,
-        timeout: env.timeout_ms || DEFAULT_TIMEOUT_MS,
+        warmupRuns: env.warmup_runs !== undefined ? env.warmup_runs : env.warmupRuns,
+        measureRuns: env.measure_runs !== undefined ? env.measure_runs : env.measureRuns,
+        repetitions: env.repetitions !== undefined ? env.repetitions : DEFAULT_REPETITIONS,
+        timeout: env.timeout_ms !== undefined ? env.timeout_ms : DEFAULT_TIMEOUT_MS,
         taskTimeouts: env.task_timeouts || {},
-        gcThreshold: env.gc_threshold_mb || DEFAULT_GC_THRESHOLD_MB,
-        memoryMonitoring: env.memory_monitoring || true,
-        gcMonitoring: env.gc_monitoring || true,
-        timeoutAsData: env.timeout_as_data || false
+        gcThreshold: env.gc_threshold_mb !== undefined ? env.gc_threshold_mb : DEFAULT_GC_THRESHOLD_MB,
+        memoryMonitoring: env.memory_monitoring !== undefined ? env.memory_monitoring : true,
+        gcMonitoring: env.gc_monitoring !== undefined ? env.gc_monitoring : true,
+        timeoutAsData: env.timeout_as_data !== undefined ? env.timeout_as_data : false
     };
     
     // Preserve other environment settings not handled above
@@ -139,7 +139,9 @@ function optimizeConfig(config) {
     };
     
     // Extract convenience arrays
-    optimized.taskNames = Object.keys(optimized.tasks);
+    optimized.taskNames = Object.keys(optimized.tasks).filter(task => 
+        optimized.tasks[task].enabled !== false
+    );
     optimized.enabledLanguages = Object.keys(optimized.languages).filter(lang => 
         optimized.languages[lang].enabled !== false
     );

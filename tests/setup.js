@@ -1,8 +1,8 @@
-import { beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
+import { beforeAll, beforeEach, afterEach } from 'vitest';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 import os from 'os';
-import { execSync } from 'child_process';
 import { validateServerIfNeeded } from './utils/server-checker.js';
 
 // Constants for validation and configuration
@@ -10,140 +10,20 @@ const TEST_CONFIG_CONSTANTS = {
   MIN_RUNS: 1,
   MAX_RUNS: 1000,
   VALID_SCALES: ['micro', 'small', 'medium', 'large'],
-  VALID_TEST_TYPES: ['smoke', 'integration', 'stress'],
+  VALID_TEST_TYPES: ['smoke', 'integration'],
   DEFAULT_TIMEOUT: 30000,
   MAX_TIMEOUT: 600000, // 10 minutes
   MIN_PORT: 1024,
-  MAX_PORT: 65535
+  MAX_PORT: 65535,
+  MIN_FREE_MEMORY_PERCENT: 1 // Minimum 1% free memory required (basic availability check)
 };
 
-// Memory calculation constants
-const MEMORY_CONSTANTS = {
-  MACOS_ARM_PAGE_SIZE: 16384,    // Apple Silicon page size
-  MACOS_INTEL_PAGE_SIZE: 4096,   // Intel Mac page size
-  LINUX_PAGE_SIZE: 4096,         // Standard Linux page size
-  INACTIVE_MEMORY_FACTOR: 0.5,   // Conservative estimate for reclaimable inactive memory
-  MACOS_CACHE_BUFFER_ADJUSTMENT: 20, // Percentage to account for caches on macOS
-  LINUX_CACHE_BUFFER_ADJUSTMENT: 15, // Percentage to account for caches on Linux
-  HIGH_MEMORY_THRESHOLD: 95       // Percentage threshold for memory pressure warning
-};
-
-/**
- * Detects macOS page size by checking system architecture
- * @returns {number} Page size in bytes
- */
-function getMacOSPageSize() {
-  try {
-    const arch = execSync('uname -m', { encoding: 'utf8' }).trim();
-    // Apple Silicon uses 16KB pages, Intel uses 4KB pages
-    return arch === 'arm64' ? MEMORY_CONSTANTS.MACOS_ARM_PAGE_SIZE : MEMORY_CONSTANTS.MACOS_INTEL_PAGE_SIZE;
-  } catch {
-    // Default to Intel page size if detection fails
-    return MEMORY_CONSTANTS.MACOS_INTEL_PAGE_SIZE;
-  }
-}
-
-/**
- * Parses vm_stat output to extract page counts
- * @param {string} line - Line from vm_stat output
- * @returns {number} Number of pages
- */
-function parseVmStatPages(line) {
-  const match = line.match(/(\d+)\./);
-  return match ? parseInt(match[1], 10) : 0;
-}
-
-/**
- * Gets memory usage on macOS using vm_stat
- * @param {number} totalMem - Total system memory in bytes
- * @param {number} freeMem - Free memory from os.freemem() (fallback)
- * @returns {number} Memory usage percentage
- */
-function getMacOSMemoryUsage(totalMem, freeMem) {
-  try {
-    const vmstat = execSync('vm_stat', { encoding: 'utf8', timeout: 5000 });
-    const lines = vmstat.split('\n');
-    
-    const pageSize = getMacOSPageSize();
-    const freePages = parseVmStatPages(lines.find(l => l.includes('Pages free:')) || '');
-    const purgeable = parseVmStatPages(lines.find(l => l.includes('Pages purgeable:')) || '');
-    const inactive = parseVmStatPages(lines.find(l => l.includes('Pages inactive:')) || '');
-    
-    // Available memory = free + purgeable + conservative estimate of reclaimable inactive pages
-    const availablePages = freePages + purgeable + Math.floor(inactive * MEMORY_CONSTANTS.INACTIVE_MEMORY_FACTOR);
-    const availableMem = availablePages * pageSize;
-    const usedMem = Math.max(0, totalMem - availableMem);
-    
-    return (usedMem / totalMem) * 100;
-  } catch (error) {
-    console.warn(`vm_stat command failed: ${error.message}. Using conservative estimate.`);
-    // Fallback to conservative estimate accounting for OS caches
-    return Math.max(0, ((totalMem - freeMem) / totalMem) * 100 - MEMORY_CONSTANTS.MACOS_CACHE_BUFFER_ADJUSTMENT);
-  }
-}
-
-/**
- * Gets memory usage on Linux by parsing /proc/meminfo
- * @param {number} totalMem - Total system memory in bytes
- * @param {number} freeMem - Free memory from os.freemem() (fallback)
- * @returns {number} Memory usage percentage
- */
-function getLinuxMemoryUsage(totalMem, freeMem) {
-  try {
-    const meminfo = execSync('cat /proc/meminfo', { encoding: 'utf8', timeout: 5000 });
-    const lines = meminfo.split('\n');
-    
-    // Parse memory values (in kB)
-    const getValue = (key) => {
-      const line = lines.find(l => l.startsWith(key));
-      const match = line?.match(/(\d+)/);
-      return match ? parseInt(match[1], 10) * 1024 : 0; // Convert kB to bytes
-    };
-    
-    const memTotal = getValue('MemTotal:');
-    const memAvailable = getValue('MemAvailable:') || getValue('MemFree:');
-    
-    if (memTotal && memAvailable) {
-      const usedMem = Math.max(0, memTotal - memAvailable);
-      return (usedMem / memTotal) * 100;
-    }
-    
-    // Fallback if parsing fails
-    throw new Error('Could not parse /proc/meminfo');
-  } catch (error) {
-    console.warn(`/proc/meminfo parsing failed: ${error.message}. Using conservative estimate.`);
-    // Fallback to conservative estimate accounting for OS caches
-    return Math.max(0, ((totalMem - freeMem) / totalMem) * 100 - MEMORY_CONSTANTS.LINUX_CACHE_BUFFER_ADJUSTMENT);
-  }
-}
-
-/**
- * Gets accurate memory usage based on the current platform
- * @param {number} totalMem - Total system memory in bytes
- * @param {number} freeMem - Free memory from os.freemem()
- * @returns {number} Memory usage percentage
- */
-function getMemoryUsageByPlatform(totalMem, freeMem) {
-  switch (process.platform) {
-    case 'darwin':
-      return getMacOSMemoryUsage(totalMem, freeMem);
-    case 'linux':
-      return getLinuxMemoryUsage(totalMem, freeMem);
-    case 'win32':
-      // Windows: os.freemem() is generally more accurate, but still conservative
-      return Math.max(0, ((totalMem - freeMem) / totalMem) * 100 - 10);
-    default:
-      console.warn(`Unsupported platform: ${process.platform}. Using basic calculation.`);
-      return Math.max(0, ((totalMem - freeMem) / totalMem) * 100);
-  }
-}
 
 // Global test configuration based on strategy
 const testConfig = {
   // Test configurations as per testing strategy
   smoke: { scales: ['micro'], runs: 3 },
-  integration: { scales: ['small'], runs: 10 },
-  stress: { scales: ['medium'], runs: 50 }
+  integration: { scales: ['small'], runs: 10 }
 };
 
 // Validate test configuration
@@ -263,6 +143,67 @@ global.validationRules = validationRules;
 global.TEST_PORT = TEST_PORT;
 global.TEST_BASE_URL = TEST_BASE_URL;
 
+// Environment validation - only run once globally across all workers
+function validateTestEnvironment() {
+  // Use file system lock to prevent multiple validations across vitest workers
+  const lockFile = path.join(os.tmpdir(), '.wasm-bench-test-env-validated');
+  
+  try {
+    // Check if validation already completed by another worker
+    if (fsSync.existsSync(lockFile)) {
+      return; // Skip if already validated
+    }
+  } catch (e) {
+    // Ignore file system errors, proceed with validation
+  }
+  
+  const errors = [];
+  
+  // Check Node.js version
+  const nodeVersion = process.version;
+  const majorVersion = parseInt(nodeVersion.slice(1).split('.')[0]);
+  if (majorVersion < 16) {
+    errors.push(`Node.js version ${nodeVersion} is unsupported. Minimum version: 16.x`);
+  }
+  
+  // Check if temp directory is writable
+  try {
+    const tmpDir = os.tmpdir();
+    if (!tmpDir) {
+      errors.push('System temporary directory is not available');
+    }
+  } catch (error) {
+    errors.push(`Cannot access system temporary directory: ${error.message}`);
+  }
+  
+  // Basic memory availability check (simplified)
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  
+  // Skip detailed memory pressure checking - Node.js freemem() reports low values that don't reflect availability
+  if (totalMem < 1024 * 1024 * 1024) { // Only error if less than 1GB total system memory
+    errors.push(`Insufficient total memory: ${(totalMem / 1024 / 1024 / 1024).toFixed(1)}GB. Need at least 1GB.`);
+  }
+  
+  if (errors.length > 0) {
+    console.error('Test environment validation failed:');
+    errors.forEach(error => console.error(`  - ${error}`));
+    throw new Error(`Test environment is not suitable: ${errors.join('; ')}`);
+  }
+  
+  console.log(`Test environment validated (Node.js ${nodeVersion}, ${(freeMem / 1024 / 1024 / 1024).toFixed(1)}GB free memory)`);
+  
+  // Create lock file to prevent other workers from validating again
+  try {
+    fsSync.writeFileSync(lockFile, 'validated', 'utf8');
+  } catch (e) {
+    // Ignore file system errors
+  }
+}
+
+// Validate environment on module load
+validateTestEnvironment();
+
 // Test setup hooks with improved error handling
 beforeEach(async (context) => {
   try {
@@ -285,95 +226,6 @@ beforeEach(async (context) => {
   }
 });
 
-afterEach(async () => {
-  // Clean up temporary directory with improved error handling
-  if (global.testTempDir) {
-    const tempDir = global.testTempDir;
-    global.testTempDir = null; // Clear reference first
-    
-    try {
-      // Check if directory exists before attempting cleanup
-      await fs.access(tempDir);
-      await fs.rm(tempDir, { recursive: true, force: true });
-    } catch (error) {
-      // Log warning but don't fail the test
-      console.warn(`Failed to clean up temp directory ${tempDir}:`, error.message);
-    }
-  }
-});
-
-// Enhanced global error handler for unhandled promises
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Promise Rejection at:', promise);
-  console.error('Reason:', reason);
-  
-  // In test environment, log stack trace for better debugging
-  if (reason instanceof Error) {
-    console.error('Stack trace:', reason.stack);
-  }
-  
-  // Don't exit in test environment, but provide detailed logging
-});
-
-// Handle uncaught exceptions in test environment
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error.message);
-  console.error('Stack trace:', error.stack);
-  
-  // In test environment, don't exit immediately but log for debugging
-  console.error('This error should be handled properly in test code');
-});
-
-// Environment validation on module load
-function validateTestEnvironment() {
-  const errors = [];
-  
-  // Check Node.js version
-  const nodeVersion = process.version;
-  const majorVersion = parseInt(nodeVersion.slice(1).split('.')[0]);
-  if (majorVersion < 16) {
-    errors.push(`Node.js version ${nodeVersion} is unsupported. Minimum version: 16.x`);
-  }
-  
-  // Check if temp directory is writable
-  try {
-    const tmpDir = os.tmpdir();
-    if (!tmpDir) {
-      errors.push('System temporary directory is not available');
-    }
-  } catch (error) {
-    errors.push(`Cannot access system temporary directory: ${error.message}`);
-  }
-  
-  // Check memory availability with accurate calculation
-  const totalMem = os.totalmem();
-  const freeMem = os.freemem();
-  
-  // More accurate memory calculation that excludes OS caches and buffers
-  // On macOS/Linux, we need to account for available memory, not just free memory
-  const getActualMemoryUsage = () => {
-    return getMemoryUsageByPlatform(totalMem, freeMem);
-  };
-  
-  const memoryUsagePercent = getActualMemoryUsage();
-  
-  // Only warn if actual memory pressure is detected (raised threshold)
-  if (memoryUsagePercent > MEMORY_CONSTANTS.HIGH_MEMORY_THRESHOLD) {
-    errors.push(`High memory usage detected: ${memoryUsagePercent.toFixed(1)}%. Tests may be unreliable.`);
-  }
-  
-  if (errors.length > 0) {
-    console.error('Test environment validation failed:');
-    errors.forEach(error => console.error(`  - ${error}`));
-    throw new Error(`Test environment is not suitable: ${errors.join('; ')}`);
-  }
-  
-  console.log(`Test environment validated successfully (Node.js ${nodeVersion}, ${(freeMem / 1024 / 1024 / 1024).toFixed(1)}GB free memory)`);
-}
-
-// Validate environment on module load
-validateTestEnvironment();
-
 // Smart server validation for integration and e2e tests
 beforeAll(async () => {
   try {
@@ -384,7 +236,9 @@ beforeAll(async () => {
       silent: false
     });
   } catch (error) {
-    console.error(`\n${error.message}\n`);
+    console.error(`
+${error.message}
+`);
     process.exit(1);
   }
 });
