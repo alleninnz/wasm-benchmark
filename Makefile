@@ -64,6 +64,25 @@ define check_script_exists
 	chmod +x $(1)
 endef
 
+# Smart cleanup function with statistics
+define smart_clean
+	@echo -e "$(CYAN)$(BOLD)[CLEANUP]$(NC) Cleaning $(1)..."
+	@BEFORE_SIZE=$$(du -sk $(2) 2>/dev/null | cut -f1 || echo "0"); \
+	FILE_COUNT=$$(find $(2) $(3) 2>/dev/null | wc -l | tr -d ' '); \
+	if [ "$$FILE_COUNT" -gt 0 ]; then \
+		find $(2) $(3) -print0 2>/dev/null | xargs -0 -P4 rm -f 2>/dev/null || true; \
+		AFTER_SIZE=$$(du -sk $(2) 2>/dev/null | cut -f1 || echo "0"); \
+		FREED_KB=$$((BEFORE_SIZE - AFTER_SIZE)); \
+		if [ "$$FREED_KB" -gt 0 ]; then \
+			echo -e "$(GREEN)  ✓$(NC) Cleaned $$FILE_COUNT files, freed $$(numfmt --to=iec --suffix=B $$((FREED_KB * 1024)) 2>/dev/null || echo "$${FREED_KB}KB")"; \
+		else \
+			echo -e "$(YELLOW)  ○$(NC) No files found to clean"; \
+		fi; \
+	else \
+		echo -e "$(YELLOW)  ○$(NC) Directory clean or not found"; \
+	fi
+endef
+
 # Utility function to find latest result directory
 define find_latest_result
 $(shell ls -td results/20* 2>/dev/null | head -n1)
@@ -287,6 +306,7 @@ clean-all: clean clean-results ## Clean everything including dependencies and ca
 		rm -f package-lock.json 2>/dev/null || true; \
 		rm -f *.log 2>/dev/null || true; \
 		rm -f test-results.json 2>/dev/null || true; \
+		rm -f dev-server.log 2>/dev/null || true; \
 		find tasks/ -name 'target' -type d -exec rm -rf {} + 2>/dev/null || true; \
 		find tasks/ -name 'Cargo.lock' -delete 2>/dev/null || true; \
 		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Complete cleanup finished"; \
