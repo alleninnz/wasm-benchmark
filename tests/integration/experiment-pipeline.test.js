@@ -24,7 +24,7 @@ describe('Experiment Pipeline Integration', () => {
     page = await browser.newPage();
     
     // Enable console logging for debugging
-    page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+    // page.on('console', msg => console.log('PAGE LOG:', msg.text()));
     
     await page.goto('http://localhost:2025/bench.html', { 
       waitUntil: 'networkidle0',
