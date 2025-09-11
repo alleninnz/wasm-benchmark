@@ -361,6 +361,30 @@ make all                    # Complete experiment
 - [`configs/bench.yaml`](configs/bench.yaml) — Task parameters & configuration
 - [`analysis/report.md`](analysis/report.md) — Analysis template
 
+## 🛠️ Development
+
+### Code Style & Linting
+
+The project uses **ESLint 9.x** with modern configuration format:
+
+```bash
+# Run linting on all JavaScript files
+npm run lint
+
+# Automatically fix fixable issues
+npm run lint:fix
+
+# Check specific files
+npm run lint -- path/to/file.js
+```
+
+**Configuration:** [`eslint.config.js`](eslint.config.js) — Modern flat config format (ESLint 9.x+)
+- **Indentation:** 4 spaces
+- **Quotes:** Single quotes with template literal support  
+- **Semicolons:** Required
+- **Modern JS:** ES2022 modules, arrow functions, destructuring
+- **Environments:** Node.js (scripts), Browser (harness), Test (Vitest)
+
 ## 🐛 Troubleshooting
 
 <details>

@@ -375,51 +375,41 @@ lint-go: ## Run Go code quality checks
 
 lint-js: ## Run JavaScript code quality checks
 	$(call log_step,Running JavaScript code quality checks...)
-	@js_files=$$(find . -name "*.js" -not -path "./node_modules/*" -not -path "./__pycache__/*" 2>/dev/null | head -1); \
-	if [ -n "$$js_files" ]; then \
-		if command -v eslint >/dev/null 2>&1; then \
-			echo "Linting JavaScript files with ESLint (global)..."; \
-			eslint --ext .js --ignore-path .eslintignore \
+	@JS_FILES=$$(find . -name "*.js" \
+		-not -path "./node_modules/*" \
+		-not -path "./__pycache__/*" \
+		-not -path "./builds/*" \
+		-not -path "./results/*" \
+		-not -path "./tasks/*" \
+		-not -path "./configs/*" \
+		2>/dev/null); \
+	JS_COUNT=$$(echo "$$JS_FILES" | grep -c . 2>/dev/null || echo "0"); \
+	if [ "$$JS_COUNT" -gt 0 ]; then \
+		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Found $$JS_COUNT JavaScript files to lint"; \
+		if [ -x "$(NODE_MODULES)/.bin/eslint" ]; then \
+			echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Using local ESLint installation"; \
+			if $(NODE_MODULES)/.bin/eslint \
+				scripts/ harness/ tests/ \
 				--ignore-pattern "node_modules/**" \
 				--ignore-pattern "__pycache__/**" \
 				--ignore-pattern "builds/**" \
 				--ignore-pattern "results/**" \
-				. || true; \
-			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) JavaScript ESLint completed"; \
-		elif [ -x "$(NODE_MODULES)/.bin/eslint" ]; then \
-			echo "Linting JavaScript files with ESLint (local)..."; \
-			$(NODE_MODULES)/.bin/eslint --ext .js \
-				--ignore-pattern "node_modules/**" \
-				--ignore-pattern "__pycache__/**" \
-				--ignore-pattern "builds/**" \
-				--ignore-pattern "results/**" \
-				. || true; \
-			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) JavaScript ESLint completed"; \
-		elif command -v jshint >/dev/null 2>&1; then \
-			echo "Linting JavaScript files with JSHint (global)..."; \
-			find . -name "*.js" \
-				-not -path "./node_modules/*" \
-				-not -path "./__pycache__/*" \
-				-not -path "./builds/*" \
-				-not -path "./results/*" \
-				-exec jshint {} + || true; \
-			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) JavaScript JSHint completed"; \
-		elif [ -x "$(NODE_MODULES)/.bin/jshint" ]; then \
-			echo "Linting JavaScript files with JSHint (local)..."; \
-			find . -name "*.js" \
-				-not -path "./node_modules/*" \
-				-not -path "./__pycache__/*" \
-				-not -path "./builds/*" \
-				-not -path "./results/*" \
-				-exec $(NODE_MODULES)/.bin/jshint {} + || true; \
-			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) JavaScript JSHint completed"; \
+				--ignore-pattern "tasks/**" \
+				--ignore-pattern "configs/**" \
+				--no-error-on-unmatched-pattern; then \
+				echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) JavaScript linting completed successfully"; \
+			else \
+				echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) ESLint found issues in JavaScript code"; \
+				echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Fix with: $(NODE_MODULES)/.bin/eslint --fix scripts/ harness/ tests/"; \
+			fi; \
 		else \
-			echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) JavaScript linting tools not found"; \
-			echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Install globally: npm install -g eslint jshint"; \
-			echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Or locally: npm install --save-dev eslint jshint"; \
+			echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) Local ESLint not found"; \
+			echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Install with: npm install --save-dev eslint"; \
+			echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Then run: make lint-js"; \
 		fi; \
 	else \
-		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No JavaScript files found, skipping JavaScript lint"; \
+		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No JavaScript files found to lint"; \
+		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Searched in: scripts/, harness/, tests/"; \
 	fi
 
 format: format-python format-rust format-go ## Format all code
