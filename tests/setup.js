@@ -226,7 +226,7 @@ beforeEach(async (context) => {
   }
 });
 
-// Smart server validation for integration and e2e tests
+// Smart server validation for integration
 beforeAll(async () => {
   try {
     const testLevel = process.env.WASM_BENCH_TEST_LEVEL || 'integration';
