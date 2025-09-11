@@ -25,13 +25,10 @@
     "all:clean": "scripts/all_in_one.sh --clean",
     "all:headed": "scripts/all_in_one.sh --headed",
     "clean": "rm -rf builds/* results/20* && find . -name '*.tmp' -delete",
-    "test": "WASM_BENCH_TEST_LEVEL=integration vitest run tests/integration --reporter=verbose --testTimeout=60000",
-    "test:smoke": "WASM_BENCH_TEST_LEVEL=integration VITEST_REPORTER=minimal vitest run tests/unit tests/integration/cross-language.test.js --testTimeout=10000",
-    "test:unit": "WASM_BENCH_TEST_LEVEL=unit vitest run tests/unit --reporter=verbose --testTimeout=5000",
-    "test:integration": "WASM_BENCH_TEST_LEVEL=integration vitest run tests/integration --reporter=verbose --testTimeout=60000",
-    "test:e2e": "WASM_BENCH_TEST_LEVEL=e2e vitest run tests/e2e --reporter=verbose --testTimeout=300000",
-    "test:full": "WASM_BENCH_TEST_LEVEL=full vitest run tests --reporter=verbose --testTimeout=300000",
-    "test:watch": "WASM_BENCH_TEST_LEVEL=integration vitest tests --reporter=verbose --testTimeout=10000"
+    "test": "WASM_BENCH_TEST_LEVEL=full vitest run tests --reporter=verbose --testTimeout=300000 && node tests/utils/prettify-test-results.js",
+    "test:smoke": "WASM_BENCH_TEST_LEVEL=smoke vitest run tests/unit tests/integration/cross-language.test.js --testTimeout=10000 && node tests/utils/prettify-test-results.js",
+    "test:unit": "WASM_BENCH_TEST_LEVEL=unit vitest run tests/unit --reporter=verbose --testTimeout=5000 && node tests/utils/prettify-test-results.js",
+    "test:integration": "WASM_BENCH_TEST_LEVEL=integration vitest run tests/integration --reporter=verbose --testTimeout=60000 && node tests/utils/prettify-test-results.js"
   },
   "repository": {
     "type": "git",
@@ -50,8 +47,8 @@
   "author": "Xingxing Wang",
   "license": "MIT",
   "dependencies": {
-    "chalk": "^5.6.0",
-    "puppeteer": "24.19.0",
+    "chalk": "5.6.2",
+    "puppeteer": "24.20.0",
     "yaml": "^2.8.1"
   },
   "devDependencies": {
