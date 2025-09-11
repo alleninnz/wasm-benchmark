@@ -11,8 +11,8 @@ import { spawn } from 'child_process';
  * Test levels that require a running server
  */
 const SERVER_REQUIRED_LEVELS = [
-  'integration', // Integration tests require the dev server
-  'smoke'        // Smoke tests also require the dev server (mixed unit + integration)
+    'integration', // Integration tests require the dev server
+    'smoke'        // Smoke tests also require the dev server (mixed unit + integration)
 ];
 
 /**
@@ -27,7 +27,7 @@ const SERVER_POLL_INTERVAL = 500;     // 500ms
  * @returns {boolean} True if in test environment
  */
 function isTestEnvironment() {
-  return process.env.NODE_ENV === 'test' || 
+    return process.env.NODE_ENV === 'test' ||
          process.env.npm_lifecycle_event?.includes('test') ||
          process.argv.some(arg => arg.includes('vitest') || arg.includes('test'));
 }
@@ -38,27 +38,27 @@ function isTestEnvironment() {
  * @returns {Promise<boolean>} Server running status
  */
 async function checkServerStatus(port = null) {
-  const targetPort = port || parseInt(process.env.PORT || '2025', 10);
-  
-  return new Promise((resolve) => {
-    const req = http.request({
-      hostname: 'localhost',
-      port: targetPort,
-      method: 'HEAD',
-      path: '/',
-      timeout: 2000
-    }, (res) => {
-      resolve(res.statusCode >= 200 && res.statusCode < 400);
-    });
+    const targetPort = port || parseInt(process.env.PORT || '2025', 10);
 
-    req.on('error', () => resolve(false));
-    req.on('timeout', () => {
-      req.destroy();
-      resolve(false);
-    });
+    return new Promise((resolve) => {
+        const req = http.request({
+            hostname: 'localhost',
+            port: targetPort,
+            method: 'HEAD',
+            path: '/',
+            timeout: 2000
+        }, (res) => {
+            resolve(res.statusCode >= 200 && res.statusCode < 400);
+        });
 
-    req.end();
-  });
+        req.on('error', () => resolve(false));
+        req.on('timeout', () => {
+            req.destroy();
+            resolve(false);
+        });
+
+        req.end();
+    });
 }
 
 /**
@@ -67,73 +67,73 @@ async function checkServerStatus(port = null) {
  * @returns {Promise<boolean>} Success status
  */
 async function startServer(port = null) {
-  const targetPort = port || parseInt(process.env.PORT || '2025', 10);
-  
-  if (serverProcess) {
-    console.log(chalk.yellow('🔄 Server process already running, skipping startup'));
-    return true;
-  }
-  
-  console.log(chalk.blue('🚀 Starting development server...'));
-  
-  return new Promise((resolve) => {
+    const targetPort = port || parseInt(process.env.PORT || '2025', 10);
+
+    if (serverProcess) {
+        console.log(chalk.yellow('🔄 Server process already running, skipping startup'));
+        return true;
+    }
+
+    console.log(chalk.blue('🚀 Starting development server...'));
+
+    return new Promise((resolve) => {
     // Start server with PORT environment variable
     // In test environments, detach process to prevent signal inheritance
-    const shouldDetach = isTestEnvironment();
-    
-    serverProcess = spawn('npm', ['run', 'serve'], {
-      env: { ...process.env, PORT: targetPort.toString() },
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: shouldDetach
+        const shouldDetach = isTestEnvironment();
+
+        serverProcess = spawn('npm', ['run', 'serve'], {
+            env: { ...process.env, PORT: targetPort.toString() },
+            stdio: ['ignore', 'pipe', 'pipe'],
+            detached: shouldDetach
+        });
+
+        let serverStarted = false;
+
+        // Handle server process events
+        serverProcess.stdout?.on('data', (data) => {
+            const output = data.toString();
+            // Look for server startup indicators
+            if (output.includes('Server running') || output.includes(`localhost:${targetPort}`)) {
+                if (!serverStarted) {
+                    serverStarted = true;
+                    console.log(chalk.green('✅ Development server started successfully'));
+                    resolve(true);
+                }
+            }
+        });
+
+        serverProcess.stderr?.on('data', (data) => {
+            const error = data.toString();
+            if (error.includes('EADDRINUSE') || error.includes('address already in use')) {
+                console.log(chalk.yellow('⚠️  Port already in use, assuming server is running'));
+                if (!serverStarted) {
+                    serverStarted = true;
+                    resolve(true);
+                }
+            }
+        });
+
+        serverProcess.on('error', (error) => {
+            console.error(chalk.red('❌ Failed to start server:'), error.message);
+            serverProcess = null;
+            if (!serverStarted) {
+                resolve(false);
+            }
+        });
+
+        serverProcess.on('exit', (code) => {
+            console.log(chalk.yellow(`🔄 Server process exited with code ${code}`));
+            serverProcess = null;
+        });
+
+        // Fallback timeout
+        setTimeout(() => {
+            if (!serverStarted) {
+                console.log(chalk.yellow('⏱️  Server startup timeout, checking status...'));
+                resolve(true); // Continue to status check
+            }
+        }, 10000);
     });
-
-    let serverStarted = false;
-
-    // Handle server process events
-    serverProcess.stdout?.on('data', (data) => {
-      const output = data.toString();
-      // Look for server startup indicators
-      if (output.includes('Server running') || output.includes(`localhost:${targetPort}`)) {
-        if (!serverStarted) {
-          serverStarted = true;
-          console.log(chalk.green('✅ Development server started successfully'));
-          resolve(true);
-        }
-      }
-    });
-
-    serverProcess.stderr?.on('data', (data) => {
-      const error = data.toString();
-      if (error.includes('EADDRINUSE') || error.includes('address already in use')) {
-        console.log(chalk.yellow('⚠️  Port already in use, assuming server is running'));
-        if (!serverStarted) {
-          serverStarted = true;
-          resolve(true);
-        }
-      }
-    });
-
-    serverProcess.on('error', (error) => {
-      console.error(chalk.red('❌ Failed to start server:'), error.message);
-      serverProcess = null;
-      if (!serverStarted) {
-        resolve(false);
-      }
-    });
-
-    serverProcess.on('exit', (code) => {
-      console.log(chalk.yellow(`🔄 Server process exited with code ${code}`));
-      serverProcess = null;
-    });
-
-    // Fallback timeout
-    setTimeout(() => {
-      if (!serverStarted) {
-        console.log(chalk.yellow('⏱️  Server startup timeout, checking status...'));
-        resolve(true); // Continue to status check
-      }
-    }, 10000);
-  });
 }
 
 /**
@@ -142,67 +142,67 @@ async function startServer(port = null) {
  * @returns {Promise<boolean>} Ready status
  */
 async function waitForServerReady(port = null) {
-  const targetPort = port || parseInt(process.env.PORT || '2025', 10);
-  const startTime = Date.now();
-  
-  console.log(chalk.blue('🔍 Waiting for server to be ready...'));
-  
-  while (Date.now() - startTime < SERVER_STARTUP_TIMEOUT) {
-    const isReady = await checkServerStatus(targetPort);
-    
-    if (isReady) {
-      console.log(chalk.green(`✅ Server ready on http://localhost:${targetPort}`));
-      return true;
+    const targetPort = port || parseInt(process.env.PORT || '2025', 10);
+    const startTime = Date.now();
+
+    console.log(chalk.blue('🔍 Waiting for server to be ready...'));
+
+    while (Date.now() - startTime < SERVER_STARTUP_TIMEOUT) {
+        const isReady = await checkServerStatus(targetPort);
+
+        if (isReady) {
+            console.log(chalk.green(`✅ Server ready on http://localhost:${targetPort}`));
+            return true;
+        }
+
+        // Wait before next poll
+        await new Promise(resolve => setTimeout(resolve, SERVER_POLL_INTERVAL));
     }
-    
-    // Wait before next poll
-    await new Promise(resolve => setTimeout(resolve, SERVER_POLL_INTERVAL));
-  }
-  
-  console.error(chalk.red(`❌ Server failed to start within ${SERVER_STARTUP_TIMEOUT / 1000}s timeout`));
-  return false;
+
+    console.error(chalk.red(`❌ Server failed to start within ${SERVER_STARTUP_TIMEOUT / 1000}s timeout`));
+    return false;
 }
 
 /**
  * Cleanup server process (optional - for graceful shutdown)
  */
 function cleanupServerProcess() {
-  if (serverProcess) {
-    console.log(chalk.yellow('🧹 Cleaning up server process...'));
-    try {
-      serverProcess.kill('SIGTERM');
-      setTimeout(() => {
-        if (serverProcess && !serverProcess.killed) {
-          serverProcess.kill('SIGKILL');
+    if (serverProcess) {
+        console.log(chalk.yellow('🧹 Cleaning up server process...'));
+        try {
+            serverProcess.kill('SIGTERM');
+            setTimeout(() => {
+                if (serverProcess && !serverProcess.killed) {
+                    serverProcess.kill('SIGKILL');
+                }
+            }, 5000);
+        } catch (error) {
+            // Ignore cleanup errors
         }
-      }, 5000);
-    } catch (error) {
-      // Ignore cleanup errors
+        serverProcess = null;
     }
-    serverProcess = null;
-  }
 }
 
 // Test-aware cleanup: only cleanup on actual process termination, not worker transitions
 // Only register cleanup for main process termination in non-test environments
 // In test environments, let the test runner manage server lifecycle
 if (!isTestEnvironment()) {
-  process.on('exit', cleanupServerProcess);
-  process.on('SIGINT', () => {
-    cleanupServerProcess();
-    process.exit(0);
-  });
-  process.on('SIGTERM', () => {
-    cleanupServerProcess();
-    process.exit(0);
-  });
+    process.on('exit', cleanupServerProcess);
+    process.on('SIGINT', () => {
+        cleanupServerProcess();
+        process.exit(0);
+    });
+    process.on('SIGTERM', () => {
+        cleanupServerProcess();
+        process.exit(0);
+    });
 } else {
-  // In test environments, only cleanup on explicit SIGINT (Ctrl+C)
-  process.on('SIGINT', () => {
-    console.log(chalk.yellow('🛑 Received SIGINT, cleaning up server...'));
-    cleanupServerProcess();
-    process.exit(0);
-  });
+    // In test environments, only cleanup on explicit SIGINT (Ctrl+C)
+    process.on('SIGINT', () => {
+        console.log(chalk.yellow('🛑 Received SIGINT, cleaning up server...'));
+        cleanupServerProcess();
+        process.exit(0);
+    });
 }
 
 /**
@@ -210,42 +210,42 @@ if (!isTestEnvironment()) {
  * @returns {boolean} Whether server is required
  */
 function requiresServer() {
-  // Method 1: Check npm script context - unit tests never need server
-  const npmLifecycleEvent = process.env.npm_lifecycle_event;
-  
-  if (npmLifecycleEvent === 'test:unit') {
-    return false;
-  }
-  
-  // Method 2: Check test level from environment
-  const testLevel = process.env.WASM_BENCH_TEST_LEVEL;
-  
-  if (testLevel && SERVER_REQUIRED_LEVELS.includes(testLevel)) {
-    return true;
-  }
-  
-  // Method 3: Check if any integration test files are being run
-  // Look at process arguments for tests/integration paths
-  const cmdLine = process.argv.join(' ');
-  if (cmdLine.includes('tests/integration')) {
-    return true;
-  }
-  
-  // Method 4: Check npm script patterns that typically require server
-  if (npmLifecycleEvent) {
-    const serverRequiredScripts = ['test:integration', 'test:smoke', 'test'];
-    if (serverRequiredScripts.includes(npmLifecycleEvent)) {
-      return true;
+    // Method 1: Check npm script context - unit tests never need server
+    const npmLifecycleEvent = process.env.npm_lifecycle_event;
+
+    if (npmLifecycleEvent === 'test:unit') {
+        return false;
     }
-  }
-  
-  // Default to not requiring server for explicit unit test scenarios
-  if (testLevel === 'unit') {
-    return false;
-  }
-  
-  // Conservative default: if unclear, require server
-  return true;
+
+    // Method 2: Check test level from environment
+    const testLevel = process.env.WASM_BENCH_TEST_LEVEL;
+
+    if (testLevel && SERVER_REQUIRED_LEVELS.includes(testLevel)) {
+        return true;
+    }
+
+    // Method 3: Check if any integration test files are being run
+    // Look at process arguments for tests/integration paths
+    const cmdLine = process.argv.join(' ');
+    if (cmdLine.includes('tests/integration')) {
+        return true;
+    }
+
+    // Method 4: Check npm script patterns that typically require server
+    if (npmLifecycleEvent) {
+        const serverRequiredScripts = ['test:integration', 'test:smoke', 'test'];
+        if (serverRequiredScripts.includes(npmLifecycleEvent)) {
+            return true;
+        }
+    }
+
+    // Default to not requiring server for explicit unit test scenarios
+    if (testLevel === 'unit') {
+        return false;
+    }
+
+    // Conservative default: if unclear, require server
+    return true;
 }
 
 /**
@@ -254,90 +254,90 @@ function requiresServer() {
  * @returns {Promise<void>} Throws error if server required but not running
  */
 async function validateServerIfNeeded(options = {}) {
-  const {
-    port = null,
-    silent = false,
-    testContext = 'unknown'
-  } = options;
-  
-  const needsServer = requiresServer();
-  
-  if (!needsServer) {
-    if (!silent) {
-      console.log(chalk.gray('ℹ️  Server check skipped - unit tests only'));
+    const {
+        port = null,
+        silent = false,
+        testContext = 'unknown'
+    } = options;
+
+    const needsServer = requiresServer();
+
+    if (!needsServer) {
+        if (!silent) {
+            console.log(chalk.gray('ℹ️  Server check skipped - unit tests only'));
+        }
+        return;
     }
-    return;
-  }
-  
-  const targetPort = port || parseInt(process.env.PORT || '2025', 10);
-  
-  if (!silent) {
-    console.log(chalk.blue(`🔍 Checking server status for ${testContext} tests...`));
-  }
-  
-  const isRunning = await checkServerStatus(targetPort);
-  
-  if (isRunning) {
+
+    const targetPort = port || parseInt(process.env.PORT || '2025', 10);
+
     if (!silent) {
-      console.log(chalk.green(`✅ Server already running on http://localhost:${targetPort}`));
+        console.log(chalk.blue(`🔍 Checking server status for ${testContext} tests...`));
     }
-    return;
-  }
-  
-  // Server not running - attempt to start it automatically
-  if (!silent) {
-    console.log(chalk.yellow('🚀 Server not running, starting automatically...'));
-  }
-  
-  try {
+
+    const isRunning = await checkServerStatus(targetPort);
+
+    if (isRunning) {
+        if (!silent) {
+            console.log(chalk.green(`✅ Server already running on http://localhost:${targetPort}`));
+        }
+        return;
+    }
+
+    // Server not running - attempt to start it automatically
+    if (!silent) {
+        console.log(chalk.yellow('🚀 Server not running, starting automatically...'));
+    }
+
+    try {
     // Start server
-    const startSuccess = await startServer(targetPort);
-    
-    if (!startSuccess) {
-      throw new Error('Failed to start server process');
+        const startSuccess = await startServer(targetPort);
+
+        if (!startSuccess) {
+            throw new Error('Failed to start server process');
+        }
+
+        // Wait for server to be ready
+        const readySuccess = await waitForServerReady(targetPort);
+
+        if (!readySuccess) {
+            throw new Error('Server started but failed to become ready');
+        }
+
+        if (!silent) {
+            console.log(chalk.green('🎉 Server auto-start completed successfully!'));
+        }
+
+    } catch (error) {
+        console.error(chalk.red('❌ Failed to auto-start development server'));
+        console.error('');
+        console.error(chalk.yellow(`Error: ${error.message}`));
+        console.error(chalk.yellow('Please start the server manually:'));
+        console.error(chalk.cyan('  npm run serve'));
+        console.error(chalk.gray('  # or with auto-open:'));
+        console.error(chalk.cyan('  npm run dev'));
+        console.error('');
+
+        throw new Error(`Auto-start failed for ${testContext} tests: ${error.message}`);
     }
-    
-    // Wait for server to be ready
-    const readySuccess = await waitForServerReady(targetPort);
-    
-    if (!readySuccess) {
-      throw new Error('Server started but failed to become ready');
-    }
-    
-    if (!silent) {
-      console.log(chalk.green('🎉 Server auto-start completed successfully!'));
-    }
-    
-  } catch (error) {
-    console.error(chalk.red('❌ Failed to auto-start development server'));
-    console.error('');
-    console.error(chalk.yellow(`Error: ${error.message}`));
-    console.error(chalk.yellow('Please start the server manually:'));
-    console.error(chalk.cyan('  npm run serve'));
-    console.error(chalk.gray('  # or with auto-open:'));
-    console.error(chalk.cyan('  npm run dev'));
-    console.error('');
-    
-    throw new Error(`Auto-start failed for ${testContext} tests: ${error.message}`);
-  }
 }
 
 
 export {
-  checkServerStatus,
-  requiresServer,
-  validateServerIfNeeded,
-  startServer,
-  waitForServerReady,
-  SERVER_REQUIRED_LEVELS
+    checkServerStatus,
+    requiresServer,
+    validateServerIfNeeded,
+    startServer,
+    waitForServerReady,
+    SERVER_REQUIRED_LEVELS
 };
 
 // Default export for convenience
 export default {
-  checkServerStatus,
-  requiresServer,
-  validateServerIfNeeded,
-  startServer,
-  waitForServerReady,
-  SERVER_REQUIRED_LEVELS
+    checkServerStatus,
+    requiresServer,
+    validateServerIfNeeded,
+    startServer,
+    waitForServerReady,
+    SERVER_REQUIRED_LEVELS
 };
