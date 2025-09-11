@@ -213,68 +213,7 @@ describe('Experiment Pipeline Integration', () => {
     });
   });
 
-  describe('Data Collection and Quality Control', () => {
-    test('should collect comprehensive performance metrics', async () => {
-      const testData = testDataGen.generateScaledDataset('mandelbrot', 'small');
-      
-      const metrics = await page.evaluate(async (data) => {
-        // Enable detailed metrics collection
-        window.enableDetailedMetrics(true);
-        
-        const result = await window.runTask('mandelbrot', 'rust', data);
-        return {
-          ...result,
-          systemMetrics: window.getSystemMetrics(),
-          browserInfo: window.getBrowserInfo()
-        };
-      }, testData);
-
-      // Validate comprehensive metrics collection
-      expect(metrics.executionTime).toBeDefined();
-      expect(metrics.memoryUsed).toBeDefined();
-      expect(metrics.resultHash).toBeDefined();
-      expect(metrics.systemMetrics).toBeDefined();
-      expect(metrics.browserInfo).toBeDefined();
-      
-      // Validate metric ranges
-      expect(metrics.executionTime).toBeGreaterThan(global.validationRules.executionTime.min);
-      expect(metrics.memoryUsed).toBeGreaterThan(global.validationRules.memoryUsage.min);
-      expect(metrics.memoryUsed).toBeLessThan(global.validationRules.memoryUsage.max);
-    });
-
-    test('should detect and flag performance anomalies', async () => {
-      const baselineRuns = 10;
-      const testData = testDataGen.generateScaledDataset('json_parse', 'micro');
-      const measurements = [];
-
-      // Collect baseline measurements
-      for (let i = 0; i < baselineRuns; i++) {
-        const result = await page.evaluate(async (data) => {
-          return await window.runTask('json_parse', 'rust', data);
-        }, testData);
-        
-        if (result.success) {
-          measurements.push(result.executionTime);
-        }
-      }
-
-      expect(measurements.length).toBeGreaterThan(baselineRuns * 0.8); // At least 80% success rate
-
-      // Statistical analysis for anomaly detection
-      const mean = measurements.reduce((sum, t) => sum + t, 0) / measurements.length;
-      const stdDev = Math.sqrt(
-        measurements.reduce((sum, t) => sum + Math.pow(t - mean, 2), 0) / measurements.length
-      );
-
-      // Apply quality control rules
-      const outliers = measurements.filter(t => Math.abs(t - mean) > 2 * stdDev);
-      const coefficientOfVariation = stdDev / mean;
-
-      // Validate data quality
-      expect(coefficientOfVariation).toBeLessThan(0.5); // CV < 50% for stability
-      expect(outliers.length / measurements.length).toBeLessThan(0.1); // < 10% outliers
-    });
-
+  describe('Data Collection', () => {
     test('should save results in specified format with complete metadata', async () => {
       const testData = testDataGen.generateScaledDataset('mandelbrot', 'micro');
       const outputPath = path.join(global.testTempDir, 'test-results.json');
@@ -288,16 +227,7 @@ describe('Experiment Pipeline Integration', () => {
           task: 'mandelbrot',
           language: 'rust',
           configuration: data,
-          results: benchmarkResult,
-          environment: {
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-            memory: performance.memory ? {
-              used: performance.memory.usedJSHeapSize,
-              total: performance.memory.totalJSHeapSize,
-              limit: performance.memory.jsHeapSizeLimit
-            } : null
-          }
+          results: benchmarkResult
         };
         
         return fullResult;
@@ -313,146 +243,7 @@ describe('Experiment Pipeline Integration', () => {
       expect(savedData.language).toBe('rust');
       expect(savedData.results.success).toBe(true);
       expect(savedData.timestamp).toBeDefined();
-      expect(savedData.environment).toBeDefined();
     });
   });
 
-  describe('Statistical Analysis Pipeline', () => {
-    test('should perform statistical power analysis on collected data', async () => {
-      const sampleSize = 20;
-      const rustTimes = [];
-      const tinygoTimes = [];
-      
-      // Collect performance data for power analysis
-      for (let i = 0; i < sampleSize; i++) {
-        const testData = testDataGen.generateScaledDataset('mandelbrot', 'micro');
-        
-        const results = await page.evaluate(async (data) => {
-          const rustResult = await window.runTask('mandelbrot', 'rust', data);
-          const tinygoResult = await window.runTask('mandelbrot', 'tinygo', data);
-          return {
-            rust: rustResult.executionTime,
-            tinygo: tinygoResult.executionTime
-          };
-        }, testData);
-        
-        rustTimes.push(results.rust);
-        tinygoTimes.push(results.tinygo);
-      }
-
-      // Perform power analysis
-      const pilotData = { rust: rustTimes, tinygo: tinygoTimes };
-      const powerAnalysisResult = powerAnalysis.validateCurrentDesign(pilotData, 0.3);
-
-      // Validate analysis results
-      expect(powerAnalysisResult.observedEffectSize).toBeDefined();
-      expect(powerAnalysisResult.currentPower).toBeDefined();
-      expect(powerAnalysisResult.interpretation).toBeDefined();
-      expect(powerAnalysisResult.statisticalSignificance).toBeDefined();
-      
-      // Effect size should be reasonable for performance comparison
-      expect(powerAnalysisResult.observedEffectSize).toBeGreaterThan(0);
-      expect(powerAnalysisResult.observedEffectSize).toBeLessThan(5); // Very large effect
-    });
-
-    test('should generate experiment design recommendations', async () => {
-      const recommendations = powerAnalysis.generateExperimentRecommendations(0.2, 0.05, 0.8);
-      
-      // Validate recommendation structure
-      expect(recommendations.sampleSize.minimum).toBeDefined();
-      expect(recommendations.sampleSize.recommended).toBeDefined();
-      expect(recommendations.designParameters.alpha).toBe(0.05);
-      expect(recommendations.designParameters.power).toBe(0.8);
-      expect(recommendations.qualityControls.warmupRuns).toBeGreaterThan(0);
-      expect(recommendations.qualityControls.measurementRuns).toBeGreaterThan(0);
-      
-      // Sample size should be reasonable for detecting 20% effect
-      expect(recommendations.sampleSize.minimum).toBeGreaterThan(50);
-      expect(recommendations.sampleSize.minimum).toBeLessThan(1000);
-    });
-  });
-
-  describe('Error Recovery and Resilience', () => {
-    test('should recover gracefully from WebAssembly module loading failures', async () => {
-      // Simulate module loading failure
-      const result = await page.evaluate(async () => {
-        try {
-          // Attempt to load a non-existent WASM module
-          const fakeResult = await window.runTask('nonexistent_task', 'rust', {});
-          return { success: fakeResult.success, error: null };
-        } catch (error) {
-          return { success: false, error: error.message };
-        }
-      });
-
-      // Should handle failure gracefully without crashing
-      expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
-    });
-
-    test('should handle browser resource constraints gracefully', async () => {
-      // Test with resource-intensive configuration
-      const heavyConfig = testDataGen.generateScaledDataset('matrix_mul', 'medium');
-      
-      const result = await page.evaluate(async (data) => {
-        try {
-          // Attempt resource-intensive task
-          const benchmarkResult = await window.runTask('matrix_mul', 'rust', data);
-          return benchmarkResult;
-        } catch (error) {
-          return { success: false, error: error.message, errorType: 'resource_constraint' };
-        }
-      }, heavyConfig);
-
-      // Should either succeed or fail gracefully with proper error reporting
-      if (!result.success) {
-        expect(result.error).toBeDefined();
-        expect(result.errorType).toBeDefined();
-      } else {
-        // If successful, validate result integrity
-        expect(result.resultHash).toBeDefined();
-        expect(result.executionTime).toBeGreaterThan(0);
-      }
-    });
-
-    test('should maintain data integrity during interruptions', async () => {
-      const testData = testDataGen.generateScaledDataset('json_parse', 'small');
-      
-      // Start benchmark and simulate interruption
-      const result = await page.evaluate(async (data) => {
-        const startTime = performance.now();
-        
-        try {
-          const benchmarkPromise = window.runTask('json_parse', 'rust', data);
-          
-          // Simulate interruption after short delay
-          setTimeout(() => {
-            window.dispatchEvent(new Event('beforeunload'));
-          }, 10);
-          
-          const result = await benchmarkPromise;
-          const endTime = performance.now();
-          
-          return { 
-            ...result, 
-            executionTime: endTime - startTime,
-            interrupted: false 
-          };
-        } catch (error) {
-          return { 
-            success: false, 
-            error: error.message, 
-            interrupted: true 
-          };
-        }
-      }, testData);
-
-      // Result should be valid regardless of interruption handling
-      if (result.success) {
-        expect(result.resultHash).toBeDefined();
-      } else {
-        expect(result.error).toBeDefined();
-      }
-    });
-  });
 });

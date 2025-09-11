@@ -13,48 +13,17 @@ export class BrowserTestHarness {
       throw new Error('BrowserTestHarness: config must be an object or null');
     }
 
-    // Constants for configuration validation
-    this.MAX_LOGS = 10000;
-    this.MAX_ERRORS = 1000;
-    this.DEFAULT_NAVIGATION_TIMEOUT = 60000;
-    this.DEFAULT_WASM_TIMEOUT = 60000;
-    this.MAX_TIMEOUT = 300000; // 5 minutes maximum
-
     this.config = { 
       ...global.testBrowserConfig, 
       ...config 
     };
     
-    // Validate critical configuration values
-    this._validateConfig();
-    
     this.browser = null;
     this.page = null;
-    this.logs = [];
-    this.errors = [];
     this.setupComplete = false;
     this.teardownInProgress = false;
   }
 
-  /**
-   * Validate configuration values for safety
-   * @private
-   */
-  _validateConfig() {
-    if (this.config.navigationTimeout && 
-        (typeof this.config.navigationTimeout !== 'number' || 
-         this.config.navigationTimeout <= 0 || 
-         this.config.navigationTimeout > this.MAX_TIMEOUT)) {
-      throw new Error(`BrowserTestHarness: navigationTimeout must be between 1 and ${this.MAX_TIMEOUT}ms`);
-    }
-    
-    if (this.config.timeout && 
-        (typeof this.config.timeout !== 'number' || 
-         this.config.timeout <= 0 || 
-         this.config.timeout > this.MAX_TIMEOUT)) {
-      throw new Error(`BrowserTestHarness: timeout must be between 1 and ${this.MAX_TIMEOUT}ms`);
-    }
-  }
   
   /**
    * Initialize browser and page with standardized setup
@@ -74,35 +43,27 @@ export class BrowserTestHarness {
       this.browser = await puppeteer.launch(this.config);
       this.page = await this.browser.newPage();
       
-      // Setup console logging capture with memory management
-      this.page.on('console', msg => {
-        const logEntry = `[${msg.type().toUpperCase()}] ${msg.text()}`;
-        this._addLog(logEntry);
-        if (this.config.logConsole !== false) {
-          console.log('PAGE:', logEntry);
-        }
-      });
+      // Setup simple console and error logging
+      if (this.config.logConsole !== false) {
+        this.page.on('console', msg => {
+          console.log('PAGE:', `[${msg.type().toUpperCase()}] ${msg.text()}`);
+        });
+      }
       
-      // Setup error tracking with memory management
-      this.page.on('pageerror', error => {
-        const errorEntry = `PAGE ERROR: ${error.message}`;
-        this._addError(errorEntry);
-        if (this.config.logErrors !== false) {
-          console.error(errorEntry);
-        }
-      });
+      if (this.config.logErrors !== false) {
+        this.page.on('pageerror', error => {
+          console.error('PAGE ERROR:', error.message);
+        });
+      }
       
-      // Setup request failure tracking
-      this.page.on('requestfailed', request => {
-        const failureEntry = `REQUEST FAILED: ${request.url()} - ${request.failure()?.errorText}`;
-        this._addError(failureEntry);
-        if (this.config.logRequests !== false) {
-          console.warn(failureEntry);
-        }
-      });
+      if (this.config.logRequests !== false) {
+        this.page.on('requestfailed', request => {
+          console.warn('REQUEST FAILED:', `${request.url()} - ${request.failure()?.errorText}`);
+        });
+      }
       
-      // Navigate to benchmark page with proper timeout handling
-      const navigationTimeout = this.config.navigationTimeout || this.DEFAULT_NAVIGATION_TIMEOUT;
+      // Navigate to benchmark page
+      const navigationTimeout = this.config.navigationTimeout || 30000;
       await this.page.goto('http://localhost:2025/', { 
         waitUntil: 'networkidle0',
         timeout: navigationTimeout
@@ -110,8 +71,7 @@ export class BrowserTestHarness {
       
       // Wait for WebAssembly modules to be ready
       if (this.config.waitForWasm !== false) {
-        const wasmTimeout = this.config.wasmTimeout || this.DEFAULT_WASM_TIMEOUT;
-        await this.waitForWasmModules(wasmTimeout);
+        await this.waitForWasmModules(this.config.wasmTimeout || 30000);
       }
       
       this.setupComplete = true;
@@ -123,27 +83,6 @@ export class BrowserTestHarness {
     }
   }
 
-  /**
-   * Add log entry with memory management
-   * @private
-   */
-  _addLog(logEntry) {
-    this.logs.push(logEntry);
-    if (this.logs.length > this.MAX_LOGS) {
-      this.logs = this.logs.slice(-this.MAX_LOGS / 2); // Keep last half
-    }
-  }
-
-  /**
-   * Add error entry with memory management  
-   * @private
-   */
-  _addError(errorEntry) {
-    this.errors.push(errorEntry);
-    if (this.errors.length > this.MAX_ERRORS) {
-      this.errors = this.errors.slice(-this.MAX_ERRORS / 2); // Keep last half
-    }
-  }
   
   /**
    * Wait for WebAssembly modules to load
@@ -224,105 +163,10 @@ export class BrowserTestHarness {
         timestamp: Date.now()
       };
       
-      // Log the error for debugging
-      this._addError(`Task execution failed: ${task}:${language} - ${error.message}`);
-      
       return errorResult;
     }
   }
   
-  /**
-   * Execute multiple tasks concurrently
-   * @param {Array} taskConfigs - Array of {task, language, data} objects
-   * @returns {Promise<Array>} Array of results
-   */
-  async executeConcurrentTasks(taskConfigs) {
-    const promises = taskConfigs.map(async (config, index) => {
-      const result = await this.executeTask(config.task, config.language, config.data);
-      return { 
-        index, 
-        config, 
-        result,
-        timestamp: Date.now()
-      };
-    });
-    
-    return await Promise.all(promises);
-  }
-  
-  /**
-   * Set task timeout for subsequent executions
-   * @param {number} timeoutMs - Timeout in milliseconds
-   */
-  async setTaskTimeout(timeoutMs) {
-    await this.page.evaluate((timeout) => {
-      if (window.setTaskTimeout) {
-        window.setTaskTimeout(timeout);
-      }
-    }, timeoutMs);
-  }
-  
-  /**
-   * Enable or disable detailed metrics collection
-   * @param {boolean} enabled - Whether to enable detailed metrics
-   */
-  async enableDetailedMetrics(enabled = true) {
-    await this.page.evaluate((enable) => {
-      if (window.enableDetailedMetrics) {
-        window.enableDetailedMetrics(enable);
-      }
-    }, enabled);
-  }
-  
-  /**
-   * Get system metrics from the browser
-   * @returns {Promise<Object>} System metrics object
-   */
-  async getSystemMetrics() {
-    return await this.page.evaluate(() => {
-      const metrics = {};
-      
-      if (performance.memory) {
-        metrics.memory = {
-          used: performance.memory.usedJSHeapSize,
-          total: performance.memory.totalJSHeapSize,
-          limit: performance.memory.jsHeapSizeLimit,
-          pressure: performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit
-        };
-      }
-      
-      if (window.getSystemMetrics) {
-        Object.assign(metrics, window.getSystemMetrics());
-      }
-      
-      metrics.userAgent = navigator.userAgent;
-      metrics.platform = navigator.platform;
-      metrics.timestamp = Date.now();
-      
-      return metrics;
-    });
-  }
-  
-  /**
-   * Validate current browser state for testing
-   * @returns {Promise<Object>} Validation result
-   */
-  async validateTestEnvironment() {
-    return await this.page.evaluate(() => {
-      const validation = {
-        webassembly: typeof WebAssembly !== 'undefined',
-        performanceAPI: typeof performance?.now === 'function',
-        runTaskFunction: typeof window.runTask === 'function',
-        wasmModulesLoaded: !!(window.wasmModulesLoaded?.rust && window.wasmModulesLoaded?.tinygo),
-        memoryAPI: !!performance.memory,
-        timestamp: Date.now()
-      };
-      
-      validation.allValid = Object.values(validation).every(v => v === true || typeof v === 'number');
-      
-      return validation;
-    });
-  }
   
   /**
    * Clean up browser resources
@@ -383,32 +227,8 @@ export class BrowserTestHarness {
     this.browser = null;
     this.setupComplete = false;
     this.teardownInProgress = false;
-    
-    // Clear logs and errors to prevent memory leaks
-    this.logs = [];
-    this.errors = [];
   }
   
-  /**
-   * Get collected logs and errors
-   * @returns {Object} Logs and errors arrays
-   */
-  getTestLogs() {
-    return {
-      logs: [...this.logs],
-      errors: [...this.errors],
-      logCount: this.logs.length,
-      errorCount: this.errors.length
-    };
-  }
-  
-  /**
-   * Clear collected logs and errors
-   */
-  clearTestLogs() {
-    this.logs = [];
-    this.errors = [];
-  }
 }
 
 /**
