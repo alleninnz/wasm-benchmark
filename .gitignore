@@ -18,6 +18,10 @@ configs/*.json
 analysis/figures/*.png
 analysis/figures/*.svg
 
+# Results and reports
+results/
+reports/
+
 # Environment and AI assistant files
 .env
 .env.local
