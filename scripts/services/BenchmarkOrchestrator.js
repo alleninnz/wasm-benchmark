@@ -368,6 +368,20 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
      * @returns {Promise<void>}
      */
     async emergencyCleanup() {
+        // Import chalk dynamically to avoid import issues
+        let chalk;
+        try {
+            const chalkModule = await import('chalk');
+            chalk = chalkModule.default;
+        } catch (chalkError) {
+            // Fallback to console.log if chalk is not available
+            chalk = {
+                yellow: (text) => text,
+                red: (text) => text,
+                green: (text) => text
+            };
+        }
+
         this.logger.warn('[BenchmarkOrchestrator] Performing emergency cleanup...');
         const emergencyOperations = [];
 
