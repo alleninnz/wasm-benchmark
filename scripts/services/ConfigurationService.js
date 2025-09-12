@@ -108,7 +108,7 @@ export class ConfigurationService extends IConfigurationService {
             },
             server: {
                 host: 'localhost',
-                port: 3001,
+                port: process.env.PORT || 2025,
                 benchmarkPath: '/bench.html'
             },
             browser: {
@@ -224,7 +224,7 @@ export class ConfigurationService extends IConfigurationService {
     getServerConfig() {
         return this.config?.server || {
             host: 'localhost',
-            port: 3001,
+            port: process.env.PORT || 2025,
             benchmarkPath: '/bench.html'
         };
     }
