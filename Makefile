@@ -3,9 +3,9 @@
 
 # Declare all phony targets (targets that don't create files)
 .PHONY: help init build build-rust build-tinygo build-all run run-headed run-quick \
-        collect analyze report all all-quick clean clean-results clean-all \
+        collect analyze all all-quick clean clean-results clean-all \
         lint lint-python lint-rust lint-go lint-js format format-python format-rust format-go \
-        test status info check-deps
+        test validate status info check-deps
 
 .DEFAULT_GOAL := help
 
@@ -188,19 +188,16 @@ run-headed: $(NODE_MODULES) ## Run benchmarks with visible browser
 	node scripts/run_bench.js --headed
 	$(call log_success,Headed benchmarks completed)
 
-run-quick: $(NODE_MODULES) ## Quick development validation: build + validate (2-3 min vs 30+ min full benchmarks)
-	$(call log_step,Running quick development validation workflow...)
-	@# This provides fast feedback for development without full benchmark execution
-	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Step 1/3: Building WebAssembly modules..."
-	@$(MAKE) --no-print-directory build-all >/dev/null 2>&1 || (echo -e "$(RED)$(BOLD)[ERROR]$(NC) Build failed"; exit 1)
-	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Step 2/3: Validating WASM module correctness..."
-	@npm run validate >/dev/null 2>&1 || (echo -e "$(RED)$(BOLD)[ERROR]$(NC) Validation failed"; exit 1)
-	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Step 3/3: Checking build artifacts..."
-	@ls -la builds/rust/*.wasm builds/tinygo/*.wasm >/dev/null 2>&1 || (echo -e "$(RED)$(BOLD)[ERROR]$(NC) Missing WASM artifacts"; exit 1)
-	@echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) ✅ Quick validation completed successfully!"
-	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) 📊 Build summary: WebAssembly modules generated and validated"
-	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) 🚀 For full performance benchmarks, use: make run"
-	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) 🧪 For integration tests, use: npm run dev (then npm run test) in another terminal"
+run-quick: $(NODE_MODULES) ## Run quick benchmarks for development (fast feedback ~2-3 min vs 30+ min full suite)
+	$(call log_step,Running quick benchmark suite for development feedback...)
+	@# Generate quick config if missing
+	@if [ ! -f configs/bench-quick.json ]; then \
+		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Generating bench-quick.json configuration..."; \
+		node scripts/build_config.js --quick || (echo -e "$(RED)$(BOLD)[ERROR]$(NC) Config generation failed"; exit 1); \
+	fi
+	$(call check_script_exists,scripts/run_bench.js)
+	node scripts/run_bench.js --quick
+	$(call log_success,Quick benchmarks completed - results saved with timestamp)
 
 # ============================================================================
 # Analysis Targets
@@ -210,13 +207,16 @@ collect: ## Run quality control on benchmark data
 	$(call log_step,Running quality control on results...)
 	@LATEST_RESULT=$(call find_latest_result); \
 	if [ -n "$$LATEST_RESULT" ]; then \
-		$(call log_info,Quality control for $$LATEST_RESULT); \
-		$(call log_warning,QC implementation pending); \
+		if [ -f analysis/qc.py ]; then \
+			python3 analysis/qc.py $$LATEST_RESULT; \
+		else \
+			$(call log_warning,analysis/qc.py not found, skipping quality control); \
+		fi; \
+		$(call log_success,Quality control completed for $$LATEST_RESULT); \
 	else \
 		$(call log_error,No benchmark results found); \
 		exit 1; \
 	fi
-	$(call log_success,Quality control completed)
 
 analyze: ## Run statistical analysis and generate plots
 	$(call log_step,Running statistical analysis...)
@@ -239,28 +239,11 @@ analyze: ## Run statistical analysis and generate plots
 		exit 1; \
 	fi
 
-report: analyze ## Generate final experiment report
-	$(call log_step,Generating final report...)
-	@LATEST_RESULT=$(call find_latest_result); \
-	if [ -n "$$LATEST_RESULT" ]; then \
-		REPORT_FILE="$$LATEST_RESULT/REPORT.md"; \
-		echo "# WebAssembly Benchmark Experiment Report" > $$REPORT_FILE; \
-		echo "" >> $$REPORT_FILE; \
-		echo "**Generated:** $$(date)" >> $$REPORT_FILE; \
-		echo "**Result Directory:** $$LATEST_RESULT" >> $$REPORT_FILE; \
-		echo "" >> $$REPORT_FILE; \
-		echo "## Summary" >> $$REPORT_FILE; \
-		echo "This report contains the analysis of WebAssembly benchmark results." >> $$REPORT_FILE; \
-		$(call log_success,Report generated: $$REPORT_FILE); \
-	else \
-		$(call log_warning,No results available for report generation); \
-	fi
-
 # ============================================================================
 # Complete Pipeline Targets
 # ============================================================================
 
-all: init build run analyze report ## Run complete experiment pipeline
+all: init build run collect analyze ## Run complete experiment pipeline
 	$(call log_success,Complete experiment pipeline finished!)
 	@echo ""
 	@LATEST_RESULT=$(call find_latest_result); \
@@ -268,7 +251,7 @@ all: init build run analyze report ## Run complete experiment pipeline
 		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Results available in: $$LATEST_RESULT"; \
 	fi
 
-all-quick: init build run-quick analyze ## Run quick experiment for development/testing
+all-quick: init build run-quick collect analyze ## Run quick experiment for development/testing
 	$(call log_success,Quick experiment pipeline completed!)
 
 # ============================================================================
@@ -481,6 +464,12 @@ test: ## Run tests (JavaScript and Python)
 		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No tests directory found"; \
 		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Create tests/ directory and add your test files"; \
 	fi
+
+validate: ## Run WASM task validation suite
+	$(call log_step,Running WASM task validation...)
+	$(call check_script_exists,scripts/validate-tasks.sh)
+	@scripts/validate-tasks.sh
+	$(call log_success,Task validation completed)
 
 # ============================================================================
 # Information and Status Targets
