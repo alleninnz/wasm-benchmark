@@ -146,7 +146,7 @@ Examples:
 
         // Save results
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const outputPath = path.join(__dirname, '..', 'results', `benchmark-results-${timestamp}.json`);
+        const outputPath = path.join(__dirname, '..', 'results', `${timestamp}.json`);
         await orchestrator.saveResults(outputPath, 'json');
 
         logger.section('Benchmark Process Completed Successfully');
