@@ -14,13 +14,10 @@ configs/*.json
 *.log
 *.tmp
 
-# Analysis outputs
-analysis/figures/*.png
-analysis/figures/*.svg
-
 # Results and reports
-results/
-reports/
+results/*.json
+reports/*.png
+reports/*.svg
 
 # Environment and AI assistant files
 .env
