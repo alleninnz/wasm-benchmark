@@ -3,7 +3,7 @@
 
 # Declare all phony targets (targets that don't create files)
 .PHONY: help init build build-rust build-tinygo build-all run run-headed run-quick \
-        collect analyze all all-quick clean clean-results clean-all \
+        qc analyze all all-quick clean clean-results clean-all \
         lint lint-python lint-rust lint-go lint-js format format-python format-rust format-go \
         test validate status info check-deps
 
@@ -203,7 +203,7 @@ run-quick: $(NODE_MODULES) ## Run quick benchmarks for development (fast feedbac
 # Analysis Targets
 # ============================================================================
 
-collect: ## Run quality control on benchmark data
+qc: ## Run quality control on benchmark data
 	$(call log_step,Running quality control on results...)
 	@LATEST_RESULT=$(call find_latest_result); \
 	if [ -n "$$LATEST_RESULT" ]; then \
@@ -243,7 +243,7 @@ analyze: ## Run statistical analysis and generate plots
 # Complete Pipeline Targets
 # ============================================================================
 
-all: init build run collect analyze ## Run complete experiment pipeline
+all: init build run qc analyze ## Run complete experiment pipeline
 	$(call log_success,Complete experiment pipeline finished!)
 	@echo ""
 	@LATEST_RESULT=$(call find_latest_result); \
@@ -251,7 +251,7 @@ all: init build run collect analyze ## Run complete experiment pipeline
 		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Results available in: $$LATEST_RESULT"; \
 	fi
 
-all-quick: init build run-quick collect analyze ## Run quick experiment for development/testing
+all-quick: init build run-quick qc analyze ## Run quick experiment for development/testing
 	$(call log_success,Quick experiment pipeline completed!)
 
 # ============================================================================
