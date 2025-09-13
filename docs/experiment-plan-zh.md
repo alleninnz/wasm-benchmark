@@ -441,7 +441,7 @@ builds/
 
 ---
 
-# Stage 4：数据采集与质量控制f
+# Stage 4：数据采集与质量控制
 
 ## 1. 数据采集流程
 
@@ -451,7 +451,7 @@ builds/
 - 关闭后台高占用程序，减少干扰
 
 ### 2. 运行测试任务
-- 在浏览器端（Puppeteer 驱动 Headless Chrome）Stage 4 中定义的 5 个任务
+- 在浏览器端（Puppeteer 驱动 Headless Chrome）Stage 3 中定义的 3 个任务
 - 每个任务执行 10 次冷启动（首次加载计时）与 100 次热启动（已加载模块重复调用计时）
 - 每次执行记录以下原始指标：
   - `execution_time_ms`（执行时间，`performance.now()` 记录）

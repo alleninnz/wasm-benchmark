@@ -451,7 +451,7 @@ builds/
 - Close background high-usage programs to reduce interference
 
 ### 2. Run Test Tasks
-- Run the 5 tasks defined in Stage 4 in browser (Puppeteer-driven Headless Chrome)
+- Run the 3 tasks defined in Stage 3 in browser (Puppeteer-driven Headless Chrome)
 - Each task executes 10 cold starts (first load timing) and 100 warm starts (repeated calls on loaded module timing)
 - Record the following raw metrics for each execution:
   - `execution_time_ms` (execution time, recorded by `performance.now()`)
