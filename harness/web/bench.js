@@ -18,6 +18,10 @@ export class BenchmarkRunner {
         // Constants
         this.DEFAULT_RANDOM_SEED = 12345;
         this.MAX_CONFIG_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+        
+        // FNV-1a constants for input data hashing
+        this.FNV_OFFSET_BASIS = 2166136261;
+        this.FNV_PRIME = 16777619;
         this.MAX_RUNS = 1000;
         this.MEMORY_THRESHOLD_MB = 500;
         this.GC_INTERVAL_MS = 100;
@@ -212,7 +216,7 @@ export class BenchmarkRunner {
                     scale: scale,
                     run: i + 1,
                     moduleId: moduleId,
-                    inputData: inputData
+                    inputDataHash: this._computeInputDataHash(inputData)
                 });
 
                 this.results.push(result);
@@ -298,6 +302,23 @@ export class BenchmarkRunner {
         };
 
         return result;
+    }
+
+    /**
+     * Compute FNV-1a hash of input data for compact storage
+     * @private
+     * @param {Uint8Array} inputData - Input data to hash
+     * @returns {number} 32-bit FNV-1a hash
+     */
+    _computeInputDataHash(inputData) {
+        let hash = this.FNV_OFFSET_BASIS;
+        
+        for (let i = 0; i < inputData.length; i++) {
+            hash ^= inputData[i];
+            hash = (hash * this.FNV_PRIME) >>> 0; // Ensure 32-bit unsigned
+        }
+        
+        return hash;
     }
 
     /**
