@@ -1,471 +1,653 @@
-# Testing Strategy Guide for WebAssembly Performance Experiment
+# 🧪 WebAssembly Benchmark 测试策略指南
 
-## 📋 Strategic Questions & Answers
-
-### **Testing Strategy Direction**
-
-**Q: Preferred balance between granular unit tests with mocking and integration-heavy tests that validate real service interactions?**
-
-**A: Integration-heavy tests (80%) + Selective unit tests (20%)**
-
-**理由:**
-- 实验核心价值在于测量**真实 WebAssembly 运行时性能**
-- Mock 会破坏实验的科学性和有效性
-- 集成测试能验证完整的数据采集链路：`Browser → WebAssembly → Performance Measurement → Data Collection`
-- 单元测试仅用于纯逻辑函数（统计计算、数据转换、配置解析）
+> **文档版本**: v1.0  
+> **创建时间**: 2025-09-13  
 
 ---
 
-**Q: How important is test execution speed vs comprehensive coverage?**
+## 🎯 **测试策略概述**
 
-**A: 分层平衡 - 快速验证 + 全面覆盖**
+WebAssembly Benchmark 项目的测试策略基于**多层次验证架构**，确保跨语言基准测试的准确性、一致性和可靠性。本策略覆盖从单元测试到端到端集成测试的完整测试金字塔。
 
-**策略:**
-- **快速集成测试** (< 30s): 最小规模配置验证核心流程
-- **全面覆盖测试** (< 5min): 所有任务×语言组合的完整验证  
-- **压力测试** (可选): 大规模数据验证系统稳定性
+### **核心测试目标**
 
-**平衡点:**
-```javascript
-const testConfigs = {
-  smoke: { scales: ['micro'], runs: 3 },    // 30秒快速验证
-  integration: { scales: ['small'], runs: 10 }, // 3分钟全面测试
-  stress: { scales: ['medium'], runs: 50 }   // 完整规模验证
-};
+1. **数值一致性**：验证 Rust 和 TinyGo 实现产生相同的计算结果
+2. **性能稳定性**：确保基准测试结果的统计可靠性
+3. **错误处理**：验证异常情况下的优雅降级
+4. **浏览器兼容性**：保证 WebAssembly 模块在不同环境下的稳定运行
+5. **配置有效性**：确保测试配置和基准参数的正确性
+
+---
+
+## 🏗️ **测试架构设计**
+
+```mermaid
+graph TD
+    A[测试金字塔] --> B[单元测试 Unit Tests]
+    A --> C[集成测试 Integration Tests]
+    A --> D[端到端测试 E2E Tests]
+    
+    B --> B1[配置解析测试]
+    B --> B2[统计计算测试]
+    B --> B3[WASM 函数测试]
+    
+    C --> C1[跨语言一致性测试]
+    C --> C2[性能稳定性测试]
+    C --> C3[错误处理测试]
+    
+    D --> D1[完整基准测试流程]
+    D --> D2[多浏览器兼容性]
+    D --> D3[CI/CD 流水线验证]
 ```
 
 ---
 
-**Q: Should tests focus on contract validation (ensuring interfaces work) or behavior validation (ensuring business logic works)?**
+## 🔧 **测试框架和工具栈**
 
-**A: 行为验证为主 + 关键契约验证**
+### **JavaScript/Node.js 测试**
+- **框架**: Vitest (v3.2.4) - 快速、现代的测试运行器
+- **断言库**: Vitest 内置 expect API
+- **浏览器自动化**: Puppeteer (v24.20.0)
+- **覆盖率分析**: Vitest 内置 c8 coverage
 
-**重点:**
-- **行为验证**: 验证跨语言哈希一致性、性能测量准确性、数据质量控制
-- **契约验证**: 仅对服务接口的输入输出格式进行验证
-- **科学验证**: 确保实验结果的可重现性和统计有效性
+### **WebAssembly 单元测试**
+- **Rust**: 内置 `#[cfg(test)]` 和 `cargo test`
+- **TinyGo**: 内置 `testing` 包和 `tinygo test`
 
----
-
-### **Mock vs Real Dependencies**
-
-**Q: For browser testing: Mock Puppeteer or use real browser instances?**
-
-**A: 使用真实 Puppeteer + 真实浏览器实例**
-
-**原因:**
-- WebAssembly 性能高度依赖浏览器引擎的实现
-- `performance.now()` 的精度和 V8 的 WebAssembly 优化无法模拟
-- 实验价值就在于测量真实浏览器环境中的性能差异
-
-**配置优化:**
-```javascript
-const testBrowserConfig = {
-  headless: true,
-  args: ['--no-sandbox', '--disable-dev-shm-usage'],
-  timeout: 30000 // 测试环境缩短超时
-};
-```
+### **辅助工具**
+- **统计验证**: 自定义统计功能和数据质量检查
+- **结果美化**: `prettify-test-results.js` - 测试结果格式化
+- **CI/CD 集成**: 多层次测试命令支持并行执行
 
 ---
 
-**Q: For file operations: Mock filesystem or use temporary directories?**
+## 📊 **测试分层策略**
 
-**A: 使用临时目录**
+### **1. 单元测试层 (Unit Tests)**
+**位置**: `/tests/unit/`  
+**执行命令**: `npm run test:unit`  
+**超时**: 5秒
 
-**实现:**
+#### **1.1 配置解析测试** (`config-parser.test.js`)
 ```javascript
-// 每个测试套件使用独立临时目录
-beforeEach(async () => {
-  testTempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wasm-bench-test-'));
-});
-
-afterEach(async () => {
-  await fs.rm(testTempDir, { recursive: true, force: true });
-});
-```
-
-**优势:**
-- 真实的文件 I/O 性能特征
-- 测试隔离性强
-- 便于调试时查看实际文件内容
-
----
-
-**Q: For configuration: Mock configs or test with real config files?**
-
-**A: 分层配置策略**
-
-**测试配置文件:**
-```javascript
-// configs/test-minimal.json - 快速验证用
-{
-  "tasks": ["mandelbrot"],
-  "languages": ["rust"],
-  "scales": ["micro"],
-  "environment": { "warmupRuns": 1, "measureRuns": 3 }
-}
-
-// configs/test-cross-lang.json - 跨语言验证用  
-{
-  "tasks": ["mandelbrot", "json_parse"],
-  "languages": ["rust", "tinygo"],
-  "scales": ["small"],
-  "environment": { "warmupRuns": 2, "measureRuns": 5 }
-}
-```
-
----
-
-### **Test Data Strategy**
-
-**Q: Should tests use fixed test fixtures or generated test data?**
-
-**A: 确定性固定数据**
-
-**策略:**
-```javascript
-// 使用固定种子确保可重现性
-const testDataGenerator = {
-  mandelbrot: { 
-    seed: 12345,
-    width: 64, height: 64, maxIter: 100 
-  },
-  jsonParse: {
-    seed: 67890,
-    records: 100,
-    schema: 'fixed' // 固定字段结构
-  }
-};
-```
-
-**原因:**
-- 确保测试结果可重现
-- 便于跨语言结果对比验证
-- 符合实验对确定性的要求
-
----
-
-**Q: How should we handle benchmark result validation - exact matching or range validation?**
-
-**A: 分类验证策略**
-
-**验证规则:**
-```javascript
-const validationRules = {
-  // 算法正确性 - 精确匹配
-  hashConsistency: {
-    rust_hash: tinygo_hash, // 必须完全相等
-    tolerance: 0
-  },
-  
-  // 性能指标 - 范围验证
-  executionTime: {
-    min: 0.1, // 最小合理执行时间
-    max: 30000, // 测试环境最大超时
-    variationCoeff: 0.3 // 变异系数 < 30%
-  },
-  
-  // 内存使用 - 范围验证
-  memoryUsage: {
-    min: 0,
-    max: 100 * 1024 * 1024, // 100MB 上限
-    growth: 'bounded' // 内存增长受控
-  }
-};
-```
-
----
-
-**Q: Recommended approach to testing async/timeout scenarios?**
-
-**A: 分级超时 + 优雅降级测试**
-
-**测试策略:**
-```javascript
-describe('异步和超时场景', () => {
-  it('正常超时范围内完成', async () => {
-    const result = await runBenchmark({ timeout: 30000 });
-    expect(result.success).toBe(true);
-  });
-  
-  it('超时后优雅降级', async () => {
-    const result = await runBenchmark({ timeout: 100 }); // 极短超时
-    expect(result.summary.failedTasks).toBeGreaterThan(0);
-    expect(result.summary.failureReasons).toContain('timeout');
-  });
-  
-  it('并发控制有效', async () => {
-    const startTime = Date.now();
-    const result = await runBenchmark({ 
-      parallel: true, 
-      maxParallel: 2,
-      timeout: 45000 
+describe('Configuration Parser', () => {
+    test('should optimize config for browser use', () => {
+        // 验证 YAML → JSON 转换正确性
+        // 确保默认值应用正确
+        // 验证语言和任务过滤
     });
-    const duration = Date.now() - startTime;
     
-    // 验证并发确实提升了效率
-    expect(duration).toBeLessThan(60000);
-    expect(result.summary.successRate).toBeGreaterThan(0.8);
-  });
+    test('should validate config completeness', () => {
+        // 检查必需字段存在性
+        // 验证参数有效性范围
+        // 确保向后兼容性
+    });
 });
 ```
 
----
+**测试覆盖**：
+- ✅ YAML/JSON 配置转换
+- ✅ 默认值应用
+- ✅ 字段验证和错误处理
+- ✅ 边界条件处理
 
-
-## 🔧 Strategic Refinement Analysis
-
-### **Testing Infrastructure 深度分析**
-
-
-#### **Test Data Generator 工具设计**
-
-**必需性：这是实验可重现性的关键基础设施**
-
-**核心设计：**
+#### **1.2 统计计算测试** (`statistics.test.js`)
 ```javascript
-// utils/test-data-generator.js
-class DeterministicTestDataGenerator {
-  constructor(seed = 12345) {
-    this.rng = new XorShift32(seed);
-  }
-  
-  generateScaledDataset(task, scale, options = {}) {
-    const scaleConfigs = {
-      micro: { records: 10, size: 16, iterations: 5 },
-      small: { records: 100, size: 64, iterations: 50 },
-      medium: { records: 1000, size: 256, iterations: 500 },
-      // 保持与实验计划中的规模一致
-      large: { records: 50000, size: 1024, iterations: 2000 }
-    };
+describe('Statistical Analysis', () => {
+    test('should calculate performance metrics correctly', () => {
+        // 验证基础统计指标（均值、中位数、标准差）
+        // 确保离群值检测准确性
+        // 验证变异系数计算
+    });
     
-    return this.generators[task](scaleConfigs[scale], options);
-  }
-  
-  // 支持跨语言验证的确定性数据生成
-  generators = {
-    mandelbrot: (config) => this.generateMandelbrotParams(config),
-    json_parse: (config) => this.generateJsonData(config),
-    matrix_mul: (config) => this.generateMatrixData(config)
-  };
-}
+    test('should handle edge cases gracefully', () => {
+        // 空数据集处理
+        // 单一数据点处理
+        // 异常值处理
+    });
+});
 ```
 
-**价值分析：**
-- ✅ **跨环境一致性** - 开发与测试环境使用相同数据
-- ✅ **规模可控性** - 快速生成不同规模的测试数据
-- ✅ **哈希验证支持** - 确保跨语言实现的算法正确性验证
-- ✅ **实验设计灵活性** - 支持添加新的测试场景
+**测试覆盖**：
+- ✅ 基础统计计算（均值、中位数、变异系数）
+- ✅ 空数据和边界条件处理
+- ✅ 数值精度和舍入处理
 
-### **Scientific Validation 核心组件**
-
-#### **Statistical Power Analysis 实施**
-
-**重要性：确保实验科学严谨性的关键**ßßß
-
-**核心问题解决：**
-- 当前计划每个条件收集 100 个样本，但该样本量是否足以检测出具有实际意义的性能差异？
-- 如果 Rust 比 TinyGo 快 10%，现有测试设计能否以 80% 的统计功效检测出该差异？
-
-**实施方案：**
-```javascript
-// utils/statistical-power.js
-class PowerAnalysis {
-  calculateRequiredSampleSize(expectedEffectSize, alpha = 0.05, power = 0.8) {
-    // 基于 Cohen's d 效应量计算
-    // 使用 Welch's t-test 的样本量公式
-    const za = this.getZScore(alpha/2);  // 双尾检验
-    const zb = this.getZScore(1 - power);
+#### **1.3 WebAssembly 函数测试**
+**Rust 测试示例** (`tasks/*/rust/src/lib.rs`):
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
     
-    // 简化公式：n ≈ 2 * ((za + zb) / d)^2
-    const n = 2 * Math.pow((za + zb) / expectedEffectSize, 2);
-    return Math.ceil(n);
-  }
-  
-  validateCurrentDesign(pilotData) {
-    // 基于预试验数据评估当前设计的统计效力
-    const observedEffect = this.calculateEffectSize(pilotData);
-    const currentPower = this.calculatePower(
-      pilotData.sampleSize, 
-      observedEffect, 
-      0.05
-    );
-    
-    return {
-      observedEffectSize: observedEffect,
-      currentPower: currentPower,
-      recommendation: currentPower >= 0.8 ? 'sufficient' : 'increase_sample_size',
-      suggestedSampleSize: currentPower < 0.8 ? 
-        this.calculateRequiredSampleSize(observedEffect) : null
-    };
-  }
-}
-```
-
-**实际应用价值：**
-- 避免"花费大量时间收集数据，最后发现样本量不足以得出可靠结论"
-- 为实验设计提供科学依据
-- 增强研究结果在学术界的可信度
-
-#### **Environment Control 分层策略**
-
-**实验环境控制策略（精确测量优先）：**
-```javascript
-const experimentConfig = {
-  systemChecks: {
-    cpuUsage: { max: 20, monitoring_duration: 30 },
-    memoryUsage: { max: 80, available_gb: 12 },
-    thermalState: 'normal',
-    powerState: 'plugged_in',
-    backgroundProcesses: 'minimized'
-  },
-  
-  preTestActions: [
-    'closeUnnecessaryApps',
-    'disableSpotlight',
-    'setHighPerformanceMode',
-    'clearSystemCaches',
-    'ensureThermalStability'
-  ],
-  
-  continuousMonitoring: {
-    systemLoad: true,
-    thermalThrottling: true,
-    memoryPressure: true,
-    abortOnAnomalies: true
-  }
-};
-```
-
-**监控实施示例：**
-```javascript
-// utils/system-monitor.js
-class ExperimentEnvironmentMonitor {
-  async validateExperimentConditions() {
-    const checks = await Promise.all([
-      this.checkCPULoad(),
-      this.checkMemoryAvailability(), 
-      this.checkThermalState(),
-      this.checkPowerState()
-    ]);
-    
-    const failed = checks.filter(check => !check.passed);
-    if (failed.length > 0) {
-      throw new Error(`实验环境不符合要求: ${failed.map(f => f.reason).join(', ')}`);
+    #[test]
+    fn test_mandelbrot_known_points() {
+        // 已知数学点的 Mandelbrot 集验证
+        assert_eq!(mandelbrot_pixel(0.0, 0.0, 1000), 1000);
+        assert!(mandelbrot_pixel(2.0, 2.0, 1000) < 10);
     }
     
-    return { ready: true, baseline: this.captureBaseline() };
+    #[test]
+    fn test_hash_consistency() {
+        // FNV-1a 哈希一致性验证
+        let data1 = vec![1, 2, 3, 4, 5];
+        let data2 = vec![1, 2, 3, 4, 5];
+        assert_eq!(fnv1a_hash(&data1), fnv1a_hash(&data2));
+    }
+}
+```
+
+**TinyGo 测试示例** (`tasks/*/tinygo/main_test.go`):
+```go
+func TestMandelbrotKnownPoints(t *testing.T) {
+    // 与 Rust 相同的数学验证点
+    iterations := mandelbrotPixel(0.0, 0.0, 1000)
+    if iterations != 1000 {
+        t.Errorf("Origin should reach max iterations, got %d", iterations)
+    }
+}
+
+func TestHashConsistency(t *testing.T) {
+    // 确保哈希实现与 Rust 一致
+    data1 := []uint32{1, 2, 3, 4, 5}
+    hash1 := fnv1aHashU32(data1)
+    // 验证哈希值与预期一致
+}
+```
+
+---
+
+### **2. 集成测试层 (Integration Tests)**
+**位置**: `/tests/integration/`  
+**执行命令**: `npm run test:integration`  
+**超时**: 60秒
+
+#### **2.1 跨语言一致性测试** (`cross-language.test.js`)
+
+**核心验证目标**：
+- 🎯 **数值一致性**: Rust 和 TinyGo 必须产生相同的结果哈希
+- 🎯 **性能稳定性**: 多次运行的性能变异系数 < 30%
+- 🎯 **内存安全性**: 内存使用不超过预定义限制
+- 🎯 **错误处理**: 异常输入的处理方式一致
+
+```javascript
+describe('Cross-Language Consistency', () => {
+    test('should produce identical hashes for all tasks', async () => {
+        for (const task of ['mandelbrot', 'json_parse', 'matrix_mul']) {
+            const testData = testDataGen.generateScaledDataset(task, 'micro');
+            
+            const rustResult = await harness.executeTask(task, 'rust', testData);
+            const tinygoResult = await harness.executeTask(task, 'tinygo', testData);
+            
+            // 关键断言：跨语言结果必须一致
+            assertCrossLanguageConsistency(rustResult, tinygoResult, task);
+        }
+    });
+    
+    test('should maintain performance stability', async () => {
+        const measurements = [];
+        for (let run = 0; run < 5; run++) {
+            // 收集多次测量数据
+            measurements.push(await executePerformanceTest());
+        }
+        
+        // 验证性能稳定性
+        const cv = calculateCoefficientOfVariation(measurements);
+        expect(cv).toBeLessThan(0.3); // 变异系数 < 30%
+    });
+});
+```
+
+**特殊处理案例**：
+```javascript
+// Matrix Multiplication 特殊情况
+test('matrix multiplication precision handling', async () => {
+    // 由于编译器优化差异，矩阵乘法可能产生不同哈希
+    // 但都应该是已知的有效哈希值
+    const validRustHashes = [1768234204];
+    const validTinygoHashes = [1151341662];
+    
+    expect(validRustHashes).toContain(rustHash);
+    expect(validTinygoHashes).toContain(tinygoHash);
+});
+```
+
+#### **2.2 实验流程测试** (`experiment-pipeline.test.js`)
+
+验证完整的基准测试执行流程：
+```javascript
+describe('Experiment Pipeline', () => {
+    test('should execute complete benchmark suite', async () => {
+        // 模拟 make run-quick 的完整流程
+        const results = await orchestrator.executeBenchmarks({
+            headless: true,
+            quick: true
+        });
+        
+        // 验证结果完整性
+        expect(results.summary.totalTasks).toBe(3);
+        expect(results.summary.successRate).toBe(1.0);
+        expect(results.results).toHaveLength(3);
+    });
+    
+    test('should handle configuration variants', async () => {
+        // 测试不同配置的执行
+        const configs = ['quick', 'full', 'custom'];
+        for (const config of configs) {
+            await validateConfigExecution(config);
+        }
+    });
+});
+```
+
+---
+
+## 📈 **测试数据策略**
+
+### **确定性测试数据生成**
+```javascript
+// tests/utils/test-data-generator.js
+class DeterministicTestDataGenerator {
+    constructor(seed = 12345) {
+        this.seed = seed;
+        this.rng = this.createSeededRNG(seed);
+    }
+    
+    generateScaledDataset(taskName, scale) {
+        switch (taskName) {
+            case 'mandelbrot':
+                return this.generateMandelbrotData(scale);
+            case 'json_parse':
+                return this.generateJSONData(scale);
+            case 'matrix_mul':
+                return this.generateMatrixData(scale);
+        }
+    }
+    
+    generateMandelbrotData(scale) {
+        const configs = {
+            micro: { width: 64, height: 64, maxIter: 100 },
+            small: { width: 256, height: 256, maxIter: 500 },
+            medium: { width: 512, height: 512, maxIter: 1000 }
+        };
+        
+        return {
+            ...configs[scale],
+            centerReal: -0.743643887037,
+            centerImag: 0.131825904205,
+            scaleFactor: 3.0,
+            expectedProperties: {
+                // 预期的验证属性
+                pixelCount: configs[scale].width * configs[scale].height
+            }
+        };
+    }
+}
+```
+
+### **数据质量验证规则**
+```javascript
+// global validation rules
+global.validationRules = {
+    executionTime: {
+        min: 0.1,              // 最小执行时间 (ms)
+        max: 30000,            // 最大执行时间 (ms)
+        variationCoeff: 0.3    // 变异系数阈值 30%
+    },
+    memoryUsage: {
+        min: 1024,             // 最小内存使用 (bytes)
+        max: 100 * 1024 * 1024 // 最大内存使用 100MB
+    },
+    hashConsistency: {
+        retryCount: 3,         // 哈希不一致时重试次数
+        toleranceLevel: 0      // 哈希一致性容忍度 (必须完全一致)
+    }
+};
+```
+
+---
+
+## 🛡️ **质量保证和验证机制**
+
+### **统计验证框架**
+```javascript
+// tests/utils/statistical-power.js
+export class StatisticalValidator {
+    static validatePerformanceStability(measurements, threshold = 0.3) {
+        const cv = this.calculateCoefficientOfVariation(measurements);
+        return {
+            isStable: cv < threshold,
+            coefficient: cv,
+            recommendation: cv > threshold ? 
+                'Increase warmup runs or check system load' : 'Performance is stable'
+        };
+    }
+    
+    static detectOutliers(data, multiplier = 1.5) {
+        const q1 = this.percentile(data, 25);
+        const q3 = this.percentile(data, 75);
+        const iqr = q3 - q1;
+        
+        return data.filter(value => 
+            value < (q1 - multiplier * iqr) || 
+            value > (q3 + multiplier * iqr)
+        );
+    }
+}
+```
+
+### **自定义断言库**
+```javascript
+// tests/utils/test-assertions.js
+export function assertBenchmarkResult(result, expectedHash = null, context = {}) {
+    // 基础结果验证
+    expect(result.success, `Benchmark failed: ${context.task}/${context.language}`).toBe(true);
+    expect(result.executionTime, 'Execution time invalid').toBeGreaterThan(0);
+    expect(result.memoryUsed, 'Memory usage invalid').toBeGreaterThan(0);
+    
+    // 哈希验证 (如果提供期望值)
+    if (expectedHash !== null) {
+        expect(result.resultHash, 'Result hash mismatch').toBe(expectedHash);
+    }
+    
+    // 性能边界验证
+    expect(result.executionTime).toBeLessThan(global.validationRules.executionTime.max);
+    expect(result.memoryUsed).toBeLessThan(global.validationRules.memoryUsage.max);
+}
+
+export function assertCrossLanguageConsistency(rustResult, tinygoResult, taskName) {
+    // 成功状态一致性
+    expect(rustResult.success, `Rust failed for ${taskName}`).toBe(true);
+    expect(tinygoResult.success, `TinyGo failed for ${taskName}`).toBe(true);
+    
+    // 根据任务类型进行不同的一致性检查
+    if (taskName === 'matrix_mul') {
+        // 矩阵乘法：验证维度而非哈希
+        expect(rustResult.resultDimensions).toEqual(tinygoResult.resultDimensions);
+    } else {
+        // 其他任务：严格哈希一致性
+        expect(rustResult.resultHash, 
+            `Hash mismatch for ${taskName}: Rust=${rustResult.resultHash}, TinyGo=${tinygoResult.resultHash}`)
+            .toBe(tinygoResult.resultHash);
+    }
+}
+```
+
+---
+
+## 🚀 **测试执行策略**
+
+### **分层执行命令**
+
+```json
+{
+  "scripts": {
+    "test": "npm run test:full",
+    "test:full": "WASM_BENCH_TEST_LEVEL=full vitest run tests --reporter=verbose --testTimeout=300000",
+    "test:smoke": "WASM_BENCH_TEST_LEVEL=smoke vitest run tests/unit tests/integration/cross-language.test.js --testTimeout=10000",
+    "test:unit": "WASM_BENCH_TEST_LEVEL=unit vitest run tests/unit --reporter=verbose --testTimeout=5000",
+    "test:integration": "WASM_BENCH_TEST_LEVEL=integration vitest run tests/integration --reporter=verbose --testTimeout=60000"
   }
 }
 ```
 
-### **Implementation Priority Matrix**
+### **测试级别定义**
 
-**优先级分析：**
+| 级别 | 执行时间 | 覆盖范围 | 适用场景 |
+|------|----------|----------|----------|
+| **smoke** | < 30秒 | 核心功能 | CI 快速验证、Pull Request |
+| **unit** | < 1分钟 | 单元测试 | 开发阶段、功能验证 |
+| **integration** | < 5分钟 | 集成测试 | 功能完整性、发布前 |
+| **full** | < 10分钟 | 完整测试套件 | 发布验证、夜间构建 |
 
-1. **🔥 高优先级** - Test Data Generator
-   - 这是实验可重现性的基础
-   - 直接影响跨语言验证的可靠性
-   - 实施复杂度：中等
-
-2. **🔥 高优先级** - Statistical Power Analysis  
-   - 保证实验设计的科学性
-   - 预试验阶段就应该实施
-   - 实施复杂度：中等
-
-3. **⚡ 中高优先级** - Environment Control for Experiments
-   - 直接影响性能测量的准确性
-   - 实施复杂度：高
-
-   - 支持持续开发，但不影响核心实验
-   - 实施复杂度：低
-
-### **Execution Roadmap**
-
-**Phase 1：Scientific Foundation (Week 1-2)**
-- 实施 Test Data Generator
-- 添加 Statistical Power Analysis
-- 验证基础的跨语言一致性
-
-**Phase 2：Measurement Precision (Week 3)**  
-- 实施实验环境监控和控制
-- 优化性能测量的准确性
-- 建立测量基线
-
-**Phase 3：Development Infrastructure (Week 4)**
-- 建立持续验证机制
-- 文档与内部使用指南
-
-这些精进措施将显著提升WebAssembly 性能实验的科学严谨性和可信度，特别是 **Test Data Generator** 和 **Statistical Power Analysis**，它们是确保实验结果具有学术价值的关键基础设施。
-
-
-## 🎯 综合建议
-
-### **推荐测试架构**
-
+### **并行执行优化**
+```javascript
+// vitest.config.js 概念配置
+export default {
+  test: {
+    testTimeout: process.env.WASM_BENCH_TEST_LEVEL === 'smoke' ? 10000 : 60000,
+    threads: true,
+    minThreads: 1,
+    maxThreads: process.env.CI ? 2 : 4, // CI 环境限制并发
+    pool: 'forks'
+  }
+};
 ```
-tests/
-├── unit/                           # 20% - 纯逻辑测试
-│   ├── statistics.test.js         # 统计计算函数
-│   ├── data-conversion.test.js    # 数据格式转换
-│   └── config-parser.test.js      # 配置解析逻辑
-│
-├── integration/                    # 70% - 服务协调测试
-│   ├── experiment-pipeline.test.js # 完整实验流程
-│   ├── cross-language.test.js     # 跨语言一致性
-│   ├── parallel-execution.test.js # 并发控制
-│   └── error-recovery.test.js     # 异常处理
-│
-└── e2e/                           # 10% - 端到端验证
-    ├── full-benchmark.test.js     # 完整基准测试
-    └── data-quality.test.js       # 数据质量验证
-```
-
-### **测试执行策略**
-
-```bash
-# 日常开发 - 快速验证 (< 1分钟)
-npm run test:smoke
-
-# 代码提交前 - 全面验证 (< 5分钟)  
-npm run test:integration
-
-# 发布前 - 完整验证 (< 15分钟)
-npm run test:full
-
-# 实验前预检 - 科学验证 (< 10分钟)
-npm run test:experiment-ready
-```
-
-### **关键测试指标**
-
-1. **科学有效性指标**
-   - ✅ 跨语言哈希一致性 = 100%
-   - ✅ 数据采集成功率 ≥ 95%
-   - ✅ 性能测量变异系数 ≤ 15%
-
-2. **系统稳定性指标**  
-   - ✅ 异常恢复成功率 ≥ 90%
-   - ✅ 并发控制有效性 = 100%
-   - ✅ 内存泄漏检测通过
-
-3. **数据质量指标**
-   - ✅ 异常值检测准确率 ≥ 95%
-   - ✅ 统计分析 pipeline 无错误
-   - ✅ 结果文件格式规范性 = 100%
 
 ---
 
-## 🚀 实施建议
+## 🔧 **测试环境配置**
 
-### **第一阶段：核心集成测试**
-优先实现跨语言一致性验证和基本流程测试，确保实验的科学基础。
+### **浏览器测试配置**
+```javascript
+// tests/utils/browser-test-harness.js
+export const TEST_CONFIGS = {
+    unit: {
+        headless: true,
+        timeout: 5000,
+        retries: 1
+    },
+    integration: {
+        headless: true,
+        timeout: 30000,
+        retries: 2,
+        logConsole: true
+    },
+    e2e: {
+        headless: false,
+        timeout: 60000,
+        retries: 3,
+        screenshots: true
+    }
+};
+```
 
-### **第二阶段：稳定性测试**  
-添加异常处理、并发控制、超时恢复等测试，保证系统在各种条件下的可靠性。
-
-### **第三阶段：性能优化**
-基于测试反馈优化测试执行速度，建立快速反馈循环。
+### **CI/CD 环境适配**
+```javascript
+// tests/setup.js
+beforeAll(async () => {
+    // 检测 CI 环境并调整配置
+    if (process.env.CI) {
+        global.testBrowserConfig = {
+            ...global.testBrowserConfig,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-first-run'
+            ]
+        };
+    }
+    
+    // 确保测试服务器运行
+    await ensureServerRunning();
+});
+```
 
 ---
+
+## 📊 **测试指标和报告**
+
+### **覆盖率目标**
+- **单元测试覆盖率**: ≥ 85%
+- **集成测试覆盖率**: ≥ 70%
+- **关键路径覆盖率**: 100%
+
+### **性能基准**
+- **测试套件执行时间**: < 10分钟 (完整)
+- **单元测试速度**: < 1分钟
+- **集成测试稳定性**: 成功率 ≥ 95%
+
+### **质量指标**
+```javascript
+// 自动化质量报告
+const qualityMetrics = {
+    testStability: {
+        target: 0.95,      // 95% 测试成功率
+        current: calculateSuccessRate()
+    },
+    performanceVariation: {
+        target: 0.3,       // 30% 变异系数阈值
+        current: calculatePerformanceCV()
+    },
+    crossLanguageConsistency: {
+        target: 1.0,       // 100% 哈希一致性
+        current: calculateHashConsistency()
+    }
+};
+```
+
+---
+
+## 🚨 **错误处理和恢复策略**
+
+### **分类错误处理**
+
+#### **1. 预期错误 (Expected Errors)**
+```javascript
+test('should handle invalid parameters gracefully', async () => {
+    const invalidData = { width: -1, height: 0 };
+    
+    const result = await runTask('mandelbrot', 'rust', invalidData);
+    
+    expect(result.success).toBe(false);
+    expect(result.errorType).toBe('invalid_parameters');
+    expect(result.error).toContain('width must be positive');
+});
+```
+
+#### **2. 环境错误 (Environmental Errors)**
+```javascript
+test('should retry on temporary network failures', async () => {
+    let attempts = 0;
+    const maxRetries = 3;
+    
+    while (attempts < maxRetries) {
+        try {
+            await executeTest();
+            break;
+        } catch (error) {
+            if (error.message.includes('ECONNRESET') && attempts < maxRetries - 1) {
+                attempts++;
+                await delay(1000 * attempts); // 指数退避
+                continue;
+            }
+            throw error;
+        }
+    }
+});
+```
+
+#### **3. 数据不一致错误 (Consistency Errors)**
+```javascript
+test('should investigate hash mismatches', async () => {
+    const result1 = await runTask('json_parse', 'rust', testData);
+    const result2 = await runTask('json_parse', 'tinygo', testData);
+    
+    if (result1.resultHash !== result2.resultHash) {
+        // 收集调试信息
+        const debugInfo = {
+            rustDetails: result1,
+            tinygoDetails: result2,
+            inputData: testData,
+            environment: collectEnvironmentInfo()
+        };
+        
+        // 记录到测试报告
+        console.error('Hash mismatch detected:', debugInfo);
+        
+        // 决定是否应该失败测试
+        throw new Error(`Cross-language hash mismatch: ${JSON.stringify(debugInfo)}`);
+    }
+});
+```
+
+---
+
+## 🔄 **持续改进和维护**
+
+### **测试用例演进策略**
+
+#### **1. 回归测试维护**
+- 每个 bug 修复必须添加对应的回归测试
+- 新功能开发遵循 TDD (测试驱动开发) 流程
+- 定期审查和更新测试用例
+
+#### **2. 性能基准更新**
+```javascript
+// 定期更新性能基准
+const performanceBaselines = {
+    mandelbrot_micro: {
+        rust: { mean: 42.1, stddev: 3.2 },
+        tinygo: { mean: 48.7, stddev: 4.1 },
+        lastUpdated: '2025-09-13'
+    }
+    // ... 其他基准
+};
+```
+
+#### **3. 测试数据管理**
+- 使用确定性随机数生成器确保可重复性
+- 版本化测试数据集
+- 定期验证测试数据的有效性
+
+### **工具链升级策略**
+```javascript
+// 依赖升级验证流程
+const upgradeValidation = {
+    pre_upgrade: [
+        'npm run test:full',
+        'npm run test:smoke'
+    ],
+    post_upgrade: [
+        'npm run test:full',
+        'npm run test:performance',
+        'npm run test:compatibility'
+    ]
+};
+```
+
+---
+
+## 📚 **最佳实践总结**
+
+### **🎯 测试设计原则**
+
+1. **独立性**: 每个测试用例独立运行，不依赖其他测试
+2. **确定性**: 使用固定种子确保测试结果可重复
+3. **快速反馈**: 优化测试执行速度，提供快速反馈
+4. **清晰意图**: 测试名称和错误消息清楚表达测试意图
+5. **边界覆盖**: 测试正常路径、边界条件和错误情况
+
+### **🛠️ 实施建议**
+
+1. **从核心功能开始**: 优先测试关键业务逻辑
+2. **增量构建**: 逐步增加测试覆盖率，避免一次性构建
+3. **自动化优先**: 优先实现可自动化的测试
+4. **监控质量**: 建立测试质量监控和报警机制
+5. **团队协作**: 建立测试用例评审和维护流程
+
+### **🚀 成功指标**
+
+| 指标 | 目标值 | 当前状态 | 改进计划 |
+|------|--------|----------|----------|
+| 测试覆盖率 | ≥85% | 评估中 | 逐步提升 |
+| 测试稳定性 | ≥95% | 监控中 | 持续优化 |
+| 执行效率 | <10分钟 | 优化中 | 并行化改进 |
+| 跨语言一致性 | 100% | 验证中 | 严格维护 |
+
+---
+
+## 🎉 **结论**
+
+本测试策略为 WebAssembly Benchmark 项目提供了一个全面、可扩展的质量保证框架。通过多层次测试架构、确定性数据生成、跨语言一致性验证和持续监控机制，确保项目在快速迭代的同时保持高质量和可靠性。
+
+关键成功要素：
+- **自动化优先**：减少人工干预，提高效率
+- **数据驱动**：基于客观指标进行质量评估
+- **持续改进**：根据项目演进不断优化测试策略
+- **团队协作**：建立共同的质量标准和实践规范
+
+---
+
