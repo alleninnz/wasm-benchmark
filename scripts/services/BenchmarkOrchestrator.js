@@ -201,8 +201,6 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
         const startTime = Date.now();
         const timeout = this.configService.getTimeout();
 
-        this.logger.progress(`Running benchmark: ${benchmark.name}`, options.index, options.total);
-
         try {
             // Check if aborted
             if (this.abortController?.signal.aborted) {
@@ -229,6 +227,10 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
 
             this.resultsService.addResult(benchmarkResult);
             this.logger.success(`Completed: ${benchmark.name} (${duration}ms)`);
+            
+            // Show progress after completion (index + 1 = number completed)
+            const completed = options.index + 1;
+            this.logger.progress(`Progress update`, completed, options.total);
 
             return benchmarkResult;
 
@@ -261,27 +263,70 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
         await this.browserService.navigateTo(benchmarkUrl);
 
         // Wait for page to be ready
-        await this.browserService.waitForElement('#benchmark-controls', { timeout: 10000 });
+        await this.browserService.waitForElement('#status', { timeout: 10000 });
 
-        // Execute benchmark in browser
-        const taskConfig = {
-            task: benchmark.name,
-            implementations: benchmark.implementations,
-            iterations: this.configService.getConfig().iterations || 10,
-            warmupIterations: this.configService.getConfig().warmupIterations || 3
-        };
+        // Parse task name from benchmark name (e.g., mandelbrot_micro -> mandelbrot)
+        const taskName = benchmark.name.replace(/_micro$/, '');
+        
+        // Determine appropriate scale based on benchmark name or configuration
+        const scale = benchmark.name.includes('_micro') ? 'micro' : 'small';
+        
+        // Run benchmark for each implementation (language)
+        const results = [];
+        for (const implementation of benchmark.implementations) {
+            // Extract language from implementation name (e.g., rust-optimized -> rust)
+            const language = implementation.name.split('-')[0];
+            
+            // Get the full task configuration from the loaded config
+            const fullConfig = this.configService.getConfig();
+            const taskConfiguration = fullConfig.tasks ? fullConfig.tasks[taskName] : null;
+            
+            // Execute benchmark in browser
+            const taskConfig = {
+                task: taskName,
+                language: language,
+                scale: scale,
+                taskConfig: taskConfiguration,
+                warmupRuns: this.configService.getConfig().warmupIterations || 3,
+                measureRuns: this.configService.getConfig().iterations || 10,
+                timeout: 30000 // 30 second timeout for individual tasks
+            };
 
-        // Call the browser benchmark runner
-        const result = await this.browserService.executeScript(async (config) => {
-            // This will be executed in browser context
-            if (typeof window.runTaskBenchmark === 'function') {
-                return await window.runTaskBenchmark(config);
-            } else {
-                throw new Error('runTaskBenchmark function not found in page');
+            try {
+                // Call the browser benchmark runner
+                const result = await this.browserService.executeScript(async (config) => {
+                    // This will be executed in browser context
+                    if (window.benchmarkRunner && typeof window.benchmarkRunner.runTaskBenchmark === 'function') {
+                        return await window.benchmarkRunner.runTaskBenchmark(config);
+                    } else {
+                        throw new Error('benchmarkRunner.runTaskBenchmark function not found in page');
+                    }
+                }, taskConfig);
+
+                results.push({
+                    ...result,
+                    task: taskName,
+                    language: language,
+                    implementation: implementation.name
+                });
+            } catch (error) {
+                results.push({
+                    success: false,
+                    error: error.message,
+                    task: taskName,
+                    language: language,
+                    implementation: implementation.name
+                });
             }
-        }, taskConfig);
+        }
 
-        return result;
+        // Return combined results
+        return {
+            benchmark: benchmark.name,
+            success: results.some(r => r.success),
+            results: results,
+            timestamp: new Date().toISOString()
+        };
     }
 
     /**
