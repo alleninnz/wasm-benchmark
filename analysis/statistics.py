@@ -16,26 +16,22 @@ Purpose:
 """
 
 import sys
-import json
 import os
-import numpy as np
-import pandas as pd
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
 
 
 class StatisticalAnalysis:
     """
     Statistical analysis system for WebAssembly benchmark data.
-    
+
     Implements rigorous statistical methods for comparative performance
     analysis meeting academic research standards.
     """
-    
+
     def __init__(self, result_directory: str):
         """
         Initialize statistical analysis with result directory.
-        
+
         Args:
             result_directory: Path to benchmark results directory
         """
@@ -43,7 +39,7 @@ class StatisticalAnalysis:
         self.alpha_level = 0.05  # Significance level for statistical tests
         self.min_effect_size = 0.2  # Minimum meaningful effect size (Cohen's d)
         self.confidence_level = 0.95  # Confidence level for intervals
-        
+
         # TODO: Add configurable statistical parameters
         # TODO: Add support for multiple comparison corrections
         # TODO: Implement power analysis calculations
@@ -64,21 +60,21 @@ def main():
         print("Usage: python3 statistics.py <result_directory>")
         print("Example: python3 statistics.py results/2025-01-10T15-30-45-123Z")
         sys.exit(1)
-    
+
     result_directory = sys.argv[1]
-    
+
     if not os.path.exists(result_directory):
         print(f"Error: Result directory does not exist: {result_directory}")
         sys.exit(1)
-    
+
     # Initialize statistical analysis
-    analysis = StatisticalAnalysis(result_directory)
+    # analysis = StatisticalAnalysis(result_directory)
     print(f"[STATS] Statistical analysis initialized for: {result_directory}")
-    
+
     # TODO: Implement statistical analysis execution
-    print(f"[STATS] Statistical analysis methods not yet implemented")
-    print(f"[STATS] Placeholder execution completed")
-    
+    print("[STATS] Statistical analysis methods not yet implemented")
+    print("[STATS] Placeholder execution completed")
+
     sys.exit(0)
 
 

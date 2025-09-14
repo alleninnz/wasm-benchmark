@@ -15,34 +15,30 @@ Purpose:
 """
 
 import sys
-import json
 import os
-import numpy as np
-import pandas as pd
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
 
 
 class QualityController:
     """
     Quality control system for WebAssembly benchmark data.
-    
+
     Implements comprehensive data validation and quality checks
     according to research methodology standards.
     """
-    
+
     def __init__(self, result_directory: str):
         """
         Initialize quality controller with result directory.
-        
+
         Args:
             result_directory: Path to benchmark results directory
         """
         self.result_dir = Path(result_directory)
         self.qc_threshold_cv = 0.20  # Coefficient of variation threshold (20%)
-        self.min_sample_size = 30    # Minimum recommended sample size
+        self.min_sample_size = 30  # Minimum recommended sample size
         self.outlier_iqr_factor = 1.5  # IQR factor for outlier detection
-        
+
         # TODO: Add configurable thresholds from config file
         # TODO: Add logging system integration
         # TODO: Implement complete QC pipeline methods
@@ -61,21 +57,21 @@ def main():
         print("Usage: python3 qc.py <result_directory>")
         print("Example: python3 qc.py results/2025-01-10T15-30-45-123Z")
         sys.exit(1)
-    
+
     result_directory = sys.argv[1]
-    
+
     if not os.path.exists(result_directory):
         print(f"Error: Result directory does not exist: {result_directory}")
         sys.exit(1)
-    
+
     # Initialize quality control
-    qc = QualityController(result_directory)
+    # qc = QualityController(result_directory)
     print(f"[QC] Quality control initialized for: {result_directory}")
-    
+
     # TODO: Implement quality control execution
-    print(f"[QC] Quality control methods not yet implemented")
-    print(f"[QC] Placeholder execution completed")
-    
+    print("[QC] Quality control methods not yet implemented")
+    print("[QC] Placeholder execution completed")
+
     sys.exit(0)
 
 

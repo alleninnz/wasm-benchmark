@@ -16,44 +16,40 @@ Purpose:
 """
 
 import sys
-import json
 import os
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
 
 
 class VisualizationGenerator:
     """
     Visualization system for WebAssembly benchmark data.
-    
+
     Creates publication-ready plots and charts for statistical
     analysis and research presentation.
     """
-    
+
     def __init__(self, result_directory: str):
         """
         Initialize visualization generator with result directory.
-        
+
         Args:
             result_directory: Path to benchmark results directory
         """
         self.result_dir = Path(result_directory)
         self.output_dir = self.result_dir / "plots"
         self.output_dir.mkdir(exist_ok=True)
-        
+
         # Configure matplotlib and seaborn defaults
-        plt.style.use('default')
+        plt.style.use("default")
         sns.set_palette("husl")
-        
+
         # Plot configuration
         self.figure_size = (10, 6)
         self.dpi = 300
         self.font_size = 12
-        
+
         # TODO: Add configurable plot themes and styles
         # TODO: Implement color-blind friendly palettes
         # TODO: Add publication-ready formatting options
@@ -74,22 +70,22 @@ def main():
         print("Usage: python3 plots.py <result_directory>")
         print("Example: python3 plots.py results/2025-01-10T15-30-45-123Z")
         sys.exit(1)
-    
+
     result_directory = sys.argv[1]
-    
+
     if not os.path.exists(result_directory):
         print(f"Error: Result directory does not exist: {result_directory}")
         sys.exit(1)
-    
+
     # Initialize visualization generator
     viz = VisualizationGenerator(result_directory)
     print(f"[PLOTS] Visualization generator initialized for: {result_directory}")
     print(f"[PLOTS] Output directory: {viz.output_dir}")
-    
+
     # TODO: Implement visualization generation
-    print(f"[PLOTS] Visualization methods not yet implemented")
-    print(f"[PLOTS] Placeholder execution completed")
-    
+    print("[PLOTS] Visualization methods not yet implemented")
+    print("[PLOTS] Placeholder execution completed")
+
     sys.exit(0)
 
 
