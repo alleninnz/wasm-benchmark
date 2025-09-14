@@ -305,16 +305,20 @@ clean-all: clean clean-results ## Clean everything including dependencies and ca
 lint: lint-python lint-rust lint-go lint-js ## Run all code quality checks
 	$(call log_success,All linting completed)
 
-lint-python: ## Run Python code quality checks
-	$(call log_step,Running Python code quality checks...)
+lint-python: ## Run Python code quality checks with ruff
+	$(call log_step,Running Python code quality checks with ruff...)
 	@python_files=$$(find . -name "*.py" -not -path "./node_modules/*" -not -path "./__pycache__/*" 2>/dev/null | head -1); \
 	if [ -n "$$python_files" ]; then \
-		if command -v black >/dev/null 2>&1 && command -v flake8 >/dev/null 2>&1; then \
-			python3 -m black --check . --exclude="node_modules|__pycache__" || true; \
-			python3 -m flake8 . --exclude="node_modules,__pycache__" || true; \
-			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Python linting completed"; \
+		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Using ruff for Python linting..."; \
+		if ruff check . --exclude="node_modules,__pycache__"; then \
+			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Python linting completed - no issues found"; \
 		else \
-			echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) Python linting tools (black, flake8) not installed, skipping..."; \
+			echo -e "$(RED)$(BOLD)[ERROR]$(NC) Python linting failed - issues found"; \
+			echo -e "$(YELLOW)$(BOLD)[FIX]$(NC) To automatically fix issues, run:"; \
+			echo -e "  $(CYAN)ruff check --fix .$(NC)"; \
+			echo -e "$(YELLOW)$(BOLD)[FIX]$(NC) To run both linting and formatting:"; \
+			echo -e "  $(CYAN)ruff check --fix . && make format-python$(NC)"; \
+			exit 1; \
 		fi; \
 	else \
 		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Python files found, skipping Python lint"; \
@@ -398,16 +402,13 @@ lint-js: ## Run JavaScript code quality checks
 format: format-python format-rust format-go ## Format all code
 	$(call log_success,All code formatting completed)
 
-format-python: ## Format Python code
-	$(call log_step,Formatting Python code...)
+format-python: ## Format Python code with black
+	$(call log_step,Formatting Python code with black...)
 	@python_files=$$(find . -name "*.py" -not -path "./node_modules/*" -not -path "./__pycache__/*" 2>/dev/null | head -1); \
 	if [ -n "$$python_files" ]; then \
-		if command -v black >/dev/null 2>&1; then \
-			python3 -m black . --exclude="node_modules|__pycache__"; \
-			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Python code formatted"; \
-		else \
-			echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) Python formatting tool (black) not installed, skipping..."; \
-		fi; \
+		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Using black for Python formatting..."; \
+		python3 -m black . --exclude="node_modules|__pycache__"; \
+		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Python code formatted with black"; \
 	else \
 		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Python files found, skipping Python format"; \
 	fi
