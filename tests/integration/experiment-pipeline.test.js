@@ -55,7 +55,7 @@ describe('Experiment Pipeline Integration', () => {
             // Create test configuration file
             const testConfig = {
                 experiment: { name: 'Pipeline Test', version: '1.0' },
-                environment: { warmupRuns: 2, measureRuns: 5, timeout: 30000 },
+                environment: { warmup_runs: 2, measure_runs: 5, timeout: 30000 },
                 tasks: { mandelbrot: { enabled: true }, json_parse: { enabled: true } },
                 languages: { rust: { enabled: true }, tinygo: { enabled: true } },
                 taskNames: ['mandelbrot', 'json_parse'],
@@ -83,7 +83,7 @@ describe('Experiment Pipeline Integration', () => {
         test('should reject invalid configuration gracefully', async () => {
             const invalidConfig = {
                 experiment: {}, // Missing name
-                environment: { warmupRuns: 1 }, // Missing measureRuns
+                environment: { warmup_runs: 1 }, // Missing measure_runs
                 tasks: {},
                 languages: {},
                 taskNames: [],

@@ -182,7 +182,7 @@ export class PowerAnalysis {
                 ]
             },
             qualityControls: {
-                warmupRuns: Math.max(3, Math.ceil(minSampleSize * 0.1)),
+                warmup_runs: Math.max(3, Math.ceil(minSampleSize * 0.1)),
                 measurementRuns: minSampleSize,
                 outlierDetection: 'IQR method (1.5 * IQR)',
                 environmentControls: [

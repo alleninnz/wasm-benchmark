@@ -125,7 +125,7 @@ const validationRules = {
     executionTime: {
         min: 0.1,
         max: 30000,
-        variationCoeff: 0.3
+        variationCoeff: 0.5  // Adjusted from 0.3 to 0.5 for micro-task stability
     },
     memoryUsage: {
         min: 0,

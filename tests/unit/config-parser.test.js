@@ -17,11 +17,11 @@ describe('Configuration Parser', () => {
             const input = {
                 experiment: { name: 'WASM Benchmark', version: '1.0' },
                 environment: {
-                    warmup_runs: 5,
-                    measure_runs: 100,
-                    timeout_ms: 300000
+                    warmupRuns: 5,
+                    measureRuns: 100,
+                    timeout: 300000
                 },
-                tasks: { mandelbrot: { enabled: true }, json_parse: { enabled: true } },
+                tasks: { mandelbrot: { enabled: true }, jsonParse: { enabled: true } },
                 languages: { rust: { enabled: true }, tinygo: { enabled: true } }
             };
 
@@ -31,7 +31,7 @@ describe('Configuration Parser', () => {
             expect(result.environment.warmupRuns).toBe(5);
             expect(result.environment.measureRuns).toBe(100);
             expect(result.environment.timeout).toBe(300000);
-            expect(result.taskNames).toEqual(['mandelbrot', 'json_parse']);
+            expect(result.taskNames).toEqual(['mandelbrot', 'jsonParse']);
             expect(result.enabledLanguages).toEqual(['rust', 'tinygo']);
             expect(result.generated.timestamp).toBeDefined();
         });
@@ -39,7 +39,7 @@ describe('Configuration Parser', () => {
         test('should apply default values for missing fields', () => {
             const input = {
                 experiment: { name: 'Test' },
-                environment: { warmup_runs: 3, measure_runs: 10 },
+                environment: { warmupRuns: 3, measureRuns: 10 },
                 tasks: {},
                 languages: {}
             };
@@ -54,7 +54,7 @@ describe('Configuration Parser', () => {
         test('should handle disabled languages correctly', () => {
             const input = {
                 experiment: { name: 'Test' },
-                environment: { warmup_runs: 1, measure_runs: 1 },
+                environment: { warmupRuns: 1, measureRuns: 1 },
                 tasks: { mandelbrot: { enabled: true } },
                 languages: { rust: { enabled: false }, tinygo: { enabled: true } }
             };
@@ -116,11 +116,11 @@ describe('Configuration Parser', () => {
         test('should maintain data integrity through optimization process', () => {
             const originalConfig = {
                 experiment: { name: 'Consistency Test', version: '2.0' },
-                environment: { warmup_runs: 10, measure_runs: 50 },
+                environment: { warmupRuns: 10, measureRuns: 50 },
                 tasks: {
                     mandelbrot: { enabled: true },
-                    json_parse: { enabled: true },
-                    matrix_mul: { enabled: false }
+                    jsonParse: { enabled: true },
+                    matrixMul: { enabled: false }
                 },
                 languages: { rust: { enabled: true }, tinygo: { enabled: true } }
             };
@@ -129,8 +129,8 @@ describe('Configuration Parser', () => {
 
             expect(optimized.taskNames).toHaveLength(2);
             expect(optimized.taskNames).toContain('mandelbrot');
-            expect(optimized.taskNames).toContain('json_parse');
-            expect(optimized.taskNames).not.toContain('matrix_mul');
+            expect(optimized.taskNames).toContain('jsonParse');
+            expect(optimized.taskNames).not.toContain('matrixMul');
 
             expect(optimized.enabledLanguages).toEqual(['rust', 'tinygo']);
             expect(optimized.experiment.name).toBe('Consistency Test');
@@ -139,7 +139,7 @@ describe('Configuration Parser', () => {
         test('should handle edge cases gracefully', () => {
             const edgeConfig = {
                 experiment: { name: 'Edge Test' },
-                environment: { warmup_runs: 0, measure_runs: 1 }, // Minimal runs
+                environment: { warmupRuns: 0, measureRuns: 1 }, // Minimal runs
                 tasks: {},
                 languages: {}
             };
