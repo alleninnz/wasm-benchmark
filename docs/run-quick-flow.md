@@ -400,8 +400,8 @@ async runBenchmarkTask(benchmark, options = {}) {
             language: language,
             scale: scale,
             taskConfig: this.configService.getConfig().tasks[taskName],
-            warmupRuns: this.configService.getConfig().warmupIterations || 3,
-            measureRuns: this.configService.getConfig().iterations || 10,
+            warmup_runs: this.configService.getConfig().warmupIterations || 3,
+            measure_runs: this.configService.getConfig().iterations || 10,
             timeout: 30000
         };
         
@@ -501,8 +501,8 @@ window.runTask = async function(taskName, language, taskData) {
                 small: taskData
             }
         },
-        warmupRuns: 0,
-        measureRuns: 1,
+        warmup_runs: 0,
+        measure_runs: 1,
         timeout: window.benchmarkState.taskTimeout || 30000
     };
     
@@ -633,15 +633,15 @@ function configureTask(taskName, scale, taskConfig) {
 }
 
 // 3. 基准测试执行
-async function runBenchmark(wasmInstance, config, warmupRuns, measureRuns) {
+async function runBenchmark(wasmInstance, config, warmup_runs, measure_runs) {
     // 预热运行
-    for (let i = 0; i < warmupRuns; i++) {
+    for (let i = 0; i < warmup_runs; i++) {
         await executeTask(wasmInstance, config);
     }
     
     // 测量运行
     const results = [];
-    for (let i = 0; i < measureRuns; i++) {
+    for (let i = 0; i < measure_runs; i++) {
         const startTime = performance.now();
         const result = await executeTask(wasmInstance, config);
         const endTime = performance.now();

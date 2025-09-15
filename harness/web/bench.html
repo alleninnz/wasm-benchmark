@@ -227,8 +227,8 @@
                         small: taskData
                     }
                 },
-                warmupRuns: 0,  // Skip warmup for tests
-                measureRuns: 1, // Single run for tests
+                warmup_runs: 0,  // Skip warmup for tests
+                measure_runs: 1, // Single run for tests
                 timeout: window.benchmarkState.taskTimeout || 30000
             };
             
@@ -312,8 +312,8 @@
                 errors.push('Missing experiment name');
             }
             
-            if (!config.environment || !config.environment.measureRuns) {
-                errors.push('Missing measureRuns in environment');
+            if (!config.environment || !config.environment.measure_runs) {
+                errors.push('Missing measure_runs in environment');
             }
             
             if (!config.taskNames || !Array.isArray(config.taskNames) || config.taskNames.length === 0) {
