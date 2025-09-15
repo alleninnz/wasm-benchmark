@@ -10,13 +10,30 @@ export class ConfigLoader {
     }
 
     /**
+     * Detect configuration mode from URL parameters
+     * @returns {string} Configuration file path
+     * @private
+     */
+    _detectConfigPath() {
+        // Check URL parameters for mode
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('mode');
+
+        if (mode === 'quick') {
+            return '/configs/bench-quick.json';
+        } else {
+            return '/configs/bench.json';
+        }
+    }
+
+    /**
      * Load configuration from pre-generated JSON file
-     * @param {string} configPath - Optional path to config file (ignored, uses bench.config.json)
+     * @param {string} configPath - Optional path to config file (will auto-detect if not provided)
      * @returns {Promise<Object>} Parsed configuration object
      */
     async loadConfig(configPath = null) {
-        // Use pre-generated JSON configuration from configs directory
-        const jsonPath = '/configs/bench.json';
+        // Detect configuration path based on URL parameters or use provided path
+        const jsonPath = configPath || this._detectConfigPath();
 
         try {
             window.logResult(`Loading pre-generated configuration from: ${jsonPath}`, 'info');
@@ -137,6 +154,7 @@ export class ConfigLoader {
         }
 
         // Add legacy compatibility fields with safe fallbacks
+        // JSON now uses camelCase, maintain camelCase interface for consistency
         config.warmupRuns = config.environment.warmupRuns || 3;
         config.measureRuns = config.environment.measureRuns || 10;
         config.timeout = config.environment.timeout || 60000;

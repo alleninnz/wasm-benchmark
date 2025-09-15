@@ -18,7 +18,7 @@ export class BenchmarkRunner {
         // Constants
         this.DEFAULT_RANDOM_SEED = 12345;
         this.MAX_CONFIG_TIMEOUT = 5 * 60 * 1000; // 5 minutes
-        
+
         // FNV-1a constants for input data hashing
         this.FNV_OFFSET_BASIS = 2166136261;
         this.FNV_PRIME = 16777619;
@@ -86,8 +86,8 @@ export class BenchmarkRunner {
      */
     _applyConfig(config) {
         // Apply random seed from config if available
-        if (config.verification && config.verification.hash_offset_basis) {
-            this.randomSeed = config.verification.hash_offset_basis;
+        if (config.verification && config.verification.hashOffsetBasis) {
+            this.randomSeed = config.verification.hashOffsetBasis;
             this.random = this._xorshift32(this.randomSeed);
         }
 
@@ -101,9 +101,9 @@ export class BenchmarkRunner {
      */
     _calculateTotalRuns(config) {
         let total = 0;
-        for (const task of config.tasks) {
-            for (const lang of config.languages) {
-                for (const scale of config.scales) {
+        for (const _task of config.tasks) {
+            for (const _lang of config.languages) {
+                for (const _scale of config.scales) {
                     total += config.warmupRuns + config.measureRuns;
                 }
             }
@@ -169,7 +169,9 @@ export class BenchmarkRunner {
      */
     async _runTaskBenchmark(taskName, language, scale, config) {
         const moduleId = `${taskName}-${language}-${scale}`;
-        const wasmPath = `/builds/${language}/${taskName}-${language}-o3.wasm`;
+        // Convert camelCase taskName back to snake_case for file path
+        const taskNameSnakeCase = taskName.replace(/([A-Z])/g, '_$1').toLowerCase();
+        const wasmPath = `/builds/${language}/${taskNameSnakeCase}-${language}-o3.wasm`;
 
         window.benchmarkState.currentTask = taskName;
         window.benchmarkState.currentLang = language;
@@ -216,6 +218,7 @@ export class BenchmarkRunner {
                     scale: scale,
                     run: i + 1,
                     moduleId: moduleId,
+                    inputData: inputData,
                     inputDataHash: this._computeInputDataHash(inputData)
                 });
 
@@ -286,8 +289,11 @@ export class BenchmarkRunner {
         // Get WASM memory statistics
         const wasmMemStats = this.loader.getModuleMemoryStats(metadata.moduleId);
 
+        // Destructure metadata to exclude inputData from final result
+        const { inputData, ...metadataWithoutInputData } = metadata;
+
         const result = {
-            ...metadata,
+            ...metadataWithoutInputData,
             executionTime: executionTime,
             memoryUsageMb: memoryDelta,
             memoryUsed: memoryDeltaBytes, // Memory usage in bytes
@@ -298,7 +304,7 @@ export class BenchmarkRunner {
             jsHeapAfter: memAfter ? memAfter.used : 0,
             success: true,
             // Add task-specific result fields for test compatibility
-            ...this._generateTaskSpecificFields(metadata.task, metadata.inputData)
+            ...this._generateTaskSpecificFields(metadata.task, inputData)
         };
 
         return result;
@@ -312,12 +318,12 @@ export class BenchmarkRunner {
      */
     _computeInputDataHash(inputData) {
         let hash = this.FNV_OFFSET_BASIS;
-        
+
         for (let i = 0; i < inputData.length; i++) {
             hash ^= inputData[i];
             hash = (hash * this.FNV_PRIME) >>> 0; // Ensure 32-bit unsigned
         }
-        
+
         return hash;
     }
 
@@ -326,7 +332,10 @@ export class BenchmarkRunner {
      * @private
      */
     _generateTaskSpecificFields(taskName, inputData) {
-        switch (taskName) {
+        // Convert camelCase taskName back to snake_case for switch statement
+        const taskNameSnakeCase = taskName.replace(/([A-Z])/g, '_$1').toLowerCase();
+
+        switch (taskNameSnakeCase) {
             case 'json_parse':
                 // Extract record count from binary parameter data
                 if (inputData && inputData.length >= 4) {
@@ -362,7 +371,10 @@ export class BenchmarkRunner {
         const taskConfig = config.taskConfigs[taskName];
         const scaleConfig = taskConfig.scales[scale];
 
-        switch (taskName) {
+        // Convert camelCase taskName back to snake_case for switch statement
+        const taskNameSnakeCase = taskName.replace(/([A-Z])/g, '_$1').toLowerCase();
+
+        switch (taskNameSnakeCase) {
             case 'mandelbrot':
                 return this._generateMandelbrotParams(scaleConfig);
             case 'json_parse':
@@ -370,7 +382,7 @@ export class BenchmarkRunner {
             case 'matrix_mul':
                 return this._generateMatrixData(scaleConfig);
             default:
-                throw new Error(`Unknown task: ${taskName}`);
+                throw new Error(`Unknown task: ${taskName} (converted to: ${taskNameSnakeCase})`);
         }
     }
 
@@ -387,13 +399,14 @@ export class BenchmarkRunner {
             throw new Error('Mandelbrot width and height must be positive integers');
         }
 
-        const maxIter = scaleConfig.maxIter || scaleConfig.max_iter || 100;
+        const maxIter = scaleConfig.maxIter || scaleConfig.maxIter || 100;
         if (maxIter <= 0) {
             throw new Error('Mandelbrot maxIter must be a positive integer');
         }
 
         // Constants for Mandelbrot calculation
-        const MANDELBROT_BUFFER_SIZE = 40; // Width(4) + Height(4) + MaxIter(4) + Padding(4) + CenterReal(8) + CenterImag(8) + ScaleFactor(8)
+        // Width(4) + Height(4) + MaxIter(4) + Padding(4) + CenterReal(8) + CenterImag(8) + ScaleFactor(8)
+        const MANDELBROT_BUFFER_SIZE = 40;
         const MANDELBROT_CENTER_REAL = -0.743643887037;
         const MANDELBROT_CENTER_IMAG = 0.131825904205;
         const MANDELBROT_SCALE_FACTOR = 3.0; // Zoom level for the Mandelbrot set view
@@ -424,12 +437,18 @@ export class BenchmarkRunner {
 
         if (scaleConfig.data && scaleConfig.expectedProperties) {
             // Test data generator format - extract record count
-            recordCount = scaleConfig.expectedProperties.recordCount;
+            const { recordCount: expectedRecordCount } = scaleConfig.expectedProperties;
+            recordCount = expectedRecordCount;
         } else if (scaleConfig.recordCount) {
-            // Simple config format
-            recordCount = scaleConfig.recordCount;
+            // Simple config format - camelCase
+            const { recordCount: configRecordCount } = scaleConfig;
+            recordCount = configRecordCount;
+        } else if (scaleConfig.record_count) {
+            // Simple config format - snake_case fallback
+            const { record_count } = scaleConfig;
+            recordCount = record_count;
         } else {
-            throw new Error('JSON test data requires either recordCount or pre-generated data structure');
+            throw new Error('JSON test data requires recordCount or pre-generated data structure');
         }
 
         if (recordCount <= 0) {
@@ -441,12 +460,12 @@ export class BenchmarkRunner {
 
         try {
             // Create binary parameter structure for WASM module
-            // The JSON task expects: [record_count: u32, seed: u32]
+            // The JSON task expects: [recordCount: u32, seed: u32]
             const JSON_PARAMS_SIZE = 8; // 2 * 4 bytes
             const params = new ArrayBuffer(JSON_PARAMS_SIZE);
             const view = new DataView(params);
 
-            view.setUint32(0, recordCount, true); // record_count
+            view.setUint32(0, recordCount, true); // recordCount
             view.setUint32(4, this.randomSeed || 12345, true); // seed
 
             return new Uint8Array(params);
@@ -468,7 +487,8 @@ export class BenchmarkRunner {
             dimension = scaleConfig.expectedProperties.dimensions[0]; // Square matrix
         } else if (scaleConfig.dimension) {
             // Simple config format
-            dimension = scaleConfig.dimension;
+            const { dimension: configDimension } = scaleConfig;
+            dimension = configDimension;
         } else if (scaleConfig.size) {
             // Alternative naming convention
             dimension = scaleConfig.size;
@@ -520,7 +540,10 @@ export class BenchmarkRunner {
         }
 
         // Extract and validate task parameters from config
-        const { task, language, scale, taskConfig, scaleConfig, warmupRuns, measureRuns, timeout } = config;
+        const {
+            task, language, scale, taskConfig, scaleConfig: _scaleConfig,
+            warmupRuns, measureRuns, timeout
+        } = config;
 
         if (!task || typeof task !== 'string') {
             throw new Error('runTaskBenchmark: task must be a non-empty string');

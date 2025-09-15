@@ -123,7 +123,7 @@ export class WasmLoader {
                     // Runtime functions
                     'runtime.ticks': () => { return performance.now(); },
                     'runtime.sleepTicks': (ms) => { console.log(`sleep ${ms}ms`); },
-                    'runtime.getRandomData': (ptr, len) => { return 0; },
+                    'runtime.getRandomData': (_ptr, _len) => { return 0; },
                     // Syscall/js functions - comprehensive set for TinyGo
                     'syscall/js.valueGet': () => { return 0; },
                     'syscall/js.valueSet': () => { },
@@ -225,7 +225,7 @@ export class WasmLoader {
                 if (instance.exports.cleanup && typeof instance.exports.cleanup === 'function') {
                     instance.exports.cleanup();
                 }
-            } catch (e) {
+            } catch {
                 // Ignore cleanup errors, not all modules have cleanup
             }
 
@@ -331,7 +331,7 @@ export class WasmLoader {
      */
     getLoadedModulesInfo() {
         const info = [];
-        for (const [moduleId, instance] of this.loadedModules) {
+        for (const [moduleId, _instance] of this.loadedModules) {
             const memStats = this.getModuleMemoryStats(moduleId);
             info.push({
                 id: moduleId,
