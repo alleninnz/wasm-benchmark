@@ -3,6 +3,7 @@
  * Manages browser lifecycle and page interactions
  */
 
+import chalk from 'chalk';
 import { LoggingService } from './LoggingService.js';
 import { IBrowserService } from '../interfaces/IBrowserService.js';
 
@@ -61,6 +62,38 @@ export class BrowserService extends IBrowserService {
 
         } catch (error) {
             throw new Error(`Failed to initialize browser: ${error.message}`);
+        }
+    }
+
+    /**
+     * Create a new page for parallel execution
+     * @returns {Promise<Object>} New page instance
+     */
+    async createNewPage() {
+        if (!this.browser) {
+            throw new Error('Browser not initialized. Call initialize() first.');
+        }
+
+        try {
+            const page = await this.browser.newPage();
+            page.setDefaultTimeout(30000);
+
+            // Configure console logging for new page
+            page.on('console', msg => {
+                const type = msg.type();
+                if (type === 'error' || type === 'warning') {
+                    console.log(chalk.gray(`Browser ${type}: ${msg.text()}`));
+                }
+            });
+
+            // Handle page errors for new page
+            page.on('pageerror', error => {
+                console.error(chalk.red('Page error:'), error.message);
+            });
+
+            return page;
+        } catch (error) {
+            throw new Error(`Failed to create new page: ${error.message}`);
         }
     }
 

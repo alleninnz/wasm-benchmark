@@ -4,7 +4,6 @@
  */
 
 import fs from 'fs';
-import path from 'path';
 import { IConfigurationService } from '../interfaces/IConfigurationService.js';
 
 export class ConfigurationService extends IConfigurationService {
@@ -27,6 +26,10 @@ export class ConfigurationService extends IConfigurationService {
 
             const configContent = fs.readFileSync(configPath, 'utf8');
             const config = JSON.parse(configContent);
+
+            // Store config path for mode detection
+            this.configPath = configPath;
+            this.isQuickMode = configPath.includes('bench-quick.json');
 
             // Validate required fields
             this.validateConfig(config);
@@ -235,7 +238,14 @@ export class ConfigurationService extends IConfigurationService {
      */
     getBenchmarkUrl() {
         const server = this.getServerConfig();
-        return `http://${server.host}:${server.port}${server.benchmarkPath}`;
+        const baseUrl = `http://${server.host}:${server.port}${server.benchmarkPath}`;
+
+        // Add quick parameter if in quick mode
+        if (this.isQuickMode) {
+            return `${baseUrl}?mode=quick`;
+        }
+
+        return baseUrl;
     }
 
     /**

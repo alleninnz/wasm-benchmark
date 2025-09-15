@@ -59,17 +59,16 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
         this.abortController = new AbortController();
 
         try {
-            const config = this.configService.getConfig();
             const benchmarks = this.configService.getBenchmarks();
             const parallelConfig = this.configService.getParallelConfig();
 
             this.logger.info(`Starting execution of ${benchmarks.length} benchmarks...`);
 
-            let results;
+            let _results;
             if (parallelConfig.enabled && benchmarks.length > 1) {
-                results = await this.executeInParallel(benchmarks, options);
+                _results = await this.executeInParallel(benchmarks, options);
             } else {
-                results = await this.executeSequentially(benchmarks, options);
+                _results = await this.executeSequentially(benchmarks, options);
             }
 
             // Finalize results
@@ -227,10 +226,6 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
 
             this.resultsService.addResult(benchmarkResult);
             this.logger.success(`Completed: ${benchmark.name} (${duration}ms)`);
-            
-            // Show progress after completion (index + 1 = number completed)
-            const completed = options.index + 1;
-            this.logger.progress(`Progress update`, completed, options.total);
 
             return benchmarkResult;
 
@@ -257,76 +252,105 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
      * @param {Object} options - Execution options
      * @returns {Promise<Object>} Task result
      */
-    async runBenchmarkTask(benchmark, options = {}) {
-        // Navigate to benchmark page
-        const benchmarkUrl = this.configService.getBenchmarkUrl();
-        await this.browserService.navigateTo(benchmarkUrl);
+    async runBenchmarkTask(benchmark, _options = {}) {
+        // Create a dedicated page for this benchmark to avoid navigation conflicts in parallel execution
+        const dedicatedPage = await this.browserService.createNewPage();
 
-        // Wait for page to be ready
-        await this.browserService.waitForElement('#status', { timeout: 10000 });
-
-        // Parse task name from benchmark name (e.g., mandelbrot_micro -> mandelbrot)
-        const taskName = benchmark.name.replace(/_micro$/, '');
-        
-        // Determine appropriate scale based on benchmark name or configuration
-        const scale = benchmark.name.includes('_micro') ? 'micro' : 'small';
-        
-        // Run benchmark for each implementation (language)
-        const results = [];
-        for (const implementation of benchmark.implementations) {
-            // Extract language from implementation name (e.g., rust-optimized -> rust)
-            const language = implementation.name.split('-')[0];
-            
-            // Get the full task configuration from the loaded config
-            const fullConfig = this.configService.getConfig();
-            const taskConfiguration = fullConfig.tasks ? fullConfig.tasks[taskName] : null;
-            
-            // Execute benchmark in browser
-            const taskConfig = {
-                task: taskName,
-                language: language,
-                scale: scale,
-                taskConfig: taskConfiguration,
-                warmupRuns: this.configService.getConfig().warmupIterations || 3,
-                measureRuns: this.configService.getConfig().iterations || 10,
-                timeout: 30000 // 30 second timeout for individual tasks
+        try {
+            // Navigate to benchmark page using dedicated page
+            const benchmarkUrl = this.configService.getBenchmarkUrl();
+            const navigationOptions = {
+                waitUntil: 'networkidle0',
+                timeout: 30000
             };
 
-            try {
-                // Call the browser benchmark runner
-                const result = await this.browserService.executeScript(async (config) => {
-                    // This will be executed in browser context
-                    if (window.benchmarkRunner && typeof window.benchmarkRunner.runTaskBenchmark === 'function') {
-                        return await window.benchmarkRunner.runTaskBenchmark(config);
-                    } else {
-                        throw new Error('benchmarkRunner.runTaskBenchmark function not found in page');
-                    }
-                }, taskConfig);
+            await dedicatedPage.goto(benchmarkUrl, navigationOptions);
+            await dedicatedPage.waitForSelector('body', { timeout: 10000 });
+            await dedicatedPage.waitForSelector('#status', { timeout: 10000 });
 
-                results.push({
-                    ...result,
+            // Parse task name from benchmark name (e.g., mandelbrot_micro -> mandelbrot)
+            const taskName = benchmark.name.replace(/_micro$/, '');
+
+            // Get the full config to determine available scales for this task
+            const fullConfig = this.configService.getConfig();
+            const taskConfiguration = fullConfig.tasks ? fullConfig.tasks[taskName] : null;
+
+            // Determine appropriate scale from task configuration or fallback to 'small'
+            let scale = 'small'; // fallback
+            if (taskConfiguration && taskConfiguration.scales) {
+                const availableScales = Object.keys(taskConfiguration.scales);
+                scale = availableScales.length > 0 ? availableScales[0] : 'small';
+            }
+
+            // Run benchmark for each implementation (language)
+            const results = [];
+            const _totalImplementations = benchmark.implementations.length;
+
+            for (let i = 0; i < benchmark.implementations.length; i++) {
+                const implementation = benchmark.implementations[i];
+                // Extract language from implementation name (e.g., matrix_mul_rust -> rust)
+                const language = implementation.name.split('_').pop();
+
+                // Execute benchmark in browser
+                const taskConfig = {
                     task: taskName,
                     language: language,
-                    implementation: implementation.name
-                });
+                    scale: scale,
+                    taskConfig: taskConfiguration, // Pass the full task configuration with scales
+                    warmupRuns: this.configService.getConfig().warmupIterations || 3,
+                    measureRuns: this.configService.getConfig().iterations || 10,
+                    timeout: 30000 // 30 second timeout for individual tasks
+                };
+
+                try {
+                // Execute benchmark script on dedicated page to avoid navigation conflicts
+                    const result = await dedicatedPage.evaluate(async (config) => {
+                    // This will be executed in browser context
+                        if (window.benchmarkRunner && typeof window.benchmarkRunner.runTaskBenchmark === 'function') {
+                            return await window.benchmarkRunner.runTaskBenchmark(config);
+                        } else {
+                            throw new Error('benchmarkRunner.runTaskBenchmark function not found in page');
+                        }
+                    }, taskConfig);
+
+                    results.push({
+                        ...result,
+                        task: taskName,
+                        language: language,
+                        implementation: implementation.name
+                    });
+
+                    this.logger.success(`Completed ${taskName} for ${language}`);
+                } catch (error) {
+                    results.push({
+                        success: false,
+                        error: error.message,
+                        task: taskName,
+                        language: language,
+                        implementation: implementation.name
+                    });
+
+                    this.logger.error(`Failed ${taskName} for ${language}: ${error.message}`);
+                }
+            }
+
+            // Return combined results
+            return {
+                benchmark: benchmark.name,
+                success: results.some(r => r.success),
+                results: results,
+                timestamp: new Date().toISOString()
+            };
+
+        } finally {
+            // Always close the dedicated page to prevent resource leaks
+            try {
+                await dedicatedPage.close();
             } catch (error) {
-                results.push({
-                    success: false,
-                    error: error.message,
-                    task: taskName,
-                    language: language,
-                    implementation: implementation.name
-                });
+                // Log but don't throw - resource cleanup shouldn't fail the benchmark
+                console.warn('Failed to close dedicated page:', error.message);
             }
         }
-
-        // Return combined results
-        return {
-            benchmark: benchmark.name,
-            success: results.some(r => r.success),
-            results: results,
-            timestamp: new Date().toISOString()
-        };
     }
 
     /**
@@ -414,13 +438,13 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
      */
     async emergencyCleanup() {
         // Import chalk dynamically to avoid import issues
-        let chalk;
+        let _chalk;
         try {
             const chalkModule = await import('chalk');
-            chalk = chalkModule.default;
-        } catch (chalkError) {
+            _chalk = chalkModule.default;
+        } catch {
             // Fallback to console.log if chalk is not available
-            chalk = {
+            _chalk = {
                 yellow: (text) => text,
                 red: (text) => text,
                 green: (text) => text
