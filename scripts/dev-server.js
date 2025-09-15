@@ -12,6 +12,10 @@ import cors from 'cors';
 import path from 'path';
 import fs, { promises as fsPromises } from 'fs';
 import { fileURLToPath } from 'url';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,7 +37,45 @@ async function writeLog(message) {
     }
 }
 
-// Enable CORS for all routes
+// Clean up any existing dev server processes
+async function cleanupExistingServers() {
+    try {
+        console.log('🔍 Checking for existing dev server processes...');
+
+        let processKilled = false;
+
+        // Method 1: Kill by process name
+        try {
+            await execAsync('pkill -f dev-server.js 2>/dev/null');
+            console.log('✅ Stopped existing dev-server.js processes');
+            await writeLog('CLEANUP: Killed existing dev-server.js processes');
+            processKilled = true;
+        } catch {
+            // No processes found, which is fine
+        }
+
+        // Method 2: Kill by port (only if Method 1 didn't find processes)
+        if (!processKilled) {
+            try {
+                const { stdout } = await execAsync(`lsof -ti:${PORT} 2>/dev/null`);
+                if (stdout.trim()) {
+                    await execAsync(`lsof -ti:${PORT} | xargs kill -9 2>/dev/null`);
+                    console.log(`✅ Freed up port ${PORT}`);
+                    await writeLog(`CLEANUP: Freed up port ${PORT}`);
+                }
+            } catch {
+                // Port not in use, which is fine
+            }
+        }
+
+        // Give processes time to clean up
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+    } catch (error) {
+        console.log('⚠️  Cleanup had some issues, but continuing...');
+        await writeLog(`CLEANUP WARNING: ${error.message}`);
+    }
+}// Enable CORS for all routes
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'OPTIONS'],
@@ -170,8 +212,25 @@ app.get('/configs/bench.json', (req, res) => {
         writeLog(`ERROR: bench.json not found at: ${configPath}`);
         res.status(404).json({
             error: 'Configuration not found',
-            message: 'bench.json not found. Run "npm run build:config" to generate it.',
+            message: 'bench.json not found. Run "make build-config" to generate it.',
             path: '/configs/bench.json'
+        });
+    }
+});
+
+// Serve quick benchmark configuration (bench-quick.json needed for quick tests)
+app.get('/configs/bench-quick.json', (req, res) => {
+    const configPath = path.join(__dirname, '../configs/bench-quick.json');
+
+    if (fs.existsSync(configPath)) {
+        res.setHeader('Content-Type', 'application/json');
+        res.sendFile(configPath);
+    } else {
+        writeLog(`ERROR: bench-quick.json not found at: ${configPath}`);
+        res.status(404).json({
+            error: 'Configuration not found',
+            message: 'bench-quick.json not found. Run "make build-config-quick" to generate it.',
+            path: '/configs/bench-quick.json'
         });
     }
 });
@@ -229,7 +288,8 @@ app.use((req, res) => {
             '/ (bench.html)',
             '/harness/**',
             '/builds/**',
-            '/configs/bench.json'
+            '/configs/bench.json',
+            '/configs/bench-quick.json'
         ]
     });
 });
@@ -274,14 +334,57 @@ process.on('SIGINT', async () => {
     process.exit(0);
 });
 
-// Start the server
-app.listen(PORT, async () => {
-    console.log('🚀 WASM Benchmark Development Server');
-    console.log(`📍 Server: http://localhost:${PORT}`);
-    console.log('📄 Logs: dev-server.log');
-    console.log('⏹️  Press Ctrl+C to stop');
+// Check for required configuration files before starting server
+function checkRequiredConfigFiles() {
+    const benchJsonPath = path.join(__dirname, '../configs/bench.json');
+    const benchQuickJsonPath = path.join(__dirname, '../configs/bench-quick.json');
 
-    // Log server startup
-    await writeLog(`SERVER STARTED on port ${PORT}`);
-    await writeLog(`Serving: /harness -> harness/, /builds -> builds/, /configs -> configs/`);
+    const missingFiles = [];
+
+    if (!fs.existsSync(benchJsonPath)) {
+        missingFiles.push('configs/bench.json');
+    }
+
+    if (!fs.existsSync(benchQuickJsonPath)) {
+        missingFiles.push('configs/bench-quick.json');
+    }
+
+    if (missingFiles.length > 0) {
+        console.error('❌ Required configuration files are missing:');
+        missingFiles.forEach(file => {
+            console.error(`   - ${file}`);
+        });
+        console.error('');
+        console.error('🔧 To generate the missing configuration files, run:');
+        console.error('   make build-config');
+        console.error('');
+        console.error('💡 This will create the required JSON configuration files from YAML sources.');
+        process.exit(1);
+    }
+}
+
+// Start the server
+async function startServer() {
+    // Clean up any existing servers first
+    await cleanupExistingServers();
+
+    // Check for required configuration files
+    checkRequiredConfigFiles();
+
+    app.listen(PORT, async () => {
+        console.log('🚀 WASM Benchmark Development Server');
+        console.log(`📍 Server: http://localhost:${PORT}`);
+        console.log('📄 Logs: dev-server.log');
+        console.log('⏹️  Press Ctrl+C to stop');
+
+        // Log server startup
+        await writeLog(`SERVER STARTED on port ${PORT}`);
+        await writeLog(`Serving: /harness -> harness/, /builds -> builds/, /configs -> configs/`);
+    });
+}
+
+// Start the server
+startServer().catch(error => {
+    console.error('❌ Failed to start server:', error.message);
+    process.exit(1);
 });

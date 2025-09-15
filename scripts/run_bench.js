@@ -146,13 +146,13 @@ Examples:
 
         // Save results with local timezone
         const now = new Date();
-        const timestamp = now.getFullYear() + '-' + 
-            String(now.getMonth() + 1).padStart(2, '0') + '-' +
-            String(now.getDate()).padStart(2, '0') + 'T' +
-            String(now.getHours()).padStart(2, '0') + '-' +
-            String(now.getMinutes()).padStart(2, '0') + '-' +
-            String(now.getSeconds()).padStart(2, '0') + '-' +
-            String(now.getMilliseconds()).padStart(3, '0') + 'Z';
+        const timestamp = `${now.getFullYear()}-${
+            String(now.getMonth() + 1).padStart(2, '0')}-${
+            String(now.getDate()).padStart(2, '0')}T${
+            String(now.getHours()).padStart(2, '0')}-${
+            String(now.getMinutes()).padStart(2, '0')}-${
+            String(now.getSeconds()).padStart(2, '0')}-${
+            String(now.getMilliseconds()).padStart(3, '0')}Z`;
         const outputPath = path.join(__dirname, '..', 'results', `${timestamp}.json`);
         await orchestrator.saveResults(outputPath, 'json');
 
