@@ -19,9 +19,9 @@ const DEFAULT_REPETITIONS = 1;
 
 // Environment detection
 const EXCLUDED_ENV_KEYS = [
-    'warmup_runs', 'measure_runs', 'warmupRuns', 'measureRuns',
-    'repetitions', 'timeout_ms', 'task_timeouts', 'gc_threshold_mb',
-    'memory_monitoring', 'gc_monitoring', 'timeout_as_data'
+    'warmup_runs', 'measure_runs', 'repetitions', 'timeout_ms',
+    'task_timeouts', 'gc_threshold_mb', 'memory_monitoring',
+    'gc_monitoring', 'timeout_as_data'
 ];
 
 const __filename = fileURLToPath(import.meta.url);
@@ -71,12 +71,40 @@ function isTestEnvironment() {
 }
 
 /**
- * Create optimized environment configuration
+ * Convert snake_case to camelCase recursively
+ */
+function toCamelCase(str) {
+    return str.replace(/_([a-z])/g, (match, letter) => letter.toUpperCase());
+}
+
+/**
+ * Recursively convert object keys from snake_case to camelCase
+ */
+function convertKeysToCamelCase(obj) {
+    if (obj === null || typeof obj !== 'object') {
+        return obj;
+    }
+
+    if (Array.isArray(obj)) {
+        return obj.map(convertKeysToCamelCase);
+    }
+
+    const converted = {};
+    for (const [key, value] of Object.entries(obj)) {
+        const camelKey = toCamelCase(key);
+        converted[camelKey] = convertKeysToCamelCase(value);
+    }
+
+    return converted;
+}
+
+/**
+ * Create optimized environment configuration with camelCase keys
  */
 function createOptimizedEnvironment(config) {
     const env = config.environment || {};
 
-    // Core environment settings with enhanced timeout support
+    // Core environment settings - convert snake_case to camelCase
     const optimizedEnv = {
         warmupRuns: env.warmup_runs !== undefined ? env.warmup_runs : env.warmupRuns,
         measureRuns: env.measure_runs !== undefined ? env.measure_runs : env.measureRuns,
@@ -89,9 +117,11 @@ function createOptimizedEnvironment(config) {
         timeoutAsData: env.timeout_as_data !== undefined ? env.timeout_as_data : false
     };
 
-    // Preserve other environment settings not handled above
+    // Convert additional environment settings to camelCase
     const additionalEnvSettings = Object.fromEntries(
-        Object.entries(env).filter(([key]) => !EXCLUDED_ENV_KEYS.includes(key))
+        Object.entries(env)
+            .filter(([key]) => !EXCLUDED_ENV_KEYS.includes(key))
+            .map(([key, value]) => [toCamelCase(key), convertKeysToCamelCase(value)])
     );
 
     return { ...optimizedEnv, ...additionalEnvSettings };
@@ -107,28 +137,28 @@ function optimizeConfig(config) {
         console.log(chalk.yellow('⚡ Optimizing configuration for browser use...'));
     }
 
-    // Extract only essential data for browser
+    // Extract only essential data for browser and convert to camelCase
     const optimized = {
         // Basic experiment info
-        experiment: config.experiment,
+        experiment: convertKeysToCamelCase(config.experiment),
 
         // Environment settings with enhanced timeout support
         environment: createOptimizedEnvironment(config),
 
-        // Task configurations
-        tasks: config.tasks,
+        // Task configurations - convert nested structures to camelCase
+        tasks: convertKeysToCamelCase(config.tasks),
 
         // Language configurations
-        languages: config.languages,
+        languages: convertKeysToCamelCase(config.languages),
 
         // Quality control settings
-        qc: config.qc || {},
+        qc: convertKeysToCamelCase(config.qc || {}),
 
         // Statistical analysis settings
-        statistics: config.statistics || {},
+        statistics: convertKeysToCamelCase(config.statistics || {}),
 
         // Verification settings
-        verification: config.verification || {},
+        verification: convertKeysToCamelCase(config.verification || {}),
 
         // Metadata
         generated: {
@@ -145,7 +175,31 @@ function optimizeConfig(config) {
     optimized.enabledLanguages = Object.keys(optimized.languages).filter(lang =>
         optimized.languages[lang].enabled !== false
     );
-    optimized.scales = ['small', 'medium', 'large'];
+    // Extract actual scales from tasks instead of hardcoding
+    const actualScales = new Set();
+    Object.values(optimized.tasks).forEach(task => {
+        if (task.scales) {
+            Object.keys(task.scales).forEach(scale => actualScales.add(scale));
+        }
+    });
+    optimized.scales = Array.from(actualScales);
+
+    // Add required benchmarks array for ConfigurationService compatibility
+    optimized.benchmarks = optimized.taskNames.map(taskName => ({
+        name: taskName,
+        implementations: optimized.enabledLanguages.map(lang => ({
+            name: `${taskName}_${lang}`,
+            path: `/builds/${lang}/${taskName}-${lang}-o3.wasm`
+        }))
+    }));
+
+    // Add required output configuration
+    optimized.output = {
+        directory: 'results',
+        format: 'json',
+        timestamp: true,
+        metadata: true
+    };
 
     if (!isTestEnv) {
         console.log(`📊 Optimization complete:`);
@@ -214,10 +268,10 @@ function validateConfig(config) {
         errors.push('Missing experiment name');
     }
 
-    // Check environment
+    // Check environment - use camelCase field names
     const env = config.environment;
     if (!env?.warmupRuns || !env?.measureRuns) {
-        errors.push('Missing warmup_runs or measure_runs');
+        errors.push('Missing warmupRuns or measureRuns');
     }
 
     // Check tasks

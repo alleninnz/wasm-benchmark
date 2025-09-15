@@ -148,6 +148,20 @@ versions.lock: scripts/fingerprint.sh
 	$(call log_success,Environment fingerprint generated)
 
 # ============================================================================
+# Configuration Targets
+# ============================================================================
+
+build-config: ## Build configuration file (bench.json)
+	$(call log_step,Building configuration file...)
+	node scripts/build_config.js
+	$(call log_success,Configuration files built successfully)
+
+build-config-quick: ## Build quick configuration file (bench-quick.json)
+	$(call log_step,Building quick configuration file...)
+	node scripts/build_config.js --quick
+	$(call log_success,Quick configuration file built successfully)
+
+# ============================================================================
 # Build Targets
 # ============================================================================
 
@@ -176,25 +190,20 @@ build-all: ## Build all modules with optimization and size reporting
 # Execution Targets
 # ============================================================================
 
-run: $(NODE_MODULES) ## Run browser benchmark suite
+run: $(NODE_MODULES) build-config ## Run browser benchmark suite
 	$(call log_step,Running browser benchmarks...)
 	$(call check_script_exists,scripts/run_bench.js)
 	node scripts/run_bench.js
 	$(call log_success,Benchmarks completed)
 
-run-headed: $(NODE_MODULES) ## Run benchmarks with visible browser
+run-headed: $(NODE_MODULES) build-config ## Run benchmarks with visible browser
 	$(call log_step,Running benchmarks with headed browser...)
 	$(call check_script_exists,scripts/run_bench.js)
 	node scripts/run_bench.js --headed
 	$(call log_success,Headed benchmarks completed)
 
-run-quick: $(NODE_MODULES) ## Run quick benchmarks for development (fast feedback ~2-3 min vs 30+ min full suite)
+run-quick: $(NODE_MODULES) build-config-quick ## Run quick benchmarks for development (fast feedback ~2-3 min vs 30+ min full suite)
 	$(call log_step,Running quick benchmark suite for development feedback...)
-	@# Generate quick config if missing
-	@if [ ! -f configs/bench-quick.json ]; then \
-		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Generating bench-quick.json configuration..."; \
-		node scripts/build_config.js --quick || (echo -e "$(RED)$(BOLD)[ERROR]$(NC) Config generation failed"; exit 1); \
-	fi
 	$(call check_script_exists,scripts/run_bench.js)
 	node scripts/run_bench.js --quick
 	$(call log_success,Quick benchmarks completed - results saved with timestamp)
