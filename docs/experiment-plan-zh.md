@@ -5,20 +5,21 @@
 **实验环境**
 
 **硬件：** MacBook Pro M4 10Core CPU 16GB RAM
-**操作系统：** macOS 15.x
-**浏览器：** Headless Chromium（由 Puppeteer 驱动）
+**操作系统：** macOS 15.6+
+**浏览器：** Headless Chromium 140+（由 Puppeteer 24+ 驱动）
 
 **语言工具链：**
 
-• **Rust** 1.84+ (latest stable) 目标 `wasm32-unknown-unknown`，使用 `#[no_mangle]` 裸接口（零开销）
-• **TinyGo** 0.34+ (latest stable) + **Go** 1.23+ 目标 WebAssembly（`-target wasm`）
+• **Rust** 1.89+（稳定版）目标 `wasm32-unknown-unknown`，使用 `#[no_mangle]` 裸接口（零开销）
+• **TinyGo** 0.39+ + **Go** 1.25+ 目标 WebAssembly（`-target wasm`）
 • **Node.js** 22 LTS
-• **Python** 3.12+
+• **Python** 3.13+ 配科学计算栈（NumPy 2.3+, SciPy 1.16+, Pandas 2.3+, Matplotlib 3.10+）
 
 **运行支架与脚本：**
 
-• **Puppeteer：** 统一加载器与基准页，负责计时与内存采集、重复执行、结果落盘（JSON/CSV）  
-• **Bash + Python：** 一键构建、批量执行、数据清理与统计制图
+• **Puppeteer：** 统一测试框架与基准执行，负责计时与内存采集、自动化重复执行、结果持久化（JSON 格式）
+• **Vitest + Node.js：** 综合测试框架，包含单元、集成和端到端测试自动化
+• **Bash + Python + Make：** 自动化构建系统、批量执行、数据质量控制和统计分析流水线
 
 ## 评测任务
 
@@ -48,21 +49,21 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
     // 预热和清理
     if (global.gc) global.gc();
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     const memBefore = await page.metrics();
-    
+
     // 准备输入数据（写入 Wasm 内存）
     const dataPtr = wasmInstance.exports.alloc(inputData.byteLength);
     const wasmMemory = new Uint8Array(wasmInstance.exports.memory.buffer);
     wasmMemory.set(new Uint8Array(inputData), dataPtr);
-    
+
     // 执行基准测试
     const timeBefore = performance.now();
     const hash = wasmInstance.exports.run_task(dataPtr);
     const timeAfter = performance.now();
-    
+
     const memAfter = await page.metrics();
-    
+
     return {
         task: taskName,
         execution_time_ms: timeAfter - timeBefore,
@@ -95,7 +96,7 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 
 **统计要求：**
 - 基本描述统计：均值、标准差、95%CI
-- 显著性检验：t检验（p < 0.05）  
+- 显著性检验：t检验（p < 0.05）
 - 效应量：Cohen's d（小/中/大效应解释）
 
 **产出标准：**
@@ -105,33 +106,33 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 
 ## 实施时间表（4周）
 
-### Week 1: 基线建立 + 统计分析
-- 环境配置确认与工具链固定
-- 基准测试任务运行
-- 基础统计分析实现
-- 性能基线建立
+### Week 1: 环境配置 + 核心实现
+- 环境配置确认与工具链验证
+- 基准测试任务实现与验证
+- 构建系统配置和自动化
+- 基础测试框架建立
 
-### Week 2: 质量控制 + 验证框架  
-- 数据质量控制系统
+### Week 2: 质量控制 + 数据收集框架
+- 数据质量控制系统实现
 - 跨语言一致性验证
-- 重现性测试
-- 离群值检测实现
+- 统计分析基础
+- 自动化测试流水线
 
-### Week 3-4: 集成测试 + 文档完善
+### Week 3-4: 集成测试 + 分析增强
 - 端到端测试验证
-- 统计报告生成
-- 可视化图表产出
-- 实验文档完善
+- 统计分析和可视化
+- 性能优化与验证
+- 文档和报告系统
 
 ---
 
 # Stage 1：语言工具链安装与固定
 
 • 安装并固定：
-  - **Rust 1.84+** + `wasm32-unknown-unknown` 目标（无需 wasm-bindgen/wasm-pack）
-  - **Go 1.23+** + **TinyGo 0.34+**
+  - **Rust 1.89+** + `wasm32-unknown-unknown` 目标（无需 wasm-bindgen/wasm-pack）
+  - **Go 1.25+** + **TinyGo 0.39+**
   - **Node.js 22 LTS**
-  - **Python 3.12+** + 科学计算库（numpy 2.0+, scipy 1.14+, pandas 2.2+, matplotlib 3.9+, seaborn 0.13+）
+  - **Python 3.13+** + 科学计算库（numpy 2.3+, scipy 1.16+, pandas 2.3+, matplotlib 3.10+, seaborn 0.13+）
 
 • 安装 Chromium 与无头运行依赖
 
@@ -145,78 +146,102 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 
 ```
 wasm-benchmark/
-├── analysis/                   # 统计分析
-│   └── figures/                # 图表输出
+├── analysis/                   # 统计分析模块
+│   ├── plots.py               # 可视化生成
+│   ├── qc.py                  # 质量控制系统
+│   └── statistics.py          # 统计计算
 ├── builds/                     # 构建产物
-│   ├── checksums.txt           # 校验和文件
-│   ├── rust/                   # Rust WASM 文件
-│   │   ├── *.wasm.gz          # 压缩后的WASM模块
-│   │   └── manifest.json      # 构建清单
-│   ├── sizes.csv              # 二进制大小统计
-│   └── tinygo/                # TinyGo WASM 文件
-│       ├── *.wasm.gz          # 压缩后的WASM模块
-│       └── manifest.json      # 构建清单
+│   ├── rust/                  # Rust WASM 文件
+│   │   ├── *.wasm            # 编译后的WASM模块
+│   │   ├── *.wasm.gz         # 压缩后的WASM模块
+│   │   └── manifest.json     # 构建清单
+│   └── tinygo/               # TinyGo WASM 文件
+│       ├── *.wasm            # 编译后的WASM模块
+│       ├── *.wasm.gz         # 压缩后的WASM模块
+│       └── manifest.json     # 构建清单
 ├── configs/                    # 配置文件
 │   ├── bench.yaml             # 基准测试配置
 │   ├── bench.json             # JSON格式配置
-│   └── bench-quick.yaml       # 快速测试配置
-├── data/                       # 测试数据
+│   ├── bench-quick.yaml       # 快速测试配置
+│   └── bench-quick.json       # 快速测试JSON配置
+├── data/                       # 测试数据和参考资料
 │   └── reference_hashes/       # 参考哈希值
 │       ├── json_parse.json    # JSON解析任务哈希
 │       ├── mandelbrot.json    # Mandelbrot任务哈希
 │       └── matrix_mul.json    # 矩阵乘法任务哈希
 ├── docs/                       # 项目文档
-│   ├── development-todo-zh.md  # 开发进度
-│   ├── experiment-plan_zh.md   # 实验计划
-│   └── testing-strategy-guide.md # 测试策略
+│   ├── command-reference.md   # 命令参考指南
+│   ├── development-todo-en.md # 开发进度（英文）
+│   ├── development-todo-zh.md # 开发进度（中文）
+│   ├── experiment-plan-en.md  # 实验计划（英文）
+│   ├── experiment-plan-zh.md  # 实验计划（中文）
+│   ├── run-quick-flow.md      # 快速运行工作流
+│   ├── statistical-decision.md # 统计方法论
+│   ├── statistical-terminology.md # 统计术语
+│   └── testing-strategy.md    # 测试策略指南
 ├── harness/                    # 测试运行环境
-│   └── web/                    # 浏览器测试页面
+│   └── web/                    # 浏览器测试框架
 │       ├── bench.html         # 基准测试页面
 │       ├── bench.js           # 测试执行脚本
-│       └── wasm_loader.js     # WASM加载器
-├── scripts/                    # 构建和运行脚本
-│   ├── build_all.sh           # 构建所有任务
-│   ├── build_rust.sh          # Rust构建脚本
-│   ├── build_tinygo.sh        # TinyGo构建脚本
-│   ├── run_bench.js           # 基准测试运行器
-│   ├── fingerprint.sh         # 环境指纹生成
-│   ├── interfaces/            # 接口定义
+│       ├── config_loader.js   # 配置加载器
+│       └── wasm_loader.js     # WASM加载工具
+├── scripts/                    # 构建和自动化脚本
+│   ├── all_in_one.sh         # 完整流水线脚本
+│   ├── build_all.sh          # 构建所有任务
+│   ├── build_config.js       # 构建配置
+│   ├── build_rust.sh         # Rust构建脚本
+│   ├── build_tinygo.sh       # TinyGo构建脚本
+│   ├── common.sh             # 通用工具
+│   ├── dev-server.js         # 开发服务器
+│   ├── fingerprint.sh        # 环境指纹
+│   ├── run_bench.js          # 基准测试运行器
+│   ├── validate-tasks.sh     # 任务验证
+│   ├── interfaces/           # 服务接口
 │   │   ├── IBenchmarkOrchestrator.js
 │   │   ├── IBrowserService.js
-│   │   └── IConfigurationService.js
-│   └── services/              # 服务模块
+│   │   ├── IConfigurationService.js
+│   │   ├── ILoggingService.js
+│   │   └── IResultsService.js
+│   └── services/             # 服务实现
 │       ├── BenchmarkOrchestrator.js
 │       ├── BrowserService.js
-│       └── ConfigurationService.js
-├── tasks/                      # 基准测试任务
+│       ├── ConfigurationService.js
+│       ├── LoggingService.js
+│       └── ResultsService.js
+├── tasks/                      # 基准测试任务实现
 │   ├── mandelbrot/            # Mandelbrot分形计算
 │   │   ├── rust/              # Rust实现
 │   │   └── tinygo/            # TinyGo实现
-│   ├── json_parse/            # JSON解析
-│   │   ├── rust/
-│   │   └── tinygo/
+│   ├── json_parse/            # JSON解析基准
+│   │   ├── rust/              # Rust实现
+│   │   └── tinygo/            # TinyGo实现
 │   └── matrix_mul/            # 矩阵乘法
-│       ├── rust/
-│       └── tinygo/
-├── tests/                     # 测试套件
+│       ├── rust/              # Rust实现
+│       └── tinygo/            # TinyGo实现
+├── tests/                     # 综合测试套件
 │   ├── unit/                  # 单元测试
 │   │   ├── config-parser.test.js
-│   │   └── data-conversion.test.js
+│   │   └── statistics.test.js
 │   ├── integration/           # 集成测试
 │   │   ├── cross-language.test.js
 │   │   └── experiment-pipeline.test.js
-│   ├── e2e/                   # 端到端测试
-│   │   └── full-benchmark.test.js
+│   ├── setup.js              # 测试配置
 │   └── utils/                 # 测试工具
-│       ├── test-data-generator.js
-│       └── statistical-power.js
+│       ├── browser-test-harness.js
+│       ├── prettify-test-results.js
+│       ├── server-checker.js
+│       ├── test-assertions.js
+│       └── test-data-generator.js
 ├── results/                   # 实验结果存储
-├── reports/                   # 报告输出
+├── reports/                   # 生成的报告和可视化
+│   └── plots/                 # 图表输出
 ├── meta.json                  # 实验元数据
 ├── versions.lock              # 工具链版本锁定
 ├── requirements.txt           # Python依赖
 ├── package.json               # Node.js依赖
-├── Makefile                   # 自动化构建
+├── Makefile                   # 自动化构建和工作流
+├── vitest.config.js           # 测试配置
+├── eslint.config.js           # 代码质量配置
 └── README.md                  # 项目说明
 ```
 
@@ -231,7 +256,7 @@ wasm-benchmark/
 ```rust
 #[no_mangle]
 pub extern "C" fn init(seed: u32);
-#[no_mangle] 
+#[no_mangle]
 pub extern "C" fn alloc(n_bytes: u32) -> u32;  // 返回内存偏移
 #[no_mangle]
 pub extern "C" fn run_task(params_ptr: u32) -> u32;  // 返回哈希值
@@ -241,7 +266,7 @@ pub extern "C" fn run_task(params_ptr: u32) -> u32;  // 返回哈希值
 ```go
 //export init
 func init(seed uint32)
-//export alloc  
+//export alloc
 func alloc(nBytes uint32) uint32
 //export run_task
 func runTask(paramsPtr uint32) uint32  // 返回哈希值
@@ -269,7 +294,7 @@ func runTask(paramsPtr uint32) uint32  // 返回哈希值
 • 对于浮点运算，先归一化到固定精度（如 `round(x * 1e6)`）再参与哈希
 
 ### JS↔Wasm 往返最小化
-• JS 侧仅：① alloc+memcpy 输入一次；② init(seed) 一次；③ 多次 run_task() 计时  
+• JS 侧仅：① alloc+memcpy 输入一次；② init(seed) 一次；③ 多次 run_task() 计时
 • 不跨界读回大数据，结果只以 u32 哈希值返回
 
 ## 优化变体（编译与后处理）
@@ -427,7 +452,7 @@ builds/
 • **同算法同序：** 排序/矩阵乘法的循环与比较顺序保持一致；Mandelbrot 统一 f64；MatMul 统一 f32
 • **零外部依赖：** Rust 使用 `#[no_mangle]` 裸接口，TinyGo 使用 `//export`，均不引入高阶库
 • **单线程 / 无 SIMD：** 本轮基线不启用多线程与 SIMD（可做扩展实验另立变体，如 o3-simd）
-• **内存管理策略说明：** 
+• **内存管理策略说明：**
   - **Rust**：零成本抽象，编译时内存管理，无运行时GC开销
   - **TinyGo**：带垃圾回收器，存在GC暂停和分配开销
   - **实验立场**：将内存管理差异视为**语言特性的组成部分**，不试图消除，而是在分析中区分"纯计算性能"与"内存管理开销"的影响
@@ -500,22 +525,26 @@ builds/
 ## 3. 数据交付
 
 ### 数据处理
-- 合并多轮测试结果生成 `final_dataset.csv`
-- 计算基本统计量：均值、标准差、变异系数
-- 生成校验和文件确保数据完整性
+- 通过质量控制流水线处理基准测试结果
+- 生成综合统计分析报告
+- 在 `reports/plots/` 创建可视化图表和图形
+- 通过自动化QC检查验证数据完整性
 
-### 初步可视化
-- 条形图：均值对比 + 错误条
-- 箱线图：分布对比 + 离群值标记
+### 高级分析
+- 跨语言性能对比
+- 统计显著性检验
+- 内存使用模式分析
+- 二进制大小优化分析
 
 ---
 
 # Stage 5：统计分析
 
 ## 1. 分析准备
-• **数据来源：** `final_dataset.csv`（QC后数据）
-• **分析环境：** Python 3 + pandas/numpy/scipy/matplotlib
-• **数据结构：** task、language、execution_time_ms、memory_usage_mb、binary_size_kb
+• **数据来源：** `results/` 目录中的结果JSON文件（经过QC验证）
+• **分析环境：** Python 3.13+ 配科学计算栈
+• **分析模块：** `analysis/statistics.py`、`analysis/qc.py`、`analysis/plots.py`
+• **数据结构：** 结构化JSON，包含任务、语言、执行指标和验证数据
 
 ## 2. 核心统计分析
 
@@ -529,7 +558,7 @@ builds/
 - **t检验：** 检测语言间性能差异（p < 0.05）
 - **效应量：** Cohen's d计算
   - d < 0.5：小效应
-  - 0.5 ≤ d < 0.8：中效应  
+  - 0.5 ≤ d < 0.8：中效应
   - d ≥ 0.8：大效应
 
 ## 3. 可视化
@@ -543,17 +572,15 @@ builds/
    - 显示中位数、四分位距、异常值
    - 每个任务一个子图，语言分颜色
 
-**输出格式：** PNG（论文用）+ SVG（高清）
+**输出格式：** PNG（报告用）+ SVG（高分辨率）输出到 `/reports/plots/`
 
 ## 4. 分析产出
 
-### 自动生成：
-- **统计报告：** `/analysis/report.md`
-  - 统计表格（均值、标准差、p值、效应量）
-  - 每个任务的分析结论
-  
-- **图表文件：** `/analysis/figures/*.png` 和 `*.svg`
-- **分析日志：** 记录统计方法和异常值处理
+### 自动生成输出：
+- **质量控制报告：** 自动化QC分析，包含离群值检测
+- **统计分析：** `/reports/` 目录包含综合分析
+- **可视化图表：** `/reports/plots/*.png` 用于发表
+- **数据验证日志：** 完整的质量控制审计跟踪
 
 ---
 
@@ -574,19 +601,29 @@ builds/
 # Stage 7：自动化
 
 ## 核心自动化
-• **`make build`** - 构建所有Wasm模块
-• **`make run`** - 执行基准测试  
-• **`make analyze`** - 生成统计分析和图表
-• **`make report`** - 生成最终报告
+• **`make build`** - 构建所有WASM模块（两种语言）
+• **`make run`** - 执行综合基准测试
+• **`make qc`** - 对结果运行质量控制分析
+• **`make analyze`** - 生成统计分析和可视化
+• **`make all`** - 完整实验工作流（构建 + 运行 + QC + 分析）
 
 ## 一键执行
 ```bash
-# 完整实验流程
-scripts/run_experiment.sh
+# 完整实验工作流
+make all
 
-# 产出：
-# - results/final_dataset.csv
-# - analysis/report.md
-# - analysis/figures/*.png
+# 快速测试工作流
+make all-quick
+
+# 单独组件
+make build          # 构建所有WASM模块
+make run             # 运行基准测试
+make qc              # 质量控制检查
+make analyze         # 统计分析
+
+# 输出文件：
+# - results/*.json         # 原始基准数据
+# - reports/plots/*.png    # 可视化图表
+# - 质量控制报告
 ```
 

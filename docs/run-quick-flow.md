@@ -1,7 +1,7 @@
 # 📋 `make run-quick` 执行链路详细分析
 
-> **文档版本**: v1.0  
-> **创建时间**: 2025-09-13  
+> **文档版本**: v1.0
+> **创建时间**: 2025-09-13
 
 ---
 
@@ -137,12 +137,12 @@ tasks:
         width: 64             # 64x64 网格 (比 small 小16倍)
         height: 64
         max_iter: 100         # 减少迭代次数
-        
+
   json_parse:
     scales:
       micro:
         record_count: 500     # 500 记录 (比 small 小12倍)
-        
+
   matrix_mul:
     scales:
       micro:
@@ -176,7 +176,7 @@ async function main() {
     // 1. CLI 参数解析
     const args = process.argv.slice(2);
     const options = parseOptions(args);
-    
+
     // 2. 服务初始化 (依赖注入)
     const logger = new LoggingService({...});
     const configService = new ConfigurationService();
@@ -185,13 +185,13 @@ async function main() {
     const orchestrator = new BenchmarkOrchestrator(
         configService, browserService, resultsService
     );
-    
+
     // 3. 系统初始化
     await orchestrator.initialize(configPath);
-    
+
     // 4. 执行基准测试
     const results = await orchestrator.executeBenchmarks(options);
-    
+
     // 5. 保存结果
     await orchestrator.saveResults(outputPath, 'json');
 }
@@ -224,7 +224,7 @@ class ConfigurationService extends IConfigurationService {
     async loadConfig(configPath)     // 加载和验证配置
     validateConfig(config)           // 配置结构验证
     addDefaults(config)             // 添加默认值
-    
+
     // 配置获取方法
     getConfig()                     // 获取完整配置
     getBenchmarks()                 // 获取基准测试配置
@@ -240,11 +240,11 @@ class ConfigurationService extends IConfigurationService {
 validateConfig(config) {
     const required = ['benchmarks', 'output'];
     const missing = required.filter(field => !config[field]);
-    
+
     if (missing.length > 0) {
         throw new Error(`Missing required config fields: ${missing.join(', ')}`);
     }
-    
+
     // 验证基准测试配置
     config.benchmarks.forEach((bench, index) => {
         this.validateBenchmarkConfig(bench, index);
@@ -265,7 +265,7 @@ class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
         this.browserService = browserService;
         this.resultsService = resultsService;
         this.logger = loggingService;
-        
+
         // 执行状态管理
         this.isRunning = false;
         this.abortController = null;
@@ -280,18 +280,18 @@ class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
 async executeBenchmarks(options = {}) {
     this.isRunning = true;
     this.abortController = new AbortController();
-    
+
     try {
         const benchmarks = this.configService.getBenchmarks();
         const parallelConfig = this.configService.getParallelConfig();
-        
+
         let results;
         if (parallelConfig.enabled && benchmarks.length > 1) {
             results = await this.executeInParallel(benchmarks, options);
         } else {
             results = await this.executeSequentially(benchmarks, options);
         }
-        
+
         return {
             summary: this.resultsService.getSummary(),
             results: this.resultsService.getResults(),
@@ -307,11 +307,11 @@ async executeBenchmarks(options = {}) {
 async executeInParallel(benchmarks, options = {}) {
     const parallelConfig = this.configService.getParallelConfig();
     const maxParallel = Math.min(parallelConfig.maxParallel, benchmarks.length);
-    
+
     const results = [];
     const executing = new Set();
     let benchmarkIndex = 0;
-    
+
     // 控制并发的执行逻辑
     while (benchmarkIndex < benchmarks.length || executing.size > 0) {
         // 启动新的基准测试直到达到最大并发数
@@ -320,16 +320,16 @@ async executeInParallel(benchmarks, options = {}) {
             const promise = this.executeSingleBenchmark(benchmark, benchmarkIndex);
             executing.add(promise);
             benchmarkIndex++;
-            
+
             promise.finally(() => executing.delete(promise));
         }
-        
+
         // 等待至少一个完成
         if (executing.size > 0) {
             await Promise.race(executing);
         }
     }
-    
+
     return results;
 }
 
@@ -337,17 +337,17 @@ async executeInParallel(benchmarks, options = {}) {
 async executeSingleBenchmark(benchmark, options = {}) {
     const startTime = Date.now();
     const timeout = this.configService.getTimeout();
-    
+
     try {
         // 创建超时保护
         const timeoutPromise = new Promise((_, reject) => {
             setTimeout(() => reject(new Error(`Benchmark timeout (${timeout}ms)`)), timeout);
         });
-        
+
         // 执行基准测试任务
         const benchmarkPromise = this.runBenchmarkTask(benchmark, options);
         const result = await Promise.race([benchmarkPromise, timeoutPromise]);
-        
+
         const duration = Date.now() - startTime;
         const benchmarkResult = {
             ...result,
@@ -356,10 +356,10 @@ async executeSingleBenchmark(benchmark, options = {}) {
             success: true,
             timestamp: new Date().toISOString()
         };
-        
+
         this.resultsService.addResult(benchmarkResult);
         return benchmarkResult;
-        
+
     } catch (error) {
         const duration = Date.now() - startTime;
         const errorResult = {
@@ -369,7 +369,7 @@ async executeSingleBenchmark(benchmark, options = {}) {
             duration,
             timestamp: new Date().toISOString()
         };
-        
+
         this.resultsService.addResult(errorResult);
         throw error;
     }
@@ -382,19 +382,19 @@ async runBenchmarkTask(benchmark, options = {}) {
     // 1. 导航到基准测试页面
     const benchmarkUrl = this.configService.getBenchmarkUrl();
     await this.browserService.navigateTo(benchmarkUrl);
-    
+
     // 2. 等待页面就绪
     await this.browserService.waitForElement('#status', { timeout: 10000 });
-    
+
     // 3. 解析任务信息
     const taskName = benchmark.name.replace(/_micro$/, '');
     const scale = benchmark.name.includes('_micro') ? 'micro' : 'small';
-    
+
     // 4. 执行各语言实现
     const results = [];
     for (const implementation of benchmark.implementations) {
         const language = implementation.name.split('-')[0];
-        
+
         const taskConfig = {
             task: taskName,
             language: language,
@@ -404,7 +404,7 @@ async runBenchmarkTask(benchmark, options = {}) {
             measure_runs: this.configService.getConfig().iterations || 10,
             timeout: 30000
         };
-        
+
         try {
             // 在浏览器中执行基准测试
             const result = await this.browserService.executeScript(async (config) => {
@@ -414,7 +414,7 @@ async runBenchmarkTask(benchmark, options = {}) {
                     throw new Error('benchmarkRunner.runTaskBenchmark function not found in page');
                 }
             }, taskConfig);
-            
+
             results.push({
                 ...result,
                 task: taskName,
@@ -431,7 +431,7 @@ async runBenchmarkTask(benchmark, options = {}) {
             });
         }
     }
-    
+
     return {
         benchmark: benchmark.name,
         success: results.some(r => r.success),
@@ -486,11 +486,11 @@ window.runTask = async function(taskName, language, taskData) {
     if (!taskData || typeof taskData !== 'object') {
         throw new Error('runTask: taskData must be a valid object');
     }
-    
+
     if (!window.benchmarkRunner) {
         throw new Error('Benchmark runner not initialized. Wait for initialization to complete.');
     }
-    
+
     // 创建任务配置
     const config = {
         task: taskName,
@@ -505,7 +505,7 @@ window.runTask = async function(taskName, language, taskData) {
         measure_runs: 1,
         timeout: window.benchmarkState.taskTimeout || 30000
     };
-    
+
     try {
         const results = await window.benchmarkRunner.runTaskBenchmark(config);
         return results && results.length > 0 ? results[0] : {
@@ -541,19 +541,19 @@ window.logResult = function(message, type = 'log') {
             console.log(`[${type.toUpperCase()}]`, message);
             return;
         }
-        
+
         const logDiv = document.createElement('div');
         logDiv.className = `log ${type}`;
         logDiv.textContent = `[${new Date().toISOString().slice(11, 23)}] ${message}`;
         resultsDiv.appendChild(logDiv);
         resultsDiv.scrollTop = resultsDiv.scrollHeight;
-        
+
         // 错误跟踪
         if (type === 'error') {
             window.benchmarkState.lastError = message;
             window.benchmarkState.errorCount++;
         }
-        
+
         // 限制日志条目数量防止内存问题
         const logEntries = resultsDiv.getElementsByClassName('log');
         if (logEntries.length > 1000) {
@@ -580,7 +580,7 @@ function updateUI() {
     document.getElementById('failed-runs').textContent = state.failedRuns;
     document.getElementById('progress').style.width = `${state.progress}%`;
     document.getElementById('elapsed-time').textContent = `${((performance.now() - state.startTime) / 1000).toFixed(1)}s`;
-    
+
     // 内存监控
     if (performance.memory) {
         const memMB = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1);
@@ -625,7 +625,7 @@ function configureTask(taskName, scale, taskConfig) {
         width: scaleConfig.width,
         height: scaleConfig.height,
         maxIter: scaleConfig.max_iter,
-        // json_parse 示例  
+        // json_parse 示例
         recordCount: scaleConfig.record_count,
         // matrix_mul 示例
         dimension: scaleConfig.dimension
@@ -638,21 +638,21 @@ async function runBenchmark(wasmInstance, config, warmup_runs, measure_runs) {
     for (let i = 0; i < warmup_runs; i++) {
         await executeTask(wasmInstance, config);
     }
-    
+
     // 测量运行
     const results = [];
     for (let i = 0; i < measure_runs; i++) {
         const startTime = performance.now();
         const result = await executeTask(wasmInstance, config);
         const endTime = performance.now();
-        
+
         results.push({
             executionTime: endTime - startTime,
             result: result,
             memoryUsed: getMemoryUsage()
         });
     }
-    
+
     return results;
 }
 
@@ -685,7 +685,7 @@ class ResultsService extends IResultsService {
             successRate: 0
         };
     }
-    
+
     // 结果收集
     addResult(result) {
         this.results.push({
@@ -695,7 +695,7 @@ class ResultsService extends IResultsService {
         });
         this.updateSummary();
     }
-    
+
     // 基础统计信息（实际实现）
     getStatistics() {
         if (this.results.length === 0) {
@@ -724,7 +724,7 @@ class ResultsService extends IResultsService {
 
         return stats;
     }
-    
+
     // 文件保存（实际实现）
     async saveToFile(filepath, format = 'json', options = {}) {
         // 注意：实际只保存 summary 和 results，不包含 statistics 或其他复杂元数据
@@ -732,7 +732,7 @@ class ResultsService extends IResultsService {
             summary: this.summary,
             results: this.results
         };
-        
+
         switch (format) {
             case 'json':
                 await this.saveAsJson(filepath, outputData, options);
@@ -865,7 +865,7 @@ async executeSingleBenchmark(benchmark, options = {}) {
     const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error(`Benchmark timeout (${timeout}ms)`)), timeout);
     });
-    
+
     const result = await Promise.race([benchmarkPromise, timeoutPromise]);
 }
 
@@ -881,21 +881,21 @@ taskTimeout: 30000  // 单个 WASM 任务的最大执行时间
 class BenchmarkOrchestrator {
     async executeWithRetry(task, maxRetries = 3) {
         let lastError;
-        
+
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 return await this.executeSingleBenchmark(task);
             } catch (error) {
                 lastError = error;
                 this.logger.warn(`Attempt ${attempt}/${maxRetries} failed: ${error.message}`);
-                
+
                 if (attempt < maxRetries) {
                     const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
         }
-        
+
         throw lastError;
     }
 }
@@ -906,7 +906,7 @@ class BenchmarkOrchestrator {
 validateFailureThreshold() {
     const failureRate = this.failedTasks / this.totalTasks;
     const threshold = this.configService.getFailureThreshold();
-    
+
     if (failureRate > threshold) {
         throw new Error(`Failure rate ${(failureRate * 100).toFixed(1)}% exceeds threshold ${(threshold * 100).toFixed(1)}%`);
     }
@@ -918,25 +918,25 @@ validateFailureThreshold() {
 async emergencyCleanup() {
     this.logger.warn('[BenchmarkOrchestrator] Performing emergency cleanup...');
     const emergencyOperations = [];
-    
+
     try {
         // 1. 强制状态重置
         emergencyOperations.push('force-state-reset');
         this.isRunning = false;
         this.abortController = null;
-        
+
         // 2. 紧急浏览器清理
         if (this.browserService) {
             emergencyOperations.push('emergency-browser-cleanup');
             await this.browserService.emergencyCleanup();
         }
-        
+
         // 3. 清理结果服务
         if (this.resultsService) {
             emergencyOperations.push('results-clear');
             this.resultsService.clear();
         }
-        
+
         return { success: true, emergencyOperations };
     } catch (error) {
         // 紧急清理中不抛出异常 - 记录并继续
@@ -954,11 +954,11 @@ async emergencyCleanup() {
 async executeInParallel(benchmarks, options = {}) {
     const parallelConfig = this.configService.getParallelConfig();
     const maxParallel = Math.min(parallelConfig.maxParallel, benchmarks.length);
-    
+
     const results = [];
     const executing = new Set();
     let benchmarkIndex = 0;
-    
+
     // 控制并发数的滑动窗口算法
     while (benchmarkIndex < benchmarks.length || executing.size > 0) {
         // 填充执行队列到最大并发数
@@ -967,17 +967,17 @@ async executeInParallel(benchmarks, options = {}) {
             const promise = this.executeSingleBenchmark(benchmark, benchmarkIndex);
             executing.add(promise);
             benchmarkIndex++;
-            
+
             // 完成时自动从执行队列移除
             promise.finally(() => executing.delete(promise));
         }
-        
+
         // 等待至少一个任务完成
         if (executing.size > 0) {
             await Promise.race(executing);
         }
     }
-    
+
     return results;
 }
 ```
@@ -990,14 +990,14 @@ class BrowserService {
         this.browserPool = new Map();
         this.maxPoolSize = 3;
     }
-    
+
     async getBrowserInstance(config) {
         const key = this.generateBrowserKey(config);
-        
+
         if (this.browserPool.has(key)) {
             return this.browserPool.get(key);
         }
-        
+
         if (this.browserPool.size >= this.maxPoolSize) {
             // 回收最久未使用的实例
             const [oldestKey] = this.browserPool.keys();
@@ -1005,7 +1005,7 @@ class BrowserService {
             await oldestBrowser.close();
             this.browserPool.delete(oldestKey);
         }
-        
+
         const browser = await puppeteer.launch(config);
         this.browserPool.set(key, browser);
         return browser;
@@ -1024,7 +1024,7 @@ function trackMemoryUsage() {
             limit: performance.memory.jsHeapSizeLimit,
             timestamp: Date.now()
         };
-        
+
         // 内存压力检测
         const usageRatio = memInfo.used / memInfo.limit;
         if (usageRatio > 0.8) {
@@ -1034,7 +1034,7 @@ function trackMemoryUsage() {
                 window.gc();
             }
         }
-        
+
         return memInfo;
     }
     return null;
@@ -1052,26 +1052,26 @@ class LoggingService {
         this.enableTimestamp = config.enableTimestamp !== false;
         this.prefix = config.prefix || '';
     }
-    
+
     // 不同级别的日志方法
     debug(message, ...args) { this.log('debug', message, ...args); }
     info(message, ...args) { this.log('info', message, ...args); }
     warn(message, ...args) { this.log('warn', message, ...args); }
     error(message, ...args) { this.log('error', message, ...args); }
     success(message, ...args) { this.log('success', message, ...args); }
-    
+
     // 结构化日志输出
     log(level, message, ...args) {
         if (!this.shouldLog(level)) return;
-        
+
         const timestamp = this.enableTimestamp ? new Date().toISOString() : '';
         const prefix = this.prefix ? `[${this.prefix}]` : '';
         const coloredLevel = this.enableColors ? this.colorize(level) : level.toUpperCase();
-        
+
         const logMessage = `${timestamp} ${coloredLevel} ${prefix} ${message}`;
         console.log(logMessage, ...args);
     }
-    
+
     // 特殊格式的日志方法
     section(title) {
         this.log('info', '');
@@ -1079,7 +1079,7 @@ class LoggingService {
         this.log('info', title);
         this.log('info', '='.repeat(50));
     }
-    
+
     progress(message, current, total) {
         const percentage = ((current / total) * 100).toFixed(1);
         const progressBar = this.createProgressBar(current, total);
@@ -1093,20 +1093,20 @@ class LoggingService {
 // 进度更新机制
 function updateProgress(current, total, taskName, language) {
     const progress = (current / total) * 100;
-    
+
     // 更新全局状态
     window.benchmarkState.progress = progress;
     window.benchmarkState.currentTask = taskName;
     window.benchmarkState.currentLang = language;
     window.benchmarkState.currentRun = current;
     window.benchmarkState.totalRuns = total;
-    
+
     // 更新 UI
     document.getElementById('progress').style.width = `${progress}%`;
     document.getElementById('current-task').textContent = taskName || 'None';
     document.getElementById('current-lang').textContent = language || 'None';
     document.getElementById('current-run').textContent = `${current}/${total}`;
-    
+
     // 日志记录
     window.logResult(`Progress: ${taskName}/${language} - ${current}/${total} (${progress.toFixed(1)}%)`);
 }
@@ -1125,32 +1125,32 @@ class PerformanceCollector {
             renderingMetrics: []
         };
     }
-    
+
     collectTaskMetrics(taskResult) {
         return {
             // 执行时间指标
             executionTime: taskResult.executionTime,
             setupTime: taskResult.setupTime,
             teardownTime: taskResult.teardownTime,
-            
+
             // 内存指标
             memoryBefore: taskResult.memoryBefore,
             memoryAfter: taskResult.memoryAfter,
             memoryPeak: taskResult.memoryPeak,
             memoryDelta: taskResult.memoryAfter - taskResult.memoryBefore,
-            
+
             // WebAssembly 特定指标
             wasmCompileTime: taskResult.wasmCompileTime,
             wasmInstantiateTime: taskResult.wasmInstantiateTime,
             wasmExecutionTime: taskResult.wasmExecutionTime,
-            
+
             // 验证指标
             resultHash: taskResult.resultHash,
             verificationTime: taskResult.verificationTime,
             verificationSuccess: taskResult.verificationSuccess
         };
     }
-    
+
     generateReport() {
         return {
             summary: this.calculateSummaryStats(),
@@ -1234,20 +1234,20 @@ const developerExperience = {
         actual: '2.5 minutes average',
         satisfaction: 'high'
     },
-    
+
     cognitive_load: {
         configuration: 'zero - automatic',
         interpretation: 'simple - trend only',
         action_required: 'minimal'
     },
-    
+
     integration: {
         make_command: 'make run-quick',
         ci_friendly: true,
         watch_mode: 'planned',
         ide_integration: 'possible'
     },
-    
+
     error_handling: {
         timeout_protection: 'aggressive',
         failure_recovery: 'graceful',
@@ -1268,7 +1268,7 @@ const qualityControls = {
         cross_language: true,       // 跨语言结果一致性
         sanity_bounds: true         // 合理性边界检查
     },
-    
+
     // 简化的统计要求
     statistical_requirements: {
         min_samples: 10,            // 最少10个样本 (vs 正常50+)
@@ -1276,7 +1276,7 @@ const qualityControls = {
         coefficient_variation: 0.2, // 放宽变异系数 (vs 正常0.1)
         normality_test: false       // 跳过正态性测试
     },
-    
+
     // 保留的监控
     essential_monitoring: {
         execution_time: true,       // 执行时间监控
@@ -1346,17 +1346,17 @@ scenarios:
     warmup_runs: 1
     measure_runs: 5
     timeout_ms: 15000
-    
+
   development:          # 开发模式 (2-3分钟)
     warmup_runs: 3
     measure_runs: 15
     timeout_ms: 30000
-    
+
   ci_pipeline:          # CI流水线 (5分钟内)
     warmup_runs: 5
     measure_runs: 25
     timeout_ms: 60000
-    
+
   pre_release:          # 预发布验证 (10分钟内)
     warmup_runs: 8
     measure_runs: 50
@@ -1371,15 +1371,15 @@ class AdaptiveParallelism {
         this.systemLoad = this.detectSystemLoad();
         this.optimalConcurrency = this.calculateOptimalConcurrency();
     }
-    
+
     calculateOptimalConcurrency() {
         const cpuCores = navigator.hardwareConcurrency || 4;
         const memoryGb = this.estimateAvailableMemory();
-        
+
         // 基于系统资源计算最优并发数
         const cpuBased = Math.max(1, Math.floor(cpuCores * 0.8));
         const memoryBased = Math.max(1, Math.floor(memoryGb / 0.5)); // 每个任务约0.5GB
-        
+
         return Math.min(cpuBased, memoryBased, 6); // 最大6个并发
     }
 }
@@ -1396,7 +1396,7 @@ class AdaptiveParallelism {
 - [ ] `node_modules` 是否正确安装
 - [ ] WebAssembly 模块是否已构建
 
-### 2. 超时问题  
+### 2. 超时问题
 - [ ] 检查网络连接和模块下载
 - [ ] 验证任务规模配置是否合理
 - [ ] 确认系统资源充足
@@ -1421,20 +1421,20 @@ window.debugBenchmark = {
         window.benchmarkState.verbose = true;
         console.log('Verbose logging enabled');
     },
-    
+
     // 单步执行模式
     enableStepMode() {
         window.benchmarkState.stepMode = true;
         console.log('Step mode enabled - will pause between tasks');
     },
-    
+
     // 性能分析
     startProfiling() {
         if (performance.mark) {
             performance.mark('benchmark-start');
         }
     },
-    
+
     // 内存快照
     takeMemorySnapshot() {
         if (performance.memory) {

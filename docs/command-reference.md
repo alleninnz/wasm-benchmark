@@ -22,7 +22,7 @@ This project benchmarks WebAssembly performance by comparing Rust and TinyGo imp
 
 **Key Technologies:**
 - WebAssembly (WASM) compilation targets
-- Rust and TinyGo implementations  
+- Rust and TinyGo implementations
 - Node.js test harness with Puppeteer
 - Python statistical analysis pipeline
 - Make-based automation system
@@ -42,7 +42,7 @@ This project benchmarks WebAssembly performance by comparing Rust and TinyGo imp
 ### Environment Setup
 Commands for initializing development environment and dependencies.
 
-### Build System  
+### Build System
 Commands for compiling WebAssembly modules and managing builds.
 
 ### Test Suite
@@ -155,7 +155,7 @@ make build → npm run bench → make analyze
 **Prerequisites**: None
 **Common Issues**: Missing Rust/TinyGo toolchain, Node.js version incompatibility
 
-#### **make init**  
+#### **make init**
 **Purpose**: Initialize development environment and install dependencies
 **When to Use**: First-time setup or after clean-all
 **Prerequisites**: check-deps passed
@@ -174,7 +174,7 @@ make build → npm run bench → make analyze
 **Common Issues**: Rust compilation errors, wasm-pack issues
 
 #### **make build-tinygo**
-**Purpose**: Build only TinyGo WebAssembly modules  
+**Purpose**: Build only TinyGo WebAssembly modules
 **When to Use**: Working specifically on TinyGo implementations
 **Prerequisites**: TinyGo toolchain available
 **Common Issues**: TinyGo compilation errors, WASM target issues
@@ -244,7 +244,7 @@ make build → npm run bench → make analyze
 #### **npm run serve**
 **Purpose**: Start development server without browser
 **When to Use**: Server-only or headless environments
-**Prerequisites**: Dependencies installed  
+**Prerequisites**: Dependencies installed
 **Common Issues**: Port already in use
 
 #### **npm run build**
@@ -297,13 +297,13 @@ make build → npm run bench → make analyze
 
 **Rust Compilation Failures**
 - **Symptoms**: Cargo build errors, missing dependencies
-- **Solutions**: 
+- **Solutions**:
   - Verify Rust toolchain: `rustup show`
   - Update Rust: `rustup update`
   - Check wasm-pack: `wasm-pack --version`
   - Clean Rust cache: `cargo clean`
 
-**TinyGo Compilation Failures**  
+**TinyGo Compilation Failures**
 - **Symptoms**: TinyGo build errors, WASM target issues
 - **Solutions**:
   - Verify TinyGo installation: `tinygo version`
@@ -405,7 +405,7 @@ flowchart TD
     J -->|No| K[Fix Test Issues]
     K --> I
     J -->|Yes| L[Development Ready]
-    
+
     L --> M[Code Changes]
     M --> N[make build]
     N --> O[npm run test:unit]
@@ -422,13 +422,13 @@ flowchart TD
     A[Research Analysis] --> B{Analysis Type?}
     B -->|Quick| C[make build]
     B -->|Comprehensive| D[make clean-all]
-    
+
     C --> E[make run-quick]
     E --> G[Validation Results]
-    
+
     D --> I[make all]
     I --> K[Research Dataset]
-    
+
     G --> L[Iterate/Refine]
     K --> L
     L --> M{More Analysis?}
@@ -444,20 +444,20 @@ flowchart TD
     B -->|Build| C[Build Troubleshooting]
     B -->|Test| D[Test Troubleshooting]
     B -->|Performance| E[Performance Troubleshooting]
-    
+
     C --> F{Rust or TinyGo?}
     F -->|Rust| G[Check Rust Toolchain]
     F -->|TinyGo| H[Check TinyGo Setup]
     F -->|Both| I[Check Common Issues]
-    
+
     D --> J{Browser Issues?}
     J -->|Yes| K[Check Puppeteer Setup]
     J -->|No| L[Check Test Environment]
-    
+
     E --> M{Measurement Issues?}
     M -->|Yes| N[Check Timing Logic]
     M -->|No| O[Check System Resources]
-    
+
     G --> P[Apply Fix]
     H --> P
     I --> P
@@ -465,7 +465,7 @@ flowchart TD
     L --> P
     N --> P
     O --> P
-    
+
     P --> Q[Test Fix]
     Q --> R{Fixed?}
     R -->|No| A

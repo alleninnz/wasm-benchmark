@@ -1,7 +1,7 @@
 # 🧪 WebAssembly Benchmark 测试策略指南
 
-> **文档版本**: v1.0  
-> **创建时间**: 2025-09-13  
+> **文档版本**: v1.0
+> **创建时间**: 2025-09-13
 
 ---
 
@@ -26,15 +26,15 @@ graph TD
     A[测试金字塔] --> B[单元测试 Unit Tests]
     A --> C[集成测试 Integration Tests]
     A --> D[端到端测试 E2E Tests]
-    
+
     B --> B1[配置解析测试]
     B --> B2[统计计算测试]
     B --> B3[WASM 函数测试]
-    
+
     C --> C1[跨语言一致性测试]
     C --> C2[性能稳定性测试]
     C --> C3[错误处理测试]
-    
+
     D --> D1[完整基准测试流程]
     D --> D2[多浏览器兼容性]
     D --> D3[CI/CD 流水线验证]
@@ -64,8 +64,8 @@ graph TD
 ## 📊 **测试分层策略**
 
 ### **1. 单元测试层 (Unit Tests)**
-**位置**: `/tests/unit/`  
-**执行命令**: `npm run test:unit`  
+**位置**: `/tests/unit/`
+**执行命令**: `npm run test:unit`
 **超时**: 5秒
 
 #### **1.1 配置解析测试** (`config-parser.test.js`)
@@ -76,7 +76,7 @@ describe('Configuration Parser', () => {
         // 确保默认值应用正确
         // 验证语言和任务过滤
     });
-    
+
     test('should validate config completeness', () => {
         // 检查必需字段存在性
         // 验证参数有效性范围
@@ -99,7 +99,7 @@ describe('Statistical Analysis', () => {
         // 确保离群值检测准确性
         // 验证变异系数计算
     });
-    
+
     test('should handle edge cases gracefully', () => {
         // 空数据集处理
         // 单一数据点处理
@@ -119,14 +119,14 @@ describe('Statistical Analysis', () => {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_mandelbrot_known_points() {
         // 已知数学点的 Mandelbrot 集验证
         assert_eq!(mandelbrot_pixel(0.0, 0.0, 1000), 1000);
         assert!(mandelbrot_pixel(2.0, 2.0, 1000) < 10);
     }
-    
+
     #[test]
     fn test_hash_consistency() {
         // FNV-1a 哈希一致性验证
@@ -158,8 +158,8 @@ func TestHashConsistency(t *testing.T) {
 ---
 
 ### **2. 集成测试层 (Integration Tests)**
-**位置**: `/tests/integration/`  
-**执行命令**: `npm run test:integration`  
+**位置**: `/tests/integration/`
+**执行命令**: `npm run test:integration`
 **超时**: 60秒
 
 #### **2.1 跨语言一致性测试** (`cross-language.test.js`)
@@ -175,22 +175,22 @@ describe('Cross-Language Consistency', () => {
     test('should produce identical hashes for all tasks', async () => {
         for (const task of ['mandelbrot', 'json_parse', 'matrix_mul']) {
             const testData = testDataGen.generateScaledDataset(task, 'micro');
-            
+
             const rustResult = await harness.executeTask(task, 'rust', testData);
             const tinygoResult = await harness.executeTask(task, 'tinygo', testData);
-            
+
             // 关键断言：跨语言结果必须一致
             assertCrossLanguageConsistency(rustResult, tinygoResult, task);
         }
     });
-    
+
     test('should maintain performance stability', async () => {
         const measurements = [];
         for (let run = 0; run < 5; run++) {
             // 收集多次测量数据
             measurements.push(await executePerformanceTest());
         }
-        
+
         // 验证性能稳定性
         const cv = calculateCoefficientOfVariation(measurements);
         expect(cv).toBeLessThan(0.3); // 变异系数 < 30%
@@ -206,7 +206,7 @@ test('matrix multiplication precision handling', async () => {
     // 但都应该是已知的有效哈希值
     const validRustHashes = [1768234204];
     const validTinygoHashes = [1151341662];
-    
+
     expect(validRustHashes).toContain(rustHash);
     expect(validTinygoHashes).toContain(tinygoHash);
 });
@@ -223,13 +223,13 @@ describe('Experiment Pipeline', () => {
             headless: true,
             quick: true
         });
-        
+
         // 验证结果完整性
         expect(results.summary.totalTasks).toBe(3);
         expect(results.summary.successRate).toBe(1.0);
         expect(results.results).toHaveLength(3);
     });
-    
+
     test('should handle configuration variants', async () => {
         // 测试不同配置的执行
         const configs = ['quick', 'full', 'custom'];
@@ -252,7 +252,7 @@ class DeterministicTestDataGenerator {
         this.seed = seed;
         this.rng = this.createSeededRNG(seed);
     }
-    
+
     generateScaledDataset(taskName, scale) {
         switch (taskName) {
             case 'mandelbrot':
@@ -263,14 +263,14 @@ class DeterministicTestDataGenerator {
                 return this.generateMatrixData(scale);
         }
     }
-    
+
     generateMandelbrotData(scale) {
         const configs = {
             micro: { width: 64, height: 64, maxIter: 100 },
             small: { width: 256, height: 256, maxIter: 500 },
             medium: { width: 512, height: 512, maxIter: 1000 }
         };
-        
+
         return {
             ...configs[scale],
             centerReal: -0.743643887037,
@@ -311,25 +311,25 @@ global.validationRules = {
 
 ### **统计验证框架**
 ```javascript
-// tests/utils/statistical-power.js
+// Statistical validation utilities for benchmark testing
 export class StatisticalValidator {
     static validatePerformanceStability(measurements, threshold = 0.3) {
         const cv = this.calculateCoefficientOfVariation(measurements);
         return {
             isStable: cv < threshold,
             coefficient: cv,
-            recommendation: cv > threshold ? 
+            recommendation: cv > threshold ?
                 'Increase warmup runs or check system load' : 'Performance is stable'
         };
     }
-    
+
     static detectOutliers(data, multiplier = 1.5) {
         const q1 = this.percentile(data, 25);
         const q3 = this.percentile(data, 75);
         const iqr = q3 - q1;
-        
-        return data.filter(value => 
-            value < (q1 - multiplier * iqr) || 
+
+        return data.filter(value =>
+            value < (q1 - multiplier * iqr) ||
             value > (q3 + multiplier * iqr)
         );
     }
@@ -344,12 +344,12 @@ export function assertBenchmarkResult(result, expectedHash = null, context = {})
     expect(result.success, `Benchmark failed: ${context.task}/${context.language}`).toBe(true);
     expect(result.executionTime, 'Execution time invalid').toBeGreaterThan(0);
     expect(result.memoryUsed, 'Memory usage invalid').toBeGreaterThan(0);
-    
+
     // 哈希验证 (如果提供期望值)
     if (expectedHash !== null) {
         expect(result.resultHash, 'Result hash mismatch').toBe(expectedHash);
     }
-    
+
     // 性能边界验证
     expect(result.executionTime).toBeLessThan(global.validationRules.executionTime.max);
     expect(result.memoryUsed).toBeLessThan(global.validationRules.memoryUsage.max);
@@ -359,14 +359,14 @@ export function assertCrossLanguageConsistency(rustResult, tinygoResult, taskNam
     // 成功状态一致性
     expect(rustResult.success, `Rust failed for ${taskName}`).toBe(true);
     expect(tinygoResult.success, `TinyGo failed for ${taskName}`).toBe(true);
-    
+
     // 根据任务类型进行不同的一致性检查
     if (taskName === 'matrix_mul') {
         // 矩阵乘法：验证维度而非哈希
         expect(rustResult.resultDimensions).toEqual(tinygoResult.resultDimensions);
     } else {
         // 其他任务：严格哈希一致性
-        expect(rustResult.resultHash, 
+        expect(rustResult.resultHash,
             `Hash mismatch for ${taskName}: Rust=${rustResult.resultHash}, TinyGo=${tinygoResult.resultHash}`)
             .toBe(tinygoResult.resultHash);
     }
@@ -459,7 +459,7 @@ beforeAll(async () => {
             ]
         };
     }
-    
+
     // 确保测试服务器运行
     await ensureServerRunning();
 });
@@ -508,9 +508,9 @@ const qualityMetrics = {
 ```javascript
 test('should handle invalid parameters gracefully', async () => {
     const invalidData = { width: -1, height: 0 };
-    
+
     const result = await runTask('mandelbrot', 'rust', invalidData);
-    
+
     expect(result.success).toBe(false);
     expect(result.errorType).toBe('invalid_parameters');
     expect(result.error).toContain('width must be positive');
@@ -522,7 +522,7 @@ test('should handle invalid parameters gracefully', async () => {
 test('should retry on temporary network failures', async () => {
     let attempts = 0;
     const maxRetries = 3;
-    
+
     while (attempts < maxRetries) {
         try {
             await executeTest();
@@ -544,7 +544,7 @@ test('should retry on temporary network failures', async () => {
 test('should investigate hash mismatches', async () => {
     const result1 = await runTask('json_parse', 'rust', testData);
     const result2 = await runTask('json_parse', 'tinygo', testData);
-    
+
     if (result1.resultHash !== result2.resultHash) {
         // 收集调试信息
         const debugInfo = {
@@ -553,10 +553,10 @@ test('should investigate hash mismatches', async () => {
             inputData: testData,
             environment: collectEnvironmentInfo()
         };
-        
+
         // 记录到测试报告
         console.error('Hash mismatch detected:', debugInfo);
-        
+
         // 决定是否应该失败测试
         throw new Error(`Cross-language hash mismatch: ${JSON.stringify(debugInfo)}`);
     }

@@ -5,20 +5,21 @@
 **Experimental Environment**
 
 **Hardware:** MacBook Pro M4 10Core CPU 16GB RAM
-**Operating System:** macOS 15.x
-**Browser:** Headless Chromium (driven by Puppeteer)
+**Operating System:** macOS 15.6+
+**Browser:** Headless Chromium 140+ (driven by Puppeteer 24+)
 
 **Language Toolchain:**
 
-• **Rust** 1.84+ (latest stable) targeting `wasm32-unknown-unknown`, using `#[no_mangle]` bare interface (zero overhead)
-• **TinyGo** 0.34+ (latest stable) + **Go** 1.23+ targeting WebAssembly (`-target wasm`)
+• **Rust** 1.89+ (stable) targeting `wasm32-unknown-unknown`, using `#[no_mangle]` bare interface (zero overhead)
+• **TinyGo** 0.39+ + **Go** 1.25+ targeting WebAssembly (`-target wasm`)
 • **Node.js** 22 LTS
-• **Python** 3.12+
+• **Python** 3.13+ with scientific computing stack (NumPy 2.3+, SciPy 1.16+, Pandas 2.3+, Matplotlib 3.10+)
 
 **Runtime Harness & Scripts:**
 
-• **Puppeteer:** Unified loader with benchmark page, responsible for timing & memory collection, repeated execution, result persistence (JSON/CSV)  
-• **Bash + Python:** One-click build, batch execution, data cleaning and statistical plotting
+• **Puppeteer:** Unified test harness with benchmark execution, responsible for timing & memory collection, automated repeated execution, result persistence (JSON format)
+• **Vitest + Node.js:** Comprehensive testing framework with unit, integration, and end-to-end test automation
+• **Bash + Python + Make:** Automated build system, batch execution, data quality control, and statistical analysis pipeline
 
 ## Benchmark Tasks
 
@@ -48,21 +49,21 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
     // Warmup and cleanup
     if (global.gc) global.gc();
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     const memBefore = await page.metrics();
-    
+
     // Prepare input data (write to Wasm memory)
     const dataPtr = wasmInstance.exports.alloc(inputData.byteLength);
     const wasmMemory = new Uint8Array(wasmInstance.exports.memory.buffer);
     wasmMemory.set(new Uint8Array(inputData), dataPtr);
-    
+
     // Execute benchmark
     const timeBefore = performance.now();
     const hash = wasmInstance.exports.run_task(dataPtr);
     const timeAfter = performance.now();
-    
+
     const memAfter = await page.metrics();
-    
+
     return {
         task: taskName,
         execution_time_ms: timeAfter - timeBefore,
@@ -95,7 +96,7 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 
 **Statistical Requirements:**
 - Basic descriptive statistics: mean, standard deviation, 95%CI
-- Significance testing: t-test (p < 0.05)  
+- Significance testing: t-test (p < 0.05)
 - Effect size: Cohen's d (small/medium/large effect interpretation)
 
 **Output Standards:**
@@ -105,33 +106,33 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 
 ## Implementation Timeline (4 weeks)
 
-### Week 1: Baseline Establishment + Statistical Analysis
-- Environment configuration confirmation and toolchain fixation
-- Benchmark task execution
-- Basic statistical analysis implementation
-- Performance baseline establishment
+### Week 1: Environment Setup + Core Implementation
+- Environment configuration confirmation and toolchain verification
+- Benchmark task implementation and validation
+- Build system setup and automation
+- Basic testing framework establishment
 
-### Week 2: Quality Control + Validation Framework  
-- Data quality control system
+### Week 2: Quality Control + Data Collection Framework
+- Data quality control system implementation
 - Cross-language consistency verification
-- Reproducibility testing
-- Outlier detection implementation
+- Statistical analysis foundation
+- Automated testing pipeline
 
-### Week 3-4: Integration Testing + Documentation Enhancement
+### Week 3-4: Integration Testing + Analysis Enhancement
 - End-to-end test verification
-- Statistical report generation
-- Visualization chart output
-- Experiment documentation enhancement
+- Statistical analysis and visualization
+- Performance optimization and validation
+- Documentation and reporting system
 
 ---
 
 # Stage 1: Language Toolchain Installation and Fixation
 
 • Install and fix:
-  - **Rust 1.84+** + `wasm32-unknown-unknown` target (no need for wasm-bindgen/wasm-pack)
-  - **Go 1.23+** + **TinyGo 0.34+**
+  - **Rust 1.89+** + `wasm32-unknown-unknown` target (no need for wasm-bindgen/wasm-pack)
+  - **Go 1.25+** + **TinyGo 0.39+**
   - **Node.js 22 LTS**
-  - **Python 3.12+** + scientific computing libraries (numpy 2.0+, scipy 1.14+, pandas 2.2+, matplotlib 3.9+, seaborn 0.13+)
+  - **Python 3.13+** + scientific computing libraries (numpy 2.3+, scipy 1.16+, pandas 2.3+, matplotlib 3.10+, seaborn 0.13+)
 
 • Install Chromium and headless runtime dependencies
 
@@ -145,78 +146,102 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 
 ```
 wasm-benchmark/
-├── analysis/                   # Statistical analysis
-│   └── figures/                # Chart output
+├── analysis/                   # Statistical analysis modules
+│   ├── plots.py               # Visualization generation
+│   ├── qc.py                  # Quality control system
+│   └── statistics.py          # Statistical computation
 ├── builds/                     # Build artifacts
-│   ├── checksums.txt           # Checksum file
-│   ├── rust/                   # Rust WASM files
-│   │   ├── *.wasm.gz          # Compressed WASM modules
-│   │   └── manifest.json      # Build manifest
-│   ├── sizes.csv              # Binary size statistics
-│   └── tinygo/                # TinyGo WASM files
-│       ├── *.wasm.gz          # Compressed WASM modules
-│       └── manifest.json      # Build manifest
+│   ├── rust/                  # Rust WASM files
+│   │   ├── *.wasm            # Compiled WASM modules
+│   │   ├── *.wasm.gz         # Compressed WASM modules
+│   │   └── manifest.json     # Build manifest
+│   └── tinygo/               # TinyGo WASM files
+│       ├── *.wasm            # Compiled WASM modules
+│       ├── *.wasm.gz         # Compressed WASM modules
+│       └── manifest.json     # Build manifest
 ├── configs/                    # Configuration files
 │   ├── bench.yaml             # Benchmark configuration
 │   ├── bench.json             # JSON format configuration
-│   └── bench-quick.yaml       # Quick test configuration
-├── data/                       # Test data
+│   ├── bench-quick.yaml       # Quick test configuration
+│   └── bench-quick.json       # Quick test JSON config
+├── data/                       # Test data and references
 │   └── reference_hashes/       # Reference hash values
 │       ├── json_parse.json    # JSON parsing task hashes
 │       ├── mandelbrot.json    # Mandelbrot task hashes
 │       └── matrix_mul.json    # Matrix multiplication task hashes
 ├── docs/                       # Project documentation
-│   ├── development-todo-zh.md  # Development progress
-│   ├── experiment-plan_zh.md   # Experiment plan
-│   └── testing-strategy-guide.md # Testing strategy
+│   ├── command-reference.md   # Command reference guide
+│   ├── development-todo-en.md # Development progress (English)
+│   ├── development-todo-zh.md # Development progress (Chinese)
+│   ├── experiment-plan-en.md  # Experiment plan (English)
+│   ├── experiment-plan-zh.md  # Experiment plan (Chinese)
+│   ├── run-quick-flow.md      # Quick run workflow
+│   ├── statistical-decision.md # Statistical methodology
+│   ├── statistical-terminology.md # Statistical terms
+│   └── testing-strategy.md    # Testing strategy guide
 ├── harness/                    # Test runtime environment
-│   └── web/                    # Browser test pages
+│   └── web/                    # Browser test framework
 │       ├── bench.html         # Benchmark test page
 │       ├── bench.js           # Test execution script
-│       └── wasm_loader.js     # WASM loader
-├── scripts/                    # Build and run scripts
-│   ├── build_all.sh           # Build all tasks
-│   ├── build_rust.sh          # Rust build script
-│   ├── build_tinygo.sh        # TinyGo build script
-│   ├── run_bench.js           # Benchmark runner
-│   ├── fingerprint.sh         # Environment fingerprint generation
-│   ├── interfaces/            # Interface definitions
+│       ├── config_loader.js   # Configuration loader
+│       └── wasm_loader.js     # WASM loader utility
+├── scripts/                    # Build and automation scripts
+│   ├── all_in_one.sh         # Complete pipeline script
+│   ├── build_all.sh          # Build all tasks
+│   ├── build_config.js       # Build configuration
+│   ├── build_rust.sh         # Rust build script
+│   ├── build_tinygo.sh       # TinyGo build script
+│   ├── common.sh             # Common utilities
+│   ├── dev-server.js         # Development server
+│   ├── fingerprint.sh        # Environment fingerprint
+│   ├── run_bench.js          # Benchmark runner
+│   ├── validate-tasks.sh     # Task validation
+│   ├── interfaces/           # Service interfaces
 │   │   ├── IBenchmarkOrchestrator.js
 │   │   ├── IBrowserService.js
-│   │   └── IConfigurationService.js
-│   └── services/              # Service modules
+│   │   ├── IConfigurationService.js
+│   │   ├── ILoggingService.js
+│   │   └── IResultsService.js
+│   └── services/             # Service implementations
 │       ├── BenchmarkOrchestrator.js
 │       ├── BrowserService.js
-│       └── ConfigurationService.js
-├── tasks/                      # Benchmark tasks
+│       ├── ConfigurationService.js
+│       ├── LoggingService.js
+│       └── ResultsService.js
+├── tasks/                      # Benchmark task implementations
 │   ├── mandelbrot/            # Mandelbrot fractal computation
 │   │   ├── rust/              # Rust implementation
 │   │   └── tinygo/            # TinyGo implementation
-│   ├── json_parse/            # JSON parsing
-│   │   ├── rust/
-│   │   └── tinygo/
+│   ├── json_parse/            # JSON parsing benchmark
+│   │   ├── rust/              # Rust implementation
+│   │   └── tinygo/            # TinyGo implementation
 │   └── matrix_mul/            # Matrix multiplication
-│       ├── rust/
-│       └── tinygo/
-├── tests/                     # Test suite
+│       ├── rust/              # Rust implementation
+│       └── tinygo/            # TinyGo implementation
+├── tests/                     # Comprehensive test suite
 │   ├── unit/                  # Unit tests
 │   │   ├── config-parser.test.js
-│   │   └── data-conversion.test.js
+│   │   └── statistics.test.js
 │   ├── integration/           # Integration tests
 │   │   ├── cross-language.test.js
 │   │   └── experiment-pipeline.test.js
-│   ├── e2e/                   # End-to-end tests
-│   │   └── full-benchmark.test.js
+│   ├── setup.js              # Test configuration
 │   └── utils/                 # Test utilities
-│       ├── test-data-generator.js
-│       └── statistical-power.js
+│       ├── browser-test-harness.js
+│       ├── prettify-test-results.js
+│       ├── server-checker.js
+│       ├── test-assertions.js
+│       └── test-data-generator.js
 ├── results/                   # Experiment results storage
-├── reports/                   # Report output
+├── reports/                   # Generated reports and visualizations
+│   └── plots/                 # Chart outputs
 ├── meta.json                  # Experiment metadata
 ├── versions.lock              # Toolchain version lock
 ├── requirements.txt           # Python dependencies
 ├── package.json               # Node.js dependencies
-├── Makefile                   # Automated build
+├── Makefile                   # Automated build and workflow
+├── vitest.config.js           # Test configuration
+├── eslint.config.js           # Code quality configuration
 └── README.md                  # Project description
 ```
 
@@ -231,7 +256,7 @@ wasm-benchmark/
 ```rust
 #[no_mangle]
 pub extern "C" fn init(seed: u32);
-#[no_mangle] 
+#[no_mangle]
 pub extern "C" fn alloc(n_bytes: u32) -> u32;  // Return memory offset
 #[no_mangle]
 pub extern "C" fn run_task(params_ptr: u32) -> u32;  // Return hash value
@@ -241,7 +266,7 @@ pub extern "C" fn run_task(params_ptr: u32) -> u32;  // Return hash value
 ```go
 //export init
 func init(seed uint32)
-//export alloc  
+//export alloc
 func alloc(nBytes uint32) uint32
 //export run_task
 func runTask(paramsPtr uint32) uint32  // Return hash value
@@ -269,7 +294,7 @@ Use xorshift32 (Uint32), consistent implementation across languages.
 • For floating-point operations, first normalize to fixed precision (e.g., `round(x * 1e6)`) then participate in hashing
 
 ### JS↔Wasm Round-trip Minimization
-• JS side only: ① alloc+memcpy input once; ② init(seed) once; ③ multiple run_task() timing  
+• JS side only: ① alloc+memcpy input once; ② init(seed) once; ③ multiple run_task() timing
 • Don't read back large data across boundaries, results only returned as u32 hash values
 
 ## Optimization Variants (compilation and post-processing)
@@ -427,7 +452,7 @@ builds/
 • **Same algorithm same order:** Sorting/matrix multiplication loop and comparison order remain consistent; Mandelbrot unified f64; MatMul unified f32
 • **Zero external dependencies:** Rust uses `#[no_mangle]` bare interface, TinyGo uses `//export`, both without high-level libraries
 • **Single-threaded / no SIMD:** This baseline round doesn't enable multithreading and SIMD (can do extension experiments with separate variants, such as o3-simd)
-• **Memory management strategy explanation:** 
+• **Memory management strategy explanation:**
   - **Rust**: Zero-cost abstractions, compile-time memory management, no runtime GC overhead
   - **TinyGo**: With garbage collector, has GC pauses and allocation overhead
   - **Experimental position**: Treat memory management differences as **part of language characteristics**, don't try to eliminate, but distinguish "pure computational performance" vs "memory management overhead" impact in analysis
@@ -500,22 +525,26 @@ builds/
 ## 3. Data Delivery
 
 ### Data Processing
-- Merge multi-round test results to generate `final_dataset.csv`
-- Calculate basic statistics: mean, standard deviation, coefficient of variation
-- Generate checksum file to ensure data integrity
+- Process benchmark results through quality control pipeline
+- Generate comprehensive statistical analysis reports
+- Create visualization charts and plots in `reports/plots/`
+- Validate data integrity with automated QC checks
 
-### Preliminary Visualization
-- Bar chart: mean comparison + error bars
-- Box plot: distribution comparison + outlier marking
+### Advanced Analysis
+- Cross-language performance comparison
+- Statistical significance testing
+- Memory usage pattern analysis
+- Binary size optimization analysis
 
 ---
 
 # Stage 5: Statistical Analysis
 
 ## 1. Analysis Preparation
-• **Data source:** `final_dataset.csv` (post-QC data)
-• **Analysis environment:** Python 3 + pandas/numpy/scipy/matplotlib
-• **Data structure:** task, language, execution_time_ms, memory_usage_mb, binary_size_kb
+• **Data source:** Results JSON files from the `results/` directory (post-QC validation)
+• **Analysis environment:** Python 3.12+ with scientific computing stack
+• **Analysis modules:** `analysis/statistics.py`, `analysis/qc.py`, `analysis/plots.py`
+• **Data structure:** Structured JSON with task, language, execution metrics, and validation data
 
 ## 2. Core Statistical Analysis
 
@@ -529,7 +558,7 @@ Calculate for each **task+language** combination:
 - **t-test:** Detect performance differences between languages (p < 0.05)
 - **Effect size:** Cohen's d calculation
   - d < 0.5: small effect
-  - 0.5 ≤ d < 0.8: medium effect  
+  - 0.5 ≤ d < 0.8: medium effect
   - d ≥ 0.8: large effect
 
 ## 3. Visualization
@@ -543,17 +572,15 @@ Calculate for each **task+language** combination:
    - Show median, interquartile range, anomalies
    - One subplot per task, languages by color
 
-**Output formats:** PNG (for papers) + SVG (high definition)
+**Output formats:** PNG (for reports) + SVG (high resolution) in `/reports/plots/`
 
 ## 4. Analysis Output
 
-### Auto-generated:
-- **Statistical report:** `/analysis/report.md`
-  - Statistical tables (mean, standard deviation, p-value, effect size)
-  - Analysis conclusions for each task
-  
-- **Chart files:** `/analysis/figures/*.png` and `*.svg`
-- **Analysis log:** Record statistical methods and outlier handling
+### Auto-generated Output:
+- **Quality control reports:** Automated QC analysis with outlier detection
+- **Statistical analysis:** `/reports/` directory with comprehensive analysis
+- **Visualization charts:** `/reports/plots/*.png` for publications
+- **Data validation logs:** Complete audit trail of quality control process
 
 ---
 
@@ -574,18 +601,28 @@ Calculate for each **task+language** combination:
 # Stage 7: Automation
 
 ## Core Automation
-• **`make build`** - Build all Wasm modules
-• **`make run`** - Execute benchmark tests  
-• **`make analyze`** - Generate statistical analysis and charts
-• **`make report`** - Generate final report
+• **`make build`** - Build all WASM modules for both languages
+• **`make run`** - Execute comprehensive benchmark tests
+• **`make qc`** - Run quality control analysis on results
+• **`make analyze`** - Generate statistical analysis and visualizations
+• **`make all`** - Complete experiment workflow (build + run + qc + analyze)
 
 ## One-click Execution
 ```bash
 # Complete experiment workflow
-scripts/run_experiment.sh
+make all
 
-# Output:
-# - results/final_dataset.csv
-# - analysis/report.md
-# - analysis/figures/*.png
+# Quick test workflow
+make all-quick
+
+# Individual components
+make build          # Build all WASM modules
+make run             # Run benchmarks
+make qc              # Quality control check
+make analyze         # Statistical analysis
+
+# Output files:
+# - results/*.json         # Raw benchmark data
+# - reports/plots/*.png    # Visualization charts
+# - Quality control reports
 ```
