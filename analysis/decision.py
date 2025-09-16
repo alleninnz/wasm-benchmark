@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-class PlotsGenerator:
+class DecisionSupport:
     pass
 
 
