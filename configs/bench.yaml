@@ -1,178 +1,154 @@
-# Research-Grade WebAssembly Benchmark Configuration
-# Stress-focused design to reveal performance trade-offs under memory pressure
-# Preserves original high-intensity task scales for meaningful comparison
+# Engineering-Grade WebAssembly Benchmark Configuration
+# Simplified for engineering reliability, not academic rigor
+# Focus: Practical Rust vs TinyGo performance comparison for engineering decisions
 
 experiment:
-  name: "Rust vs TinyGo WebAssembly Stress Performance Analysis"  # Updated project name
-  version: "2.0"  # Version increment to reflect research-grade enhancements
-  description: "Memory pressure gradient testing to expose GC vs zero-cost abstraction performance differences"
+  name: "Rust vs TinyGo WebAssembly Performance Comparison"
+  version: "2.1"
+  description: "Engineering-focused performance comparison for language selection decisions"
 
-# Enhanced measurement parameters optimized for research rigor
+# Simplified measurement parameters for engineering reliability
 environment:
-  # JIT Optimization and Warmup Strategy
-  warmup_runs: 25              # Increased from 10: V8 engine requires 15-30 iterations for tier-up optimization
-  measure_runs: 120            # Reduced from 180: Accommodate longer individual runs while maintaining 90% statistical power
-  repetitions: 3               # NEW: Multiple experiment runs for reproducibility validation
-  
-  # Memory Management and Pressure Testing
-  gc_threshold_mb: 10          # Memory threshold to trigger GC - part of stress testing design
-  
-  # Stress-Appropriate Timeout Strategy
-  timeout_ms: 90000           # Base timeout increased from 30s to 90s - accommodate stress testing
-  task_timeouts:              # NEW: Task-specific timeouts based on computational complexity
-    mandelbrot_small: 30000   # 30s for small scale (256x256)
-    mandelbrot_medium: 60000  # 60s for medium scale (512x512) 
-    mandelbrot_large: 120000  # 120s for large scale (1024x1024) - expect computational stress
-    json_parse_large: 90000   # 90s for heavy allocation patterns (50k records)
-    matrix_mul_large: 150000  # 150s for dense matrix computation (512x512)
-    
-  # Stress Testing Monitoring
-  memory_monitoring: true      # NEW: Track memory usage patterns during execution
-  gc_monitoring: true          # NEW: Monitor garbage collection events and timing
-  timeout_as_data: true        # NEW: Record timeouts as performance boundary indicators, not failures
+  warmup_runs: 15
+  measure_runs: 50
+  repetitions: 2
 
-# Memory Pressure Gradient Task Definitions (ORIGINAL scales preserved)
-# Design Philosophy: Systematic stress testing across <1MB → 2-4MB → 6-10MB memory ranges
-# Purpose: Expose performance differences between Rust zero-cost abstractions and TinyGo GC under increasing memory pressure
+  # Basic timeout strategy
+  timeout_ms: 90000           # Standard 90s timeout for all tasks
+
+# Simplified task definitions - keep core scales only
 tasks:
   mandelbrot:
-    description: "CPU-intensive floating point computation with escape-time algorithm"
-    # Memory pressure gradient: 0.5MB → 2MB → 8MB to test CPU + memory interaction
+    description: "CPU-intensive computation test"
     scales:
-      small:        # Baseline performance measurement
-        width: 256              # 256x256 pixel grid
+      small:
+        width: 256
         height: 256
-        max_iter: 500           # Maximum iterations per pixel before escape
-        memory_est_mb: 0.5      # <1MB: Minimal GC pressure baseline
-      medium:       # First memory pressure point
-        width: 512              # 512x512 pixel grid (4x computation increase)
+        max_iter: 500
+      medium:
+        width: 512
         height: 512
-        max_iter: 1000          # Doubled iteration depth
-        memory_est_mb: 2        # 2-4MB: Light GC pressure zone
-      large:        # High memory pressure stress test
-        width: 1024             # 1024x1024 pixel grid (16x computation increase)
+        max_iter: 1000
+      large:
+        width: 1024
         height: 1024
-        max_iter: 2000          # High iteration count for computational stress
-        memory_est_mb: 8        # 6-10MB: Significant GC pressure and memory fragmentation
-    fixed_params:  # Mandelbrot set parameters for consistent complex plane region
-      center_real: -0.743643887037      # Real part of complex plane center (interesting region)
-      center_imag: 0.131825904205       # Imaginary part of complex plane center
-      scale_factor: 3.0                 # Zoom level determining calculation precision
-
+        max_iter: 2000
+    fixed_params:
+      center_real: -0.743643887037
+      center_imag: 0.131825904205
+      scale_factor: 3.0
 
   json_parse:
-    description: "Structured data parsing with object allocation patterns"
-    # Memory pressure gradient: 0.9MB → 3MB → 7.5MB to test allocation-heavy workloads
+    description: "Object allocation and parsing test"
     scales:
-      small:        # Baseline object allocation measurement  
-        record_count: 6000      # ~300KB JSON string + 600KB parsed objects = 900KB total
-        memory_est_mb: 0.9      # <1MB: Minimal allocation pressure
-      medium:       # Moderate allocation pressure
-        record_count: 20000     # ~1MB JSON string + 2MB parsed objects = 3MB total
-        memory_est_mb: 3        # 2-4MB: GC starts becoming relevant
-      large:        # High allocation pressure stress test
-        record_count: 50000     # ~2.5MB JSON string + 5MB parsed objects = 7.5MB total  
-        memory_est_mb: 7.5      # 6-10MB: Heavy allocation stress, frequent GC cycles
-    schema:         # JSON record structure definition
-      fields: ["id", "value", "flag", "name"]  # Field names in each record
-      id_sequential: true       # Sequential ID generation (1, 2, 3, ...)
-      value_random: true        # Random integer values for computational variance
-      flag_derived: true        # flag = (value & 1) == 0 - derived boolean field
-      name_pattern: "user_{id}" # String pattern with variable substitution
+      small:
+        record_count: 5000
+      medium:
+        record_count: 15000
+      large:
+        record_count: 45000
+    schema:
+      fields: ["id", "value", "flag", "name"]
+      id_sequential: true
+      value_random: true
+      flag_derived: true
+      name_pattern: "user_{id}"
 
   matrix_mul:
-    description: "Dense f32 matrix multiplication with large contiguous memory allocation"
-    # Memory pressure gradient: 0.75MB → 3MB → 8MB to test numerical computation + memory bandwidth
+    description: "Dense matrix multiplication test"
     scales:
-      small:        # Baseline dense computation
-        dimension: 256          # 256x256 matrices: 3 * (256^2 * 4 bytes) = 768KB total
-        memory_est_mb: 0.75     # <1MB: Cache-friendly size, minimal memory pressure
-      medium:       # L3 cache pressure point
-        dimension: 384          # 384x384 matrices: 3 * (384^2 * 4 bytes) = ~1.7MB + overhead = 3MB
-        memory_est_mb: 3        # 2-4MB: Exceeds L3 cache, memory bandwidth becomes limiting
-      large:        # High memory bandwidth and allocation stress
-        dimension: 512          # 512x512 matrices: 3 * (512^2 * 4 bytes) = 3MB + computation overhead = 8MB
-        memory_est_mb: 8        # 6-10MB: Memory bandwidth saturation, significant allocation pressure
-    computation:    # Matrix multiplication algorithm parameters
-      data_type: "f32"                    # 32-bit floating point for balance of precision and performance
-      algorithm: "naive_triple_loop"      # Simple i,j,k order for consistent comparison (not optimized)
-      precision_digits: 6                 # Hash precision: round(x * 1e6) for deterministic verification
+      small:
+        dimension: 256
+      medium:
+        dimension: 384
+      large:
+        dimension: 512
+    computation:
+      data_type: "f32"
+      algorithm: "naive_triple_loop"
+      precision_digits: 6
 
-# Language-Specific Optimization Configurations
-# Maximum performance settings for fair comparison between Rust and TinyGo
+# Simplified language configurations
 languages:
   rust:
-    enabled: true                           # Enable Rust compilation
-    target: "wasm32-unknown-unknown"        # WebAssembly target without WASI dependencies
+    enabled: true
+    target: "wasm32-unknown-unknown"
     optimization_levels:
-      - name: "research_optimized"          # Research-grade optimization profile
-        cargo_flags: "--release"            # Release mode compilation
-        cargo_config:                       # Cargo.toml [profile.release] equivalent settings
-          opt_level: 3                      # Maximum optimization level
-          lto: "fat"                        # Full link-time optimization across all crates
-          codegen_units: 1                  # Single codegen unit for maximum optimization
-          panic: "abort"                    # Abort on panic (no unwinding overhead)
-          strip: "debuginfo"                # Remove debug symbols for smaller binaries
-    post_processing:                        # WebAssembly binary optimization pipeline
-      - "wasm-strip"                        # Remove debug sections and metadata
-      - "wasm-opt -O3"                      # Binaryen maximum optimization
-  
+      - name: "optimized"
+        cargo_flags: "--release"
+        cargo_config:
+          opt_level: 3
+          lto: "fat"
+          codegen_units: 1
+          panic: "abort"
+          strip: "debuginfo"
+    post_processing:
+      - "wasm-strip"
+      - "wasm-opt -O3"
+
   tinygo:
-    enabled: true                           # Enable TinyGo compilation
-    target: "wasm"                          # WebAssembly target
+    enabled: true
+    target: "wasm"
     optimization_levels:
-      - name: "research_optimized"          # Research-grade optimization profile
-        build_flags:                        # TinyGo compiler optimization flags
-          - "-opt=3"                        # Maximum optimization level
-          - "-panic=trap"                   # Trap on panic (consistent with Rust)
-          - "-no-debug"                     # No debug information
-          - "-scheduler=none"               # Disable Go runtime scheduler for performance
-    post_processing:                        # WebAssembly binary optimization pipeline
-      - "wasm-strip"                        # Remove debug sections and metadata
-      - "wasm-opt -Oz"                      # Binaryen size optimization (better for TinyGo)
+      - name: "optimized"
+        build_flags:
+          - "-opt=3"
+          - "-panic=trap"
+          - "-no-debug"
+          - "-scheduler=none"
+    post_processing:
+      - "wasm-strip"
+      - "wasm-opt -Oz"
 
-# Cross-Language Verification and Correctness Validation
-# Ensures identical computational results between Rust and TinyGo implementations
+# Basic verification
 verification:
-  hash_algorithm: "fnv1a"           # FNV-1a hash algorithm for result verification
-  hash_offset_basis: 2166136261     # FNV-1a 32-bit offset basis (standard constant)
-  hash_prime: 16777619              # FNV-1a 32-bit prime multiplier (standard constant)
-  floating_point_precision: 6      # Digits for f32 normalization: round(x * 1e6) for consistent hashing
+  hash_algorithm: "fnv1a"
+  hash_offset_basis: 2166136261
+  hash_prime: 16777619
+  floating_point_precision: 6
 
-# Research-Grade Quality Control Parameters
-# Enhanced thresholds for academic publication standards
+# Engineering-focused quality control
 qc:
-  max_coefficient_variation: 0.08  # 8% CV threshold (improved from 15% for research rigor)
-  outlier_iqr_multiplier: 1.5      # IQR method: flag outliers beyond 1.5 * IQR from quartiles
-  severe_outlier_iqr_multiplier: 3.0  # Severe outliers: beyond 3.0 * IQR (remove from analysis)
-  min_valid_samples: 100           # Minimum valid samples required after outlier removal (was 90)
-  
-  # Stress Testing Specific Quality Control
-  timeout_handling:                 # Handle timeouts as performance data, not failures
-    treat_timeout_as: "performance_boundary"  # Timeouts indicate language/scale limits
-    max_timeout_rate: 0.3          # Up to 30% timeout rate acceptable for large scales
-    timeout_analysis: true         # Generate timeout pattern analysis reports
+  max_coefficient_variation: 0.15
+  outlier_iqr_multiplier: 1.5
+  min_valid_samples: 30
 
-# Enhanced Statistical Analysis Configuration
-# Research-grade statistical rigor for academic publication
+  # timeout handling
+  timeout_handling:
+    treat_timeout_as: "failure"     # Timeouts are failures, not data
+    max_timeout_rate: 0.1          # 10% timeout rate maximum
+
+# Engineering-focused statistical analysis
 statistics:
-  confidence_level: 0.95            # 95% confidence intervals (standard for research)
-  significance_alpha: 0.01          # Significance level α = 0.01 (more stringent than 0.05)
-  statistical_power: 0.90           # Target 90% statistical power for effect detection
-  multiple_comparison_correction: "benjamini_hochberg"  # Benjamini-Hochberg FDR control
-  effect_size_metric: "cohens_d"    # Cohen's d for effect size measurement (standard)
-  normality_test: "shapiro_wilk"    # Shapiro-Wilk test for normality assumption validation
-  
-  # Research-Specific Statistical Enhancements
-  effect_size_thresholds:           # Cohen's conventional effect size interpretation
-    small: 0.2                      # Small effect size threshold
-    medium: 0.5                     # Medium effect size threshold  
-    large: 0.8                      # Large effect size threshold
-  minimum_detectable_effect: 0.2   # Minimum meaningful effect size to detect
-  
-  # Performance Boundary Analysis
-  performance_boundary_analysis:    # Analysis of computational limits and timeout patterns
-    enabled: true                   # Enable performance boundary analysis
-    timeout_patterns: true          # Analyze which scales/languages experience timeouts
-    scalability_metrics: true      # Performance degradation patterns across scales
-    gc_impact_analysis: true       # Correlation between GC events and performance degradation
+  confidence_level: 0.95           # Standard 95% confidence
+  significance_alpha: 0.05         # Standard α = 0.05
+  effect_size_metric: "cohens_d"   # Cohen's d for effect size
+
+  effect_size_thresholds:
+    small: 0.3
+    medium: 0.6
+    large: 1.0
+  minimum_detectable_effect: 0.3
+
+# Visualization and plotting configuration
+plots:
+  # Output settings
+  dpi_basic: 150                   # DPI for basic comparison charts
+  dpi_detailed: 300                # DPI for detailed analysis charts
+  format: "png"                    # Output file format
+
+  # Styling configuration
+  figure_size_basic: [10, 6]       # Figure size for basic charts [width, height]
+  figure_size_detailed: [16, 12]   # Figure size for detailed charts [width, height]
+
+  # Font configuration
+  font_size_default: 11            # Default font size
+  font_size_labels: 12             # Axis and label font size
+  font_size_titles: 14             # Title font size
+
+  # Color scheme for languages
+  color_scheme:
+    rust: "#CE422B"                # Rust orange-red
+    tinygo: "#00ADD8"              # Go cyan-blue
+
+
