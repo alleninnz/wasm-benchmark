@@ -9,11 +9,9 @@
  *
  * @module TestAssertions
  * @requires vitest
- * @requires ./statistical-power.js
  */
 
 import { expect } from 'vitest';
-import PowerAnalysis from './statistical-power.js';
 
 // Constants for validation limits
 const VALIDATION_CONSTANTS = {
@@ -21,8 +19,6 @@ const VALIDATION_CONSTANTS = {
     MAX_EXECUTION_TIME: 30000,
     MAX_MEMORY_USAGE: 100 * 1024 * 1024 // 100MB
 };
-
-const powerAnalysis = new PowerAnalysis();
 
 /**
  * Assert that a benchmark result meets all quality requirements

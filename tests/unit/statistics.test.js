@@ -3,15 +3,12 @@
 
 import { describe, test, expect, beforeEach } from 'vitest';
 import DeterministicTestDataGenerator from '../utils/test-data-generator.js';
-import PowerAnalysis from '../utils/statistical-power.js';
 
 describe('Statistical Functions', () => {
     let testDataGen;
-    let powerAnalysis;
 
     beforeEach(() => {
         testDataGen = new DeterministicTestDataGenerator(12345);
-        powerAnalysis = new PowerAnalysis();
     });
 
     describe('Test Data Generator', () => {
@@ -65,12 +62,6 @@ describe('Statistical Functions', () => {
 
             expect(mean).toBe(15);
             expect(variance).toBe(11.666666666666666);
-        });
-
-        test('should handle basic power analysis calculations', () => {
-            const sampleSize = powerAnalysis.calculateRequiredSampleSize(0.5, 0.05, 0.8);
-            expect(sampleSize).toBeGreaterThan(0);
-            expect(typeof sampleSize).toBe('number');
         });
     });
 

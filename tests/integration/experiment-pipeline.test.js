@@ -6,18 +6,15 @@ import fs from 'fs/promises';
 import path from 'path';
 import puppeteer from 'puppeteer';
 import DeterministicTestDataGenerator from '../utils/test-data-generator.js';
-import PowerAnalysis from '../utils/statistical-power.js';
 
 describe('Experiment Pipeline Integration', () => {
     let browser;
     let page;
     let testDataGen;
-    let powerAnalysis;
     let testResults = [];
 
     beforeEach(async () => {
         testDataGen = new DeterministicTestDataGenerator(12345);
-        powerAnalysis = new PowerAnalysis();
 
         // Launch browser with real Puppeteer instance
         browser = await puppeteer.launch(global.testBrowserConfig);
