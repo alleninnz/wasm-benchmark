@@ -20,7 +20,9 @@ class DecisionSupport:
         self.medium_confidence_threshold = 0.5  # Medium effect size threshold
         self.significance_threshold = 0.05  # Standard alpha level
 
-    def recommend_language_choice(self, comparison: ComparisonResult) -> DecisionMetrics:
+    def recommend_language_choice(
+        self, comparison: ComparisonResult
+    ) -> DecisionMetrics:
         """
         Generate comprehensive language selection recommendation with confidence assessment.
 
@@ -45,10 +47,12 @@ class DecisionSupport:
             statistical_significance=False,
             practical_significance=False,
             quality_sufficient=True,
-            decision_confidence=0.5
+            decision_confidence=0.5,
         )
 
-    def generate_confidence_emoji(self, p_value: float, cohen_d: float, data_quality: DataQuality) -> str:
+    def generate_confidence_emoji(
+        self, p_value: float, cohen_d: float, data_quality: DataQuality
+    ) -> str:
         """
         Generate emoji indicator for recommendation confidence level.
 
@@ -84,7 +88,9 @@ class DecisionSupport:
         else:
             return "🤔"
 
-    def generate_decision_summary(self, comparisons: List[ComparisonResult]) -> Dict[str, Any]:
+    def generate_decision_summary(
+        self, comparisons: List[ComparisonResult]
+    ) -> Dict[str, Any]:
         """
         Generate high-level decision summary across all task comparisons.
 
@@ -107,7 +113,7 @@ class DecisionSupport:
             "tinygo_recommended": 0,
             "no_preference": len(comparisons),
             "overall_recommendation": "No clear winner - choose based on other factors",
-            "confidence_level": "Low"
+            "confidence_level": "Low",
         }
 
 

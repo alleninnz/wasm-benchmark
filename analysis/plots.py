@@ -32,8 +32,11 @@ class VisualizationGenerator:
         # TODO: Set up grid and axis styling preferences
         pass
 
-    def create_performance_comparison_chart(self, comparisons: List[ComparisonResult],
-                                          output_path: str = "performance_comparison.png") -> str:
+    def create_performance_comparison_chart(
+        self,
+        comparisons: List[ComparisonResult],
+        output_path: str = "performance_comparison.png",
+    ) -> str:
         """
         Generate comprehensive performance comparison chart across all tasks.
 
@@ -56,8 +59,9 @@ class VisualizationGenerator:
 
         return output_path
 
-    def create_effect_size_visualization(self, comparisons: List[ComparisonResult],
-                                       output_path: str = "effect_sizes.png") -> str:
+    def create_effect_size_visualization(
+        self, comparisons: List[ComparisonResult], output_path: str = "effect_sizes.png"
+    ) -> str:
         """
         Generate effect size visualization showing practical significance.
 
@@ -79,9 +83,12 @@ class VisualizationGenerator:
 
         return output_path
 
-    def create_binary_size_comparison(self, rust_sizes: Dict[str, int],
-                                    tinygo_sizes: Dict[str, int],
-                                    output_path: str = "binary_sizes.png") -> str:
+    def create_binary_size_comparison(
+        self,
+        rust_sizes: Dict[str, int],
+        tinygo_sizes: Dict[str, int],
+        output_path: str = "binary_sizes.png",
+    ) -> str:
         """
         Generate binary size comparison chart for WebAssembly modules.
 

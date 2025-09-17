@@ -6,9 +6,7 @@ to quality control, statistical analysis, and visualization parameters.
 """
 
 from pathlib import Path
-from typing import Any, Dict, Optional
-
-import yaml
+from typing import Optional
 
 from .data_models import (ConfigurationData, PlotsConfiguration,
                           QCConfiguration, StatisticsConfiguration)
@@ -22,7 +20,7 @@ class ConfigParser:
         self.config_path = Path(config_path)
         self._configuration_data: Optional[ConfigurationData] = None
 
-    def load(self) -> 'ConfigParser':
+    def load(self) -> "ConfigParser":
         """
         Load and validate configuration file, returning typed configuration data.
 
@@ -44,14 +42,14 @@ class ConfigParser:
             max_coefficient_variation=0.15,
             outlier_iqr_multiplier=1.5,
             min_valid_samples=30,
-            max_timeout_rate=0.1
+            max_timeout_rate=0.1,
         )
 
         stats_config = StatisticsConfiguration(
             confidence_level=0.95,
             significance_alpha=0.05,
             effect_size_thresholds={"small": 0.3, "medium": 0.6, "large": 1.0},
-            minimum_detectable_effect=0.3
+            minimum_detectable_effect=0.3,
         )
 
         plots_config = PlotsConfiguration(
@@ -61,13 +59,11 @@ class ConfigParser:
             figure_size_basic=[10, 6],
             figure_size_detailed=[16, 12],
             font_sizes={"default": 11, "labels": 12, "titles": 14},
-            color_scheme={"rust": "#CE422B", "tinygo": "#00ADD8"}
+            color_scheme={"rust": "#CE422B", "tinygo": "#00ADD8"},
         )
 
         self._configuration_data = ConfigurationData(
-            qc=qc_config,
-            statistics=stats_config,
-            plots=plots_config
+            qc=qc_config, statistics=stats_config, plots=plots_config
         )
 
         return self
@@ -87,7 +83,7 @@ class ConfigParser:
             max_coefficient_variation=0.15,
             outlier_iqr_multiplier=1.5,
             min_valid_samples=30,
-            max_timeout_rate=0.1
+            max_timeout_rate=0.1,
         )
 
     def get_stats_config(self) -> StatisticsConfiguration:
@@ -105,7 +101,7 @@ class ConfigParser:
             confidence_level=0.95,
             significance_alpha=0.05,
             effect_size_thresholds={"small": 0.3, "medium": 0.6, "large": 1.0},
-            minimum_detectable_effect=0.3
+            minimum_detectable_effect=0.3,
         )
 
     def get_plots_config(self) -> PlotsConfiguration:
@@ -126,7 +122,5 @@ class ConfigParser:
             figure_size_basic=[10, 6],
             figure_size_detailed=[16, 12],
             font_sizes={"default": 11, "labels": 12, "titles": 14},
-            color_scheme={"rust": "#CE422B", "tinygo": "#00ADD8"}
+            color_scheme={"rust": "#CE422B", "tinygo": "#00ADD8"},
         )
-
-

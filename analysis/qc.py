@@ -9,7 +9,7 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 from .config_parser import ConfigParser
 from .data_models import (BenchmarkSample, CleanedDataset, DataQuality,
@@ -56,10 +56,12 @@ class QualityController:
             removed_outliers=[],
             quality_summary={},
             overall_quality=DataQuality.VALID,
-            cleaning_log=[]
+            cleaning_log=[],
         )
 
-    def detect_outliers(self, samples: List[BenchmarkSample]) -> Tuple[List[BenchmarkSample], List[BenchmarkSample]]:
+    def detect_outliers(
+        self, samples: List[BenchmarkSample]
+    ) -> Tuple[List[BenchmarkSample], List[BenchmarkSample]]:
         """
         Detect statistical outliers using IQR method with configurable multiplier.
 
@@ -110,7 +112,7 @@ class QualityController:
             timeout_rate=0.0,
             success_rate=1.0,
             data_quality=DataQuality.VALID,
-            quality_issues=[]
+            quality_issues=[],
         )
 
 
@@ -134,10 +136,12 @@ def main():
             sys.exit(1)
 
         # Use the latest non-meta JSON file
-        latest_file = max([f for f in json_files if "meta" not in f.name],
-                         key=lambda x: x.stat().st_mtime)
+        latest_file = max(
+            [f for f in json_files if "meta" not in f.name],
+            key=lambda x: x.stat().st_mtime,
+        )
 
-        with open(latest_file, 'r') as f:
+        with open(latest_file, "r") as f:
             raw_data = json.load(f)
         print(f"✅ Loaded raw benchmark data from {latest_file}")
     except Exception as e:
@@ -157,7 +161,7 @@ def main():
         summary=raw_data.get("summary", {}),
         results=raw_data.get("results", []),
         file_path=str(latest_file),
-        load_timestamp=datetime.now().isoformat()
+        load_timestamp=datetime.now().isoformat(),
     )
 
     # Initialize quality controller
@@ -180,22 +184,22 @@ def main():
             "max_cv": qc_config.max_coefficient_variation,
             "iqr_multiplier": qc_config.outlier_iqr_multiplier,
             "min_samples": qc_config.min_valid_samples,
-            "max_timeout_rate": qc_config.max_timeout_rate
+            "max_timeout_rate": qc_config.max_timeout_rate,
         },
         "data_summary": {
             "total_task_results": len(cleaned_dataset.task_results),
             "removed_outliers": len(cleaned_dataset.removed_outliers),
             "overall_quality": cleaned_dataset.overall_quality.value,
-            "cleaning_operations": len(cleaned_dataset.cleaning_log)
+            "cleaning_operations": len(cleaned_dataset.cleaning_log),
         },
         "quality_metrics": cleaned_dataset.quality_summary,
-        "cleaning_log": cleaned_dataset.cleaning_log
+        "cleaning_log": cleaned_dataset.cleaning_log,
     }
 
     # Save quality control report
     try:
         report_path = output_dir / "quality_control_report.json"
-        with open(report_path, 'w') as f:
+        with open(report_path, "w") as f:
             json.dump(qc_report, f, indent=2)
         print(f"✅ Quality control report saved to {report_path}")
     except IOError as e:
@@ -210,10 +214,10 @@ def main():
             "removed_outliers": cleaned_dataset.removed_outliers,
             "quality_summary": cleaned_dataset.quality_summary,
             "overall_quality": cleaned_dataset.overall_quality.value,
-            "cleaning_log": cleaned_dataset.cleaning_log
+            "cleaning_log": cleaned_dataset.cleaning_log,
         }
 
-        with open(cleaned_dataset_path, 'w') as f:
+        with open(cleaned_dataset_path, "w") as f:
             json.dump(cleaned_data_json, f, indent=2)
         print(f"✅ Cleaned dataset saved to {cleaned_dataset_path}")
     except IOError as e:

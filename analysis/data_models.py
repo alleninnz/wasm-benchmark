@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 class DataQuality(Enum):
     """Data quality assessment levels"""
+
     VALID = "valid"
     WARNING = "warning"
     INVALID = "invalid"
@@ -19,6 +20,7 @@ class DataQuality(Enum):
 
 class EffectSize(Enum):
     """Cohen's d effect size classifications"""
+
     NEGLIGIBLE = "negligible"
     SMALL = "small"
     MEDIUM = "medium"
@@ -28,6 +30,7 @@ class EffectSize(Enum):
 @dataclass
 class BenchmarkSample:
     """Single benchmark execution sample"""
+
     task: str
     language: str
     scale: str
@@ -49,6 +52,7 @@ class BenchmarkSample:
 @dataclass
 class TaskResult:
     """Aggregated results for a specific task-language-scale combination"""
+
     task: str
     language: str
     scale: str
@@ -62,6 +66,7 @@ class TaskResult:
 @dataclass
 class QualityMetrics:
     """Quality control metrics for dataset validation"""
+
     sample_count: int
     mean_execution_time: float
     std_execution_time: float
@@ -77,6 +82,7 @@ class QualityMetrics:
 @dataclass
 class StatisticalResult:
     """Basic statistical measures for a dataset"""
+
     count: int
     mean: float
     std: float
@@ -92,6 +98,7 @@ class StatisticalResult:
 @dataclass
 class TTestResult:
     """Results from Welch's t-test statistical comparison"""
+
     t_statistic: float
     p_value: float
     degrees_freedom: float
@@ -105,6 +112,7 @@ class TTestResult:
 @dataclass
 class EffectSizeResult:
     """Cohen's d effect size calculation results"""
+
     cohens_d: float
     effect_size: EffectSize
     pooled_std: float
@@ -115,6 +123,7 @@ class EffectSizeResult:
 @dataclass
 class ComparisonResult:
     """Complete statistical comparison between two language implementations"""
+
     task: str
     scale: str
     rust_stats: StatisticalResult
@@ -131,6 +140,7 @@ class ComparisonResult:
 @dataclass
 class ValidationResult:
     """Benchmark implementation validation results"""
+
     task: str
     scale: str
     rust_hash: int
@@ -149,6 +159,7 @@ class ValidationResult:
 @dataclass
 class DecisionMetrics:
     """Decision support metrics for language selection"""
+
     confidence_emoji: str
     confidence_description: str
     recommendation_text: str
@@ -161,6 +172,7 @@ class DecisionMetrics:
 @dataclass
 class QCConfiguration:
     """Quality Control configuration parameters"""
+
     max_coefficient_variation: float
     outlier_iqr_multiplier: float
     min_valid_samples: int
@@ -170,6 +182,7 @@ class QCConfiguration:
 @dataclass
 class StatisticsConfiguration:
     """Statistical Analysis configuration parameters"""
+
     confidence_level: float
     significance_alpha: float
     effect_size_thresholds: Dict[str, float]
@@ -179,6 +192,7 @@ class StatisticsConfiguration:
 @dataclass
 class PlotsConfiguration:
     """Plotting and visualization configuration parameters"""
+
     dpi_basic: int
     dpi_detailed: int
     output_format: str
@@ -191,6 +205,7 @@ class PlotsConfiguration:
 @dataclass
 class ConfigurationData:
     """Complete configuration data containing all specialized configurations"""
+
     qc: QCConfiguration
     statistics: StatisticsConfiguration
     plots: PlotsConfiguration
@@ -199,6 +214,7 @@ class ConfigurationData:
 @dataclass
 class CleanedDataset:
     """Dataset after quality control and cleaning"""
+
     task_results: List[TaskResult]
     removed_outliers: List[BenchmarkSample]
     quality_summary: Dict[str, QualityMetrics]
@@ -209,6 +225,7 @@ class CleanedDataset:
 @dataclass
 class AnalysisReport:
     """Complete analysis report with all results"""
+
     experiment_name: str
     analysis_timestamp: str
     configuration: ConfigurationData
@@ -221,10 +238,10 @@ class AnalysisReport:
     analysis_quality: DataQuality
 
 
-
 @dataclass
 class RawBenchmarkData:
     """Raw benchmark data as loaded from JSON files"""
+
     summary: Dict[str, Any]
     results: List[Dict[str, Any]]
     file_path: str

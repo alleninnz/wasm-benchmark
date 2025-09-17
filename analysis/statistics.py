@@ -7,16 +7,17 @@ for engineering-grade statistical comparison between Rust and TinyGo implementat
 
 from typing import Dict, List, Tuple
 
-from .data_models import (BenchmarkSample, CleanedDataset, ComparisonResult,
-                          DataQuality, EffectSize, EffectSizeResult,
-                          StatisticalResult, StatisticsConfiguration,
-                          TaskResult, TTestResult)
+from .data_models import (CleanedDataset, ComparisonResult, DataQuality,
+                          EffectSize, EffectSizeResult, StatisticalResult,
+                          StatisticsConfiguration, TaskResult, TTestResult)
 
 
 class Statistics:
     """Statistical analysis engine for benchmark performance comparison"""
 
-    def __init__(self, cleaned_dataset: CleanedDataset, stats_config: StatisticsConfiguration):
+    def __init__(
+        self, cleaned_dataset: CleanedDataset, stats_config: StatisticsConfiguration
+    ):
         """
         Initialize statistical analysis with cleaned data and configuration.
 
@@ -61,7 +62,7 @@ class Statistics:
             confidence_interval_upper=0.0,
             mean_difference=0.0,
             is_significant=False,
-            alpha=self.alpha
+            alpha=self.alpha,
         )
 
     def cohens_d(self, group1: List[float], group2: List[float]) -> EffectSizeResult:
@@ -91,7 +92,7 @@ class Statistics:
             effect_size=EffectSize.NEGLIGIBLE,
             pooled_std=1.0,
             magnitude=0.0,
-            interpretation="No effect detected"
+            interpretation="No effect detected",
         )
 
     def perform_basic_analysis(self) -> Dict[str, StatisticalResult]:
@@ -120,16 +121,18 @@ class Statistics:
         abs_d = abs(cohen_d)
         thresholds = self.effect_thresholds
 
-        if abs_d >= thresholds['large']:
+        if abs_d >= thresholds["large"]:
             return EffectSize.LARGE
-        elif abs_d >= thresholds['medium']:
+        elif abs_d >= thresholds["medium"]:
             return EffectSize.MEDIUM
-        elif abs_d >= thresholds['small']:
+        elif abs_d >= thresholds["small"]:
             return EffectSize.SMALL
         else:
             return EffectSize.NEGLIGIBLE
 
-    def confidence_interval(self, group1: List[float], group2: List[float]) -> Tuple[float, float]:
+    def confidence_interval(
+        self, group1: List[float], group2: List[float]
+    ) -> Tuple[float, float]:
         """
         Calculate confidence interval for the difference in means.
 
@@ -148,8 +151,9 @@ class Statistics:
 
         return (0.0, 0.0)
 
-    def compare_task_performance(self, rust_result: TaskResult,
-                                tinygo_result: TaskResult) -> ComparisonResult:
+    def compare_task_performance(
+        self, rust_result: TaskResult, tinygo_result: TaskResult
+    ) -> ComparisonResult:
         """
         Perform complete statistical comparison between Rust and TinyGo for a specific task.
 
@@ -171,15 +175,21 @@ class Statistics:
         return ComparisonResult(
             task="placeholder",
             scale="placeholder",
-            rust_stats=StatisticalResult(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-            tinygo_stats=StatisticalResult(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+            rust_stats=StatisticalResult(
+                0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+            ),
+            tinygo_stats=StatisticalResult(
+                0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+            ),
             t_test=TTestResult(0.0, 1.0, 1.0, 0.0, 0.0, 0.0, False, 0.05),
-            effect_size=EffectSizeResult(0.0, EffectSize.NEGLIGIBLE, 1.0, 0.0, "No effect"),
+            effect_size=EffectSizeResult(
+                0.0, EffectSize.NEGLIGIBLE, 1.0, 0.0, "No effect"
+            ),
             rust_quality=None,
             tinygo_quality=None,
             overall_quality=DataQuality.VALID,
             recommendation="No recommendation available",
-            confidence_level="Low"
+            confidence_level="Low",
         )
 
 
@@ -193,6 +203,6 @@ def main():
 
     pass
 
+
 if __name__ == "__main__":
     main()
-

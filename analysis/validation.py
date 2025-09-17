@@ -5,10 +5,9 @@ Validates implementation correctness across Rust and TinyGo through hash verific
 result consistency checks, and cross-language validation to ensure fair comparison.
 """
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
-from .data_models import (BenchmarkSample, ConfigurationData, DataQuality,
-                          TaskResult, ValidationResult)
+from .data_models import BenchmarkSample, ConfigurationData, ValidationResult
 
 
 class BenchmarkValidator:
@@ -19,8 +18,9 @@ class BenchmarkValidator:
         self.config = config
         self.validation_results: List[ValidationResult] = []
 
-    def validate_task_implementation(self, rust_samples: List[BenchmarkSample],
-                                   tinygo_samples: List[BenchmarkSample]) -> ValidationResult:
+    def validate_task_implementation(
+        self, rust_samples: List[BenchmarkSample], tinygo_samples: List[BenchmarkSample]
+    ) -> ValidationResult:
         """
         Validate that Rust and TinyGo implementations produce consistent results.
 
@@ -50,10 +50,12 @@ class BenchmarkValidator:
             tinygo_records=None,
             records_match=False,
             validation_passed=False,
-            validation_issues=[]
+            validation_issues=[],
         )
 
-    def verify_hash_consistency(self, samples: List[BenchmarkSample]) -> Tuple[bool, List[str]]:
+    def verify_hash_consistency(
+        self, samples: List[BenchmarkSample]
+    ) -> Tuple[bool, List[str]]:
         """
         Verify that all samples in a task produce the same result hash.
 
@@ -69,8 +71,9 @@ class BenchmarkValidator:
         # TODO: Return validation status with detailed issue descriptions
         return False, []
 
-    def cross_language_hash_validation(self, rust_samples: List[BenchmarkSample],
-                                     tinygo_samples: List[BenchmarkSample]) -> Tuple[bool, List[str]]:
+    def cross_language_hash_validation(
+        self, rust_samples: List[BenchmarkSample], tinygo_samples: List[BenchmarkSample]
+    ) -> Tuple[bool, List[str]]:
         """
         Validate that Rust and TinyGo implementations produce identical result hashes.
 
