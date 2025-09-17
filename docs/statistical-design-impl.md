@@ -76,25 +76,49 @@ WebAssembly Benchmark 项目旨在为开发者提供基于数据的语言选择�
 
 ```mermaid
 graph TD
-    A[WASM基准执行] --> B[原始性能数据]
-    B --> C[质量控制验证]
-    C --> D[统计分析处理]
-    D --> E[语言选择建议]
-    D --> F[性能总结报告]
-    E --> G[工程决策支持]
+    A[原始性能数据收集] --> B[加载工程化配置]
+    B --> C[解析bench.yaml参数]
+    C --> D{数据质量检查}
+    D -->|配置阈值检验| E[质量控制验证]
+    E --> F{是否通过QC}
+    F -->|通过| G[统计分析处理]
+    F -->|失败| H[数据质量报告]
+    G --> I[效应量计算]
+    G --> J[显著性检验]
+    I --> K[决策置信度评估]
+    J --> K
+    K --> L[语言选择建议]
+    L --> M[性能总结报告]
+    L --> N[可视化图表生成]
+    M --> O[工程决策支持]
+    N --> O
+    H --> P[流程终止/重试]
+
+    style B fill:#e1f5fe
+    style C fill:#e1f5fe
+    style D fill:#fff3e0
+    style F fill:#fff3e0
+    style K fill:#e8f5e8
 ```
 
-### **核心组件架构**
+### **核心组件架构（配置驱动）**
 
-| 组件 | 文件 | 功能描述 | 优先级 |
-|------|------|----------|--------|
-| 统计分析 | `analysis/statistics.py` | Welch's t-test, Cohen's d, 置信区间计算 | 🥇 |
-| 质量控制 | `analysis/qc.py` | 数据清洗, IQR离群值检测 | 🥇 |
-| 决策支持 | `analysis/decision.py` | 语言选择建议生成 | 🥇 |
-| 基准验证 | `analysis/validation.py` | 哈希验证, 结果一致性检查 | 🥈 |
-| 可视化 | `analysis/plots.py` | 性能对比图表, 二进制大小分析 | 🥉 |
-| 数据模型 | `analysis/data_models.py` | 数据结构定义 | 🥈 |
-| 配置管理 | `configs/bench.yaml` | 基准参数和阈值设置 | 🥈 |
+| 组件 | 文件 | 功能描述 | 配置依赖 | 优先级 |
+|------|------|----------|----------|--------|
+| **配置管理** | `configs/bench.yaml` | 工程化参数和阈值设置 | - | 🥇 |
+| **配置解析器** | `analysis/config_parser.py` | 配置加载和验证 | `bench.yaml` | 🥇 |
+| 统计分析 | `analysis/statistics.py` | Welch's t-test, Cohen's d, 置信区间计算 | `statistics.*` | 🥇 |
+| 质量控制 | `analysis/qc.py` | 数据清洗, IQR离群值检测 | `qc.*` | 🥇 |
+| 决策支持 | `analysis/decision.py` | 语言选择建议生成 | `statistics.effect_size_thresholds` | 🥇 |
+| 基准验证 | `analysis/validation.py` | 哈希验证, 结果一致性检查 | `qc.timeout_handling` | 🥈 |
+| 可视化 | `analysis/plots.py` | 性能对比图表, 二进制大小分析 | `plots.*` | 🥉 |
+| 数据模型 | `analysis/data_models.py` | 数据结构定义 | - | 🥈 |
+
+#### **配置依赖关系**
+- **🔧 配置解析器**: 系统启动时首先加载，为所有模块提供参数
+- **📊 质量控制**: 依赖 `qc` 配置节点的所有参数
+- **📈 统计分析**: 使用 `statistics` 配置节点的阈值和方法
+- **🎨 可视化**: 遵循 `plots` 配置节点的样式和输出设置
 
 ---
 
@@ -162,23 +186,86 @@ s_pooled = √[((n₁-1)×s₁² + (n₂-1)×s₂²) / (n₁+n₂-2)]
 
 ## 🔍 **技术实现详情**
 
+### **0. 配置解析器模块 (analysis/config_parser.py)**
+
+#### **核心功能**
+
+```python
+class ConfigParser:
+    def __init__(self, config_path="configs/bench.yaml"):
+        """初始化配置解析器"""
+        self.config_path = config_path
+        self.config = None
+
+    def load_config(self) -> Dict:
+        """加载并验证配置文件"""
+
+    def get_qc_config(self) -> Dict:
+        """获取质量控制配置"""
+        return {
+            'max_cv': self.config['qc']['max_coefficient_variation'],
+            'iqr_multiplier': self.config['qc']['outlier_iqr_multiplier'],
+            'min_samples': self.config['qc']['min_valid_samples'],
+            'max_timeout_rate': self.config['qc']['timeout_handling']['max_timeout_rate']
+        }
+
+    def get_stats_config(self) -> Dict:
+        """获取统计分析配置"""
+        return {
+            'alpha': self.config['statistics']['significance_alpha'],
+            'confidence': self.config['statistics']['confidence_level'],
+            'effect_thresholds': self.config['statistics']['effect_size_thresholds']
+        }
+
+    def get_plots_config(self) -> Dict:
+        """获取可视化配置"""
+        return self.config['plots']
+```
+
+#### **配置驱动特性**
+
+- **集中管理**: 所有模块的配置参数统一管理
+- **类型安全**: 配置值类型验证和默认值处理
+- **热重载**: 支持运行时配置更新（可选）
+- **环境适配**: 支持不同环境的配置文件
+
 ### **1. 统计分析模块 (analysis/statistics.py)**
 
-#### **核心方法**
+#### **配置驱动的核心方法**
 
 ```python
 class Statistics:
-    def __init__(self, cleaned_dataset, significance_alpha=0.05):
-        """初始化统计分析，设置显著性水平"""
+    def __init__(self, cleaned_dataset, config_parser: ConfigParser):
+        """初始化统计分析，从配置加载参数"""
+        self.dataset = cleaned_dataset
+        self.config = config_parser.get_stats_config()
+        self.alpha = self.config['alpha']  # 从配置获取显著性水平
+        self.confidence_level = self.config['confidence']
+        self.effect_thresholds = self.config['effect_thresholds']
 
     def perform_basic_analysis(self) -> Dict[str, StatisticalResult]:
         """执行核心统计分析：均值、标准差、变异系数"""
 
     def welch_t_test(self, group1, group2) -> TTestResult:
-        """执行Welch's t-test进行组间比较"""
+        """执行Welch's t-test，使用配置的显著性水平"""
+        # 使用 self.alpha 进行显著性判断
 
     def cohens_d(self, group1, group2) -> float:
         """计算Cohen's d效应量"""
+
+    def classify_effect_size(self, cohen_d: float) -> str:
+        """根据配置的阈值分类效应量大小"""
+        abs_d = abs(cohen_d)
+        thresholds = self.effect_thresholds
+
+        if abs_d >= thresholds['large']:
+            return "large"
+        elif abs_d >= thresholds['medium']:
+            return "medium"
+        elif abs_d >= thresholds['small']:
+            return "small"
+        else:
+            return "negligible"
 
     def confidence_interval(self, group1, group2) -> Tuple[float, float]:
         """计算95%置信区间"""
@@ -211,24 +298,39 @@ class Statistics:
 
 ### **2. 质量控制模块 (analysis/qc.py)**
 
-#### **核心功能**
+#### **配置驱动的核心功能**
 
 ```python
 class QualityController:
-    def __init__(self, raw_dataset, config):
-        """初始化质量控制，加载工程级阈值"""
+    def __init__(self, raw_dataset, config_parser: ConfigParser):
+        """初始化质量控制，从配置加载工程级阈值"""
+        self.dataset = raw_dataset
+        self.config = config_parser.get_qc_config()
+        self.max_cv = self.config['max_cv']  # 0.15
+        self.iqr_multiplier = self.config['iqr_multiplier']  # 1.5
+        self.min_samples = self.config['min_samples']  # 30
+        self.max_timeout_rate = self.config['max_timeout_rate']  # 0.1
 
     def validate_and_clean(self) -> CleanedDataset:
         """执行数据质量验证和清洗流程"""
+        # 使用配置的阈值进行验证
 
     def detect_outliers(self) -> List[BenchmarkSample]:
-        """使用IQR方法检测离群值"""
+        """使用配置的IQR倍数检测离群值"""
+        # 使用 self.iqr_multiplier 作为检测阈值
 
     def validate_data_quality(self) -> bool:
-        """验证数据是否满足分析要求"""
+        """验证数据是否满足配置的要求"""
+        sample_count = len(self.dataset)
+        cv = self.calculate_coefficient_variation()
+        timeout_rate = self.calculate_timeout_rate()
+
+        return (sample_count >= self.min_samples and
+                cv <= self.max_cv and
+                timeout_rate <= self.max_timeout_rate)
 ```
 
-#### **工程化标准**
+#### **配置化的工程标准**
 
 - **变异系数阈值**: 15% (宽松的工程标准)
 - **最小样本量**: 30个有效样本 (实用标准)
