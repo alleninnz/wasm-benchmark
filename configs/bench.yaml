@@ -112,11 +112,9 @@ qc:
   max_coefficient_variation: 0.15
   outlier_iqr_multiplier: 1.5
   min_valid_samples: 30
-
   # timeout handling
-  timeout_handling:
-    treat_timeout_as: "failure"     # Timeouts are failures, not data
-    max_timeout_rate: 0.1          # 10% timeout rate maximum
+  treat_timeout_as: "failure"     # Timeouts are failures, not data
+  max_timeout_rate: 0.1          # 10% timeout rate maximum
 
 # Engineering-focused statistical analysis
 statistics:
