@@ -43,6 +43,9 @@ class ConfigParser:
             outlier_iqr_multiplier=1.5,
             min_valid_samples=30,
             max_timeout_rate=0.1,
+            quality_invalid_threshold=0.20,
+            quality_high_risk_threshold=0.50,
+            quality_warning_threshold=0.40,
         )
 
         stats_config = StatisticsConfiguration(
@@ -84,6 +87,9 @@ class ConfigParser:
             outlier_iqr_multiplier=1.5,
             min_valid_samples=30,
             max_timeout_rate=0.1,
+            quality_invalid_threshold=0.20,
+            quality_high_risk_threshold=0.50,
+            quality_warning_threshold=0.40,
         )
 
     def get_stats_config(self) -> StatisticsConfiguration:

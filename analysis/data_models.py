@@ -26,7 +26,6 @@ class EffectSize(Enum):
     MEDIUM = "medium"
     LARGE = "large"
 
-
 @dataclass
 class BenchmarkSample:
     """Single benchmark execution sample"""
@@ -35,19 +34,41 @@ class BenchmarkSample:
     language: str
     scale: str
     run: int
-    execution_time: float
-    memory_usage_mb: float
-    wasm_memory_bytes: int
-    result_hash: int
-    input_data_hash: int
+    moduleId: str
+    inputDataHash: int
+    executionTime: float
+    memoryUsageMb: float
+    memoryUsed: int
+    wasmMemoryBytes: int
+    resultHash: int
     timestamp: int
+    jsHeapBefore: int
+    jsHeapAfter: int
     success: bool
-    js_heap_before: Optional[int] = None
-    js_heap_after: Optional[int] = None
-    # Task-specific fields
-    result_dimensions: Optional[List[int]] = None
-    records_processed: Optional[int] = None
+    implementation: str
+    resultDimensions: Optional[List[int]] = None
+    recordsProcessed: Optional[int] = None
 
+
+@dataclass
+class BenchmarkResult:
+    """Top-level benchmark result containing multiple execution results"""
+
+    benchmark: str
+    success: bool
+    samples: List[BenchmarkSample]
+    timestamp: str
+    duration: int
+    id: str
+
+@dataclass
+class RawBenchmarkData:
+    """Raw benchmark data as loaded from JSON files"""
+
+    summary: Dict[str, Any]
+    results: List[BenchmarkResult]
+    file_path: str
+    load_timestamp: str
 
 @dataclass
 class TaskResult:
@@ -59,7 +80,6 @@ class TaskResult:
     samples: List[BenchmarkSample]
     successful_runs: int
     failed_runs: int
-    timeout_runs: int
     success_rate: float
 
 
@@ -177,6 +197,9 @@ class QCConfiguration:
     outlier_iqr_multiplier: float
     min_valid_samples: int
     max_timeout_rate: float
+    quality_invalid_threshold: float
+    quality_high_risk_threshold: float
+    quality_warning_threshold: float
 
 
 @dataclass
@@ -237,12 +260,3 @@ class AnalysisReport:
     plots_generated: List[str]
     analysis_quality: DataQuality
 
-
-@dataclass
-class RawBenchmarkData:
-    """Raw benchmark data as loaded from JSON files"""
-
-    summary: Dict[str, Any]
-    results: List[Dict[str, Any]]
-    file_path: str
-    load_timestamp: str
