@@ -185,14 +185,48 @@ export class ResultsService extends IResultsService {
      * @returns {string} Formatted report
      */
     generateReport(format = 'json') {
+        // For JSON format, flatten the nested results structure
+        if (format.toLowerCase() === 'json') {
+            const transformedResults = this.getResults().map(result => {
+                // Flatten the results array to remove numeric key nesting
+                let flattenedResults = [];
+                
+                if (result.results && Array.isArray(result.results)) {
+                    result.results.forEach(item => {
+                        if (typeof item === 'object' && !Array.isArray(item)) {
+                            // Extract values from objects with numeric keys like {"0": {...}, "1": {...}}
+                            const values = Object.values(item);
+                            flattenedResults.push(...values);
+                        } else {
+                            flattenedResults.push(item);
+                        }
+                    });
+                }
+                
+                return {
+                    benchmark: result.benchmark,
+                    success: result.success,
+                    results: flattenedResults,
+                    timestamp: result.timestamp,
+                    duration: result.duration,
+                    id: result.id
+                };
+            });
+            
+            const data = {
+                summary: this.getSummary(),
+                results: transformedResults
+            };
+            return JSON.stringify(data, null, 2);
+        }
+        
+        // For other formats, maintain backward compatibility
         const data = {
             summary: this.getSummary(),
             results: this.getResults()
         };
 
         switch (format.toLowerCase()) {
-            case 'json':
-                return JSON.stringify(data, null, 2);
             case 'text':
                 return this.generateTextReport(data);
             case 'csv':
@@ -298,17 +332,7 @@ export class ResultsService extends IResultsService {
             // Write to file
             await fs.writeFile(filepath, content, 'utf8');
 
-            // Save additional metadata if requested
-            if (options.saveMetadata) {
-                const metadataPath = filepath.replace(/\.[^.]+$/, '.metadata.json');
-                const metadata = {
-                    generatedAt: new Date().toISOString(),
-                    format: format,
-                    resultCount: this.results.length,
-                    summary: this.getSummary()
-                };
-                await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
-            }
+
 
         } catch (error) {
             throw new Error(`Failed to save results to ${filepath}: ${error.message}`);
