@@ -9,9 +9,9 @@ experiment:
 
 # Simplified measurement parameters for engineering reliability
 environment:
-  warmup_runs: 15
-  measure_runs: 50
-  repetitions: 2
+  warmup_runs: 20
+  measure_runs: 100
+  repetitions: 3
 
   # Basic timeout strategy
   timeout_ms: 90000           # Standard 90s timeout for all tasks
@@ -33,10 +33,6 @@ tasks:
         width: 1024
         height: 1024
         max_iter: 2000
-    fixed_params:
-      center_real: -0.743643887037
-      center_imag: 0.131825904205
-      scale_factor: 3.0
 
   json_parse:
     description: "Object allocation and parsing test"
@@ -44,9 +40,9 @@ tasks:
       small:
         record_count: 5000
       medium:
-        record_count: 15000
+        record_count: 20000
       large:
-        record_count: 45000
+        record_count: 50000
     schema:
       fields: ["id", "value", "flag", "name"]
       id_sequential: true
@@ -63,10 +59,6 @@ tasks:
         dimension: 384
       large:
         dimension: 512
-    computation:
-      data_type: "f32"
-      algorithm: "naive_triple_loop"
-      precision_digits: 6
 
 # Simplified language configurations
 languages:
@@ -96,6 +88,7 @@ languages:
           - "-panic=trap"
           - "-no-debug"
           - "-scheduler=none"
+          - "-gc=conservative"
     post_processing:
       - "wasm-strip"
       - "wasm-opt -Oz"
@@ -111,7 +104,7 @@ verification:
 qc:
   max_coefficient_variation: 0.15
   outlier_iqr_multiplier: 1.5
-  min_valid_samples: 30
+  min_valid_samples: 80
   # timeout handling
   treat_timeout_as: "failure"     # Timeouts are failures, not data
   max_timeout_rate: 0.1          # 10% timeout rate maximum
