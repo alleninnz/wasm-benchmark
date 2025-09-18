@@ -124,7 +124,7 @@ class QualityController:
         total_samples = len(all_samples)
         outlier_percentage = (total_outliers / total_samples * 100) if total_samples > 0 else 0
 
-        self.cleaning_log.append(f"Quality control pipeline completed:")
+        self.cleaning_log.append("Quality control pipeline completed:")
         self.cleaning_log.append(f"  - Total samples processed: {total_samples}")
         self.cleaning_log.append(f"  - Total outliers removed: {total_outliers} ({outlier_percentage:.1f}%)")
         self.cleaning_log.append(f"  - Task-language combinations: {len(cleaned_task_results)}")
