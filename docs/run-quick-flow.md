@@ -7,14 +7,14 @@
 
 ## 🎯 **概述**
 
-`make run-quick` 是 WebAssembly Benchmark 项目中用于快速开发测试的关键命令，提供2-3分钟的快速反馈，相比完整测试套件的30+分钟大幅提升开发效率。本文档详细分析其完整的执行链路、涉及文件、核心方法和架构设计。
+`make run-quick` 是 WebAssembly Benchmark 项目中用于快速开发测试的关键命令，提供 2-3 分钟的快速反馈，相比完整测试套件的 30+分钟大幅提升开发效率。本文档详细分析其完整的执行链路、涉及文件、核心方法和架构设计。
 
 ### 📊 **执行性能对比**
 
-| 模式 | 执行时间 | 任务规模 | 适用场景 |
-|------|----------|----------|----------|
-| `make run` | 30+ 分钟 | 完整规模 | 正式基准测试、研究发布 |
-| `make run-quick` | 2-3 分钟 | 微型规模 | 开发验证、CI 冒烟测试 |
+| 模式             | 执行时间                   | 任务规模 | 适用场景               |
+| ---------------- | -------------------------- | -------- | ---------------------- |
+| `make run`       | 并行 5+ 分钟 串行 20+ 分钟 | 完整规模 | 正式基准测试、研究发布 |
+| `make run-quick` | 1+ 分钟                    | 微型规模 | 开发验证、CI 冒烟测试  |
 
 ---
 
@@ -38,7 +38,8 @@ graph TD
 ## 🔧 **1. Makefile 入口点**
 
 ### **1.1 目标定义**
-**文件位置**: `/Makefile` (第162-175行)
+
+**文件位置**: `/Makefile` (第 162-175 行)
 
 ```makefile
 run-quick: $(NODE_MODULES) ## Run quick benchmarks for development (fast feedback ~2-3 min vs 30+ min full suite)
@@ -54,11 +55,13 @@ run-quick: $(NODE_MODULES) ## Run quick benchmarks for development (fast feedbac
 ```
 
 ### **1.2 依赖关系**
+
 - **前置依赖**: `$(NODE_MODULES)` - 确保 Node.js 依赖已安装
 - **条件依赖**: `configs/bench-quick.json` - 不存在时自动生成
 - **脚本验证**: `scripts/run_bench.js` - 验证存在性并设置执行权限
 
 ### **1.3 执行步骤**
+
 1. **日志输出**: 显示开始执行快速基准测试套件
 2. **配置检查**: 检查 `configs/bench-quick.json` 是否存在
 3. **配置生成**: 如不存在，调用 `build_config.js --quick` 生成
@@ -71,9 +74,11 @@ run-quick: $(NODE_MODULES) ## Run quick benchmarks for development (fast feedbac
 ## ⚙️ **2. 配置生成阶段**
 
 ### **2.1 build_config.js 配置生成器**
+
 **文件位置**: `/scripts/build_config.js`
 
 #### **核心职责**
+
 - **格式转换**: YAML → JSON 转换，消除运行时 YAML 解析开销
 - **配置优化**: 为浏览器环境优化配置结构
 - **验证保证**: 确保配置完整性和正确性
@@ -115,49 +120,53 @@ writeJsonConfig()           // 写入最终 JSON 配置
 ```
 
 ### **2.2 Quick 配置特性**
+
 **配置文件**: `/configs/bench-quick.yaml`
 
 #### **性能优化设置**
+
 ```yaml
 environment:
-  warmup_runs: 3               # 最小预热 - 仅足够基本 JIT
-  measure_runs: 15             # 基础统计采样 - 足够趋势检测
-  repetitions: 1               # 单次运行实现最大速度
-  timeout_ms: 30000           # 30秒最大任务时间
-  memory_monitoring: false     # 禁用以提升速度
-  gc_monitoring: false        # 禁用以提升速度
+  warmup_runs: 3 # 最小预热 - 仅足够基本 JIT
+  measure_runs: 15 # 基础统计采样 - 足够趋势检测
+  repetitions: 1 # 单次运行实现最大速度
+  timeout_ms: 30000 # 30秒最大任务时间
+  memory_monitoring: false # 禁用以提升速度
+  gc_monitoring: false # 禁用以提升速度
 ```
 
 #### **微型任务规模**
+
 ```yaml
 tasks:
   mandelbrot:
     scales:
       micro:
-        width: 64             # 64x64 网格 (比 small 小16倍)
+        width: 64 # 64x64 网格 (比 small 小16倍)
         height: 64
-        max_iter: 100         # 减少迭代次数
+        max_iter: 100 # 减少迭代次数
 
   json_parse:
     scales:
       micro:
-        record_count: 500     # 500 记录 (比 small 小12倍)
+        record_count: 500 # 500 记录 (比 small 小12倍)
 
   matrix_mul:
     scales:
       micro:
-        dimension: 64         # 64x64 矩阵 (比 small 小4倍)
+        dimension: 64 # 64x64 矩阵 (比 small 小4倍)
 ```
 
 #### **宽松质控标准**
+
 ```yaml
 qc:
-  max_coefficient_variation: 0.2      # 更宽松的变异系数
-  outlier_iqr_multiplier: 2.0         # 更宽松的异常值检测
-  min_valid_samples: 10               # 更少的有效样本要求
+  max_coefficient_variation: 0.2 # 更宽松的变异系数
+  outlier_iqr_multiplier: 2.0 # 更宽松的异常值检测
+  min_valid_samples: 10 # 更少的有效样本要求
   timeout_handling:
-    treat_timeout_as: "failure"       # 快速失败反馈
-    max_timeout_rate: 0.5             # 更宽松的超时率
+    treat_timeout_as: "failure" # 快速失败反馈
+    max_timeout_rate: 0.5 # 更宽松的超时率
 ```
 
 ---
@@ -165,12 +174,15 @@ qc:
 ## 🚀 **3. 主执行阶段**
 
 ### **3.1 run_bench.js 主入口**
+
 **文件位置**: `/scripts/run_bench.js`
 
 #### **架构模式**
+
 采用**纯服务导向架构 (Pure Service-Oriented Architecture)**，通过依赖注入实现松耦合设计。
 
 #### **核心流程**
+
 ```javascript
 async function main() {
     // 1. CLI 参数解析
@@ -198,6 +210,7 @@ async function main() {
 ```
 
 #### **CLI 参数解析**
+
 ```javascript
 parseOptions(args) {
     return {
@@ -216,6 +229,7 @@ parseOptions(args) {
 ### **3.2 服务层架构**
 
 #### **ConfigurationService 配置服务**
+
 **文件位置**: `/scripts/services/ConfigurationService.js`
 
 ```javascript
@@ -236,6 +250,7 @@ class ConfigurationService extends IConfigurationService {
 ```
 
 **配置验证逻辑**:
+
 ```javascript
 validateConfig(config) {
     const required = ['benchmarks', 'output'];
@@ -253,23 +268,24 @@ validateConfig(config) {
 ```
 
 #### **BenchmarkOrchestrator 协调中心**
+
 **文件位置**: `/scripts/services/BenchmarkOrchestrator.js`
 
 这是整个系统的核心协调器，负责编排所有基准测试的执行。
 
 ```javascript
 class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
-    constructor(configService, browserService, resultsService, loggingService) {
-        // 依赖注入的服务实例
-        this.configService = configService;
-        this.browserService = browserService;
-        this.resultsService = resultsService;
-        this.logger = loggingService;
+  constructor(configService, browserService, resultsService, loggingService) {
+    // 依赖注入的服务实例
+    this.configService = configService;
+    this.browserService = browserService;
+    this.resultsService = resultsService;
+    this.logger = loggingService;
 
-        // 执行状态管理
-        this.isRunning = false;
-        this.abortController = null;
-    }
+    // 执行状态管理
+    this.isRunning = false;
+    this.abortController = null;
+  }
 }
 ```
 
@@ -377,6 +393,7 @@ async executeSingleBenchmark(benchmark, options = {}) {
 ```
 
 **浏览器任务执行**:
+
 ```javascript
 async runBenchmarkTask(benchmark, options = {}) {
     // 1. 导航到基准测试页面
@@ -446,6 +463,7 @@ async runBenchmarkTask(benchmark, options = {}) {
 ## 🌐 **4. 浏览器端执行**
 
 ### **4.1 Web Harness 架构**
+
 **主页面**: `/harness/web/bench.html`
 
 #### **核心组件**
@@ -453,21 +471,21 @@ async runBenchmarkTask(benchmark, options = {}) {
 ```javascript
 // 全局状态管理
 window.benchmarkState = {
-    status: 'initializing',      // 执行状态
-    progress: 0,                 // 进度百分比
-    currentTask: null,           // 当前任务
-    currentLang: null,           // 当前语言
-    currentRun: 0,               // 当前运行次数
-    totalRuns: 0,                // 总运行次数
-    successfulRuns: 0,           // 成功次数
-    failedRuns: 0,               // 失败次数
-    results: [],                 // 结果数组
-    memoryUsage: 0,              // 内存使用量
-    startTime: performance.now(), // 开始时间
-    lastError: null,             // 最后错误
-    errorCount: 0,               // 错误计数
-    detailedMetrics: false,      // 详细指标开关
-    taskTimeout: 30000           // 任务超时
+  status: "initializing", // 执行状态
+  progress: 0, // 进度百分比
+  currentTask: null, // 当前任务
+  currentLang: null, // 当前语言
+  currentRun: 0, // 当前运行次数
+  totalRuns: 0, // 总运行次数
+  successfulRuns: 0, // 成功次数
+  failedRuns: 0, // 失败次数
+  results: [], // 结果数组
+  memoryUsage: 0, // 内存使用量
+  startTime: performance.now(), // 开始时间
+  lastError: null, // 最后错误
+  errorCount: 0, // 错误计数
+  detailedMetrics: false, // 详细指标开关
+  taskTimeout: 30000, // 任务超时
 };
 ```
 
@@ -475,191 +493,206 @@ window.benchmarkState = {
 
 ```javascript
 // 主要的任务执行接口
-window.runTask = async function(taskName, language, taskData) {
-    // 输入验证
-    if (typeof taskName !== 'string' || !taskName.trim()) {
-        throw new Error('runTask: taskName must be a non-empty string');
-    }
-    if (typeof language !== 'string' || !language.trim()) {
-        throw new Error('runTask: language must be a non-empty string');
-    }
-    if (!taskData || typeof taskData !== 'object') {
-        throw new Error('runTask: taskData must be a valid object');
-    }
+window.runTask = async function (taskName, language, taskData) {
+  // 输入验证
+  if (typeof taskName !== "string" || !taskName.trim()) {
+    throw new Error("runTask: taskName must be a non-empty string");
+  }
+  if (typeof language !== "string" || !language.trim()) {
+    throw new Error("runTask: language must be a non-empty string");
+  }
+  if (!taskData || typeof taskData !== "object") {
+    throw new Error("runTask: taskData must be a valid object");
+  }
 
-    if (!window.benchmarkRunner) {
-        throw new Error('Benchmark runner not initialized. Wait for initialization to complete.');
-    }
+  if (!window.benchmarkRunner) {
+    throw new Error(
+      "Benchmark runner not initialized. Wait for initialization to complete."
+    );
+  }
 
-    // 创建任务配置
-    const config = {
-        task: taskName,
-        language: language,
-        scale: 'small',
-        taskConfig: {
-            scales: {
-                small: taskData
-            }
-        },
-        warmup_runs: 0,
-        measure_runs: 1,
-        timeout: window.benchmarkState.taskTimeout || 30000
+  // 创建任务配置
+  const config = {
+    task: taskName,
+    language: language,
+    scale: "small",
+    taskConfig: {
+      scales: {
+        small: taskData,
+      },
+    },
+    warmup_runs: 0,
+    measure_runs: 1,
+    timeout: window.benchmarkState.taskTimeout || 30000,
+  };
+
+  try {
+    const results = await window.benchmarkRunner.runTaskBenchmark(config);
+    return results && results.length > 0
+      ? results[0]
+      : {
+          success: false,
+          error: "No results returned from benchmark",
+          task: taskName,
+          language: language,
+          executionTime: 0,
+          memoryUsed: 0,
+          resultHash: 0,
+        };
+  } catch (error) {
+    window.logResult(`runTask failed: ${error.message}`, "error");
+    return {
+      success: false,
+      error: error.message,
+      errorType: "execution_error",
+      task: taskName,
+      language: language,
+      executionTime: 0,
+      memoryUsed: 0,
+      resultHash: 0,
     };
-
-    try {
-        const results = await window.benchmarkRunner.runTaskBenchmark(config);
-        return results && results.length > 0 ? results[0] : {
-            success: false,
-            error: 'No results returned from benchmark',
-            task: taskName,
-            language: language,
-            executionTime: 0,
-            memoryUsed: 0,
-            resultHash: 0
-        };
-    } catch (error) {
-        window.logResult(`runTask failed: ${error.message}`, 'error');
-        return {
-            success: false,
-            error: error.message,
-            errorType: 'execution_error',
-            task: taskName,
-            language: language,
-            executionTime: 0,
-            memoryUsed: 0,
-            resultHash: 0
-        };
-    }
+  }
 };
 
 // 日志记录系统
-window.logResult = function(message, type = 'log') {
-    try {
-        const resultsDiv = document.getElementById('results');
-        if (!resultsDiv) {
-            console.warn('Results div not found, falling back to console:', message);
-            console.log(`[${type.toUpperCase()}]`, message);
-            return;
-        }
-
-        const logDiv = document.createElement('div');
-        logDiv.className = `log ${type}`;
-        logDiv.textContent = `[${new Date().toISOString().slice(11, 23)}] ${message}`;
-        resultsDiv.appendChild(logDiv);
-        resultsDiv.scrollTop = resultsDiv.scrollHeight;
-
-        // 错误跟踪
-        if (type === 'error') {
-            window.benchmarkState.lastError = message;
-            window.benchmarkState.errorCount++;
-        }
-
-        // 限制日志条目数量防止内存问题
-        const logEntries = resultsDiv.getElementsByClassName('log');
-        if (logEntries.length > 1000) {
-            for (let i = 0; i < 100; i++) {
-                if (logEntries[0]) {
-                    resultsDiv.removeChild(logEntries[0]);
-                }
-            }
-        }
-    } catch (error) {
-        console.error('Failed to log result:', error, 'Original message:', message);
+window.logResult = function (message, type = "log") {
+  try {
+    const resultsDiv = document.getElementById("results");
+    if (!resultsDiv) {
+      console.warn("Results div not found, falling back to console:", message);
+      console.log(`[${type.toUpperCase()}]`, message);
+      return;
     }
+
+    const logDiv = document.createElement("div");
+    logDiv.className = `log ${type}`;
+    logDiv.textContent = `[${new Date()
+      .toISOString()
+      .slice(11, 23)}] ${message}`;
+    resultsDiv.appendChild(logDiv);
+    resultsDiv.scrollTop = resultsDiv.scrollHeight;
+
+    // 错误跟踪
+    if (type === "error") {
+      window.benchmarkState.lastError = message;
+      window.benchmarkState.errorCount++;
+    }
+
+    // 限制日志条目数量防止内存问题
+    const logEntries = resultsDiv.getElementsByClassName("log");
+    if (logEntries.length > 1000) {
+      for (let i = 0; i < 100; i++) {
+        if (logEntries[0]) {
+          resultsDiv.removeChild(logEntries[0]);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Failed to log result:", error, "Original message:", message);
+  }
 };
 
 // UI 更新函数
 function updateUI() {
-    const state = window.benchmarkState;
-    document.getElementById('status').textContent = state.status;
-    document.getElementById('current-task').textContent = state.currentTask || 'None';
-    document.getElementById('current-lang').textContent = state.currentLang || 'None';
-    document.getElementById('current-run').textContent = `${state.currentRun}/${state.totalRuns}`;
-    document.getElementById('total-runs').textContent = state.totalRuns;
-    document.getElementById('successful-runs').textContent = state.successfulRuns;
-    document.getElementById('failed-runs').textContent = state.failedRuns;
-    document.getElementById('progress').style.width = `${state.progress}%`;
-    document.getElementById('elapsed-time').textContent = `${((performance.now() - state.startTime) / 1000).toFixed(1)}s`;
+  const state = window.benchmarkState;
+  document.getElementById("status").textContent = state.status;
+  document.getElementById("current-task").textContent =
+    state.currentTask || "None";
+  document.getElementById("current-lang").textContent =
+    state.currentLang || "None";
+  document.getElementById(
+    "current-run"
+  ).textContent = `${state.currentRun}/${state.totalRuns}`;
+  document.getElementById("total-runs").textContent = state.totalRuns;
+  document.getElementById("successful-runs").textContent = state.successfulRuns;
+  document.getElementById("failed-runs").textContent = state.failedRuns;
+  document.getElementById("progress").style.width = `${state.progress}%`;
+  document.getElementById("elapsed-time").textContent = `${(
+    (performance.now() - state.startTime) /
+    1000
+  ).toFixed(1)}s`;
 
-    // 内存监控
-    if (performance.memory) {
-        const memMB = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1);
-        document.getElementById('memory-usage').textContent = `${memMB} MB`;
-        state.memoryUsage = parseFloat(memMB);
-    }
+  // 内存监控
+  if (performance.memory) {
+    const memMB = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1);
+    document.getElementById("memory-usage").textContent = `${memMB} MB`;
+    state.memoryUsage = parseFloat(memMB);
+  }
 }
 ```
 
 ### **4.2 WebAssembly 模块系统**
+
 **位置**: `/harness/web/wasm_loader.js`
 
 #### **支持的基准测试任务**
 
-| 任务 | 类型 | 描述 | 主要测试点 |
-|------|------|------|------------|
-| **mandelbrot** | CPU 密集型 | Mandelbrot 集计算 | 浮点运算、循环优化 |
-| **json_parse** | 数据处理 | JSON 解析和序列化 | 字符串处理、内存分配 |
-| **matrix_mul** | 数学计算 | 矩阵乘法运算 | 数组访问、算法优化 |
+| 任务           | 类型       | 描述              | 主要测试点           |
+| -------------- | ---------- | ----------------- | -------------------- |
+| **mandelbrot** | CPU 密集型 | Mandelbrot 集计算 | 浮点运算、循环优化   |
+| **json_parse** | 数据处理   | JSON 解析和序列化 | 字符串处理、内存分配 |
+| **matrix_mul** | 数学计算   | 矩阵乘法运算      | 数组访问、算法优化   |
 
 #### **支持的编程语言**
 
-| 语言 | 目标平台 | 优化级别 | 文件位置 |
-|------|----------|----------|----------|
-| **Rust** | wasm32-unknown-unknown | -O3, LTO=fat | `/builds/rust/*.wasm` |
-| **TinyGo** | wasm | -opt=3 | `/builds/tinygo/*.wasm` |
+| 语言       | 目标平台               | 优化级别     | 文件位置                |
+| ---------- | ---------------------- | ------------ | ----------------------- |
+| **Rust**   | wasm32-unknown-unknown | -O3, LTO=fat | `/builds/rust/*.wasm`   |
+| **TinyGo** | wasm                   | -opt=3       | `/builds/tinygo/*.wasm` |
 
 #### **任务执行流程**
+
 ```javascript
 // 1. 模块加载
 async function loadWasmModule(language, taskName) {
-    const modulePath = `/builds/${language}/${taskName}-${language}-o3.wasm`;
-    const wasmModule = await WebAssembly.instantiateStreaming(fetch(modulePath));
-    return wasmModule.instance;
+  const modulePath = `/builds/${language}/${taskName}-${language}-o3.wasm`;
+  const wasmModule = await WebAssembly.instantiateStreaming(fetch(modulePath));
+  return wasmModule.instance;
 }
 
 // 2. 任务配置
 function configureTask(taskName, scale, taskConfig) {
-    const scaleConfig = taskConfig.scales[scale];
-    return {
-        // mandelbrot 示例
-        width: scaleConfig.width,
-        height: scaleConfig.height,
-        maxIter: scaleConfig.max_iter,
-        // json_parse 示例
-        recordCount: scaleConfig.record_count,
-        // matrix_mul 示例
-        dimension: scaleConfig.dimension
-    };
+  const scaleConfig = taskConfig.scales[scale];
+  return {
+    // mandelbrot 示例
+    width: scaleConfig.width,
+    height: scaleConfig.height,
+    maxIter: scaleConfig.max_iter,
+    // json_parse 示例
+    recordCount: scaleConfig.record_count,
+    // matrix_mul 示例
+    dimension: scaleConfig.dimension,
+  };
 }
 
 // 3. 基准测试执行
 async function runBenchmark(wasmInstance, config, warmup_runs, measure_runs) {
-    // 预热运行
-    for (let i = 0; i < warmup_runs; i++) {
-        await executeTask(wasmInstance, config);
-    }
+  // 预热运行
+  for (let i = 0; i < warmup_runs; i++) {
+    await executeTask(wasmInstance, config);
+  }
 
-    // 测量运行
-    const results = [];
-    for (let i = 0; i < measure_runs; i++) {
-        const startTime = performance.now();
-        const result = await executeTask(wasmInstance, config);
-        const endTime = performance.now();
+  // 测量运行
+  const results = [];
+  for (let i = 0; i < measure_runs; i++) {
+    const startTime = performance.now();
+    const result = await executeTask(wasmInstance, config);
+    const endTime = performance.now();
 
-        results.push({
-            executionTime: endTime - startTime,
-            result: result,
-            memoryUsed: getMemoryUsage()
-        });
-    }
+    results.push({
+      executionTime: endTime - startTime,
+      result: result,
+      memoryUsed: getMemoryUsage(),
+    });
+  }
 
-    return results;
+  return results;
 }
 
 // 4. 结果验证
 function verifyResult(result, taskName, expectedHash) {
-    const computedHash = computeHash(result);
-    return computedHash === expectedHash;
+  const computedHash = computeHash(result);
+  return computedHash === expectedHash;
 }
 ```
 
@@ -668,89 +701,93 @@ function verifyResult(result, taskName, expectedHash) {
 ## 📊 **5. 结果处理和保存**
 
 ### **5.1 ResultsService 结果服务**
+
 **文件位置**: `/scripts/services/ResultsService.js`
 
 #### **核心功能**
+
 ```javascript
 class ResultsService extends IResultsService {
-    constructor() {
-        super();
-        this.results = [];
-        this.metadata = {};
-        this.statistics = {};
-        this.summary = {
-            totalTasks: 0,
-            successfulTasks: 0,
-            failedTasks: 0,
-            successRate: 0
-        };
+  constructor() {
+    super();
+    this.results = [];
+    this.metadata = {};
+    this.statistics = {};
+    this.summary = {
+      totalTasks: 0,
+      successfulTasks: 0,
+      failedTasks: 0,
+      successRate: 0,
+    };
+  }
+
+  // 结果收集
+  addResult(result) {
+    this.results.push({
+      ...result,
+      timestamp: new Date().toISOString(),
+      id: this.generateResultId(),
+    });
+    this.updateSummary();
+  }
+
+  // 基础统计信息（实际实现）
+  getStatistics() {
+    if (this.results.length === 0) {
+      return { count: 0 };
     }
 
-    // 结果收集
-    addResult(result) {
-        this.results.push({
-            ...result,
-            timestamp: new Date().toISOString(),
-            id: this.generateResultId()
-        });
-        this.updateSummary();
+    const durations = this.results
+      .filter((r) => r.duration)
+      .map((r) => r.duration);
+
+    const stats = {
+      count: this.results.length,
+      successCount: this.getSuccessfulResults().length,
+      failureCount: this.getFailedResults().length,
+      successRate: this.summary?.successRate || 0,
+    };
+
+    if (durations.length > 0) {
+      stats.duration = {
+        min: Math.min(...durations),
+        max: Math.max(...durations),
+        average: durations.reduce((a, b) => a + b, 0) / durations.length,
+        median: this.calculateMedian(durations),
+      };
     }
 
-    // 基础统计信息（实际实现）
-    getStatistics() {
-        if (this.results.length === 0) {
-            return { count: 0 };
-        }
+    return stats;
+  }
 
-        const durations = this.results
-            .filter(r => r.duration)
-            .map(r => r.duration);
+  // 文件保存（实际实现）
+  async saveToFile(filepath, format = "json", options = {}) {
+    // 注意：实际只保存 summary 和 results，不包含 statistics 或其他复杂元数据
+    const outputData = {
+      summary: this.summary,
+      results: this.results,
+    };
 
-        const stats = {
-            count: this.results.length,
-            successCount: this.getSuccessfulResults().length,
-            failureCount: this.getFailedResults().length,
-            successRate: this.summary?.successRate || 0
-        };
-
-        if (durations.length > 0) {
-            stats.duration = {
-                min: Math.min(...durations),
-                max: Math.max(...durations),
-                average: durations.reduce((a, b) => a + b, 0) / durations.length,
-                median: this.calculateMedian(durations)
-            };
-        }
-
-        return stats;
+    switch (format) {
+      case "json":
+        await this.saveAsJson(filepath, outputData, options);
+        break;
+      case "csv":
+        await this.saveAsCsv(filepath, outputData, options);
+        break;
+      default:
+        throw new Error(`Unsupported format: ${format}`);
     }
-
-    // 文件保存（实际实现）
-    async saveToFile(filepath, format = 'json', options = {}) {
-        // 注意：实际只保存 summary 和 results，不包含 statistics 或其他复杂元数据
-        const outputData = {
-            summary: this.summary,
-            results: this.results
-        };
-
-        switch (format) {
-            case 'json':
-                await this.saveAsJson(filepath, outputData, options);
-                break;
-            case 'csv':
-                await this.saveAsCsv(filepath, outputData, options);
-                break;
-            default:
-                throw new Error(`Unsupported format: ${format}`);
-        }
-    }
+  }
 }
 ```
 
 ### **5.2 输出文件格式**
+
 **输出位置**: `/results/{timestamp}.json`
 
 #### **实际结果文件结构**
+
 ```json
 {
   "summary": {
@@ -806,41 +843,43 @@ class ResultsService extends IResultsService {
 ```
 
 **重要说明**：
+
 - ❌ **没有 statistics 字段**：复杂的统计分析和性能比较数据不存在于保存的文件中
 - ❌ **没有 experiment 或 metadata 字段**：文件结构比文档声称的简单得多
 - ✅ **只有 summary 和 results**：实际保存的数据结构仅包含基础摘要和原始结果数据
 
 ### **5.3 元数据收集**
+
 ```javascript
 // 系统信息收集
 function collectSystemMetadata() {
-    return {
-        timestamp: new Date().toISOString(),
-        nodeVersion: process.version,
-        platform: process.platform,
-        arch: process.arch,
-        cpus: os.cpus().length,
-        totalMemory: os.totalmem(),
-        freeMemory: os.freemem(),
-        userAgent: navigator.userAgent, // 浏览器端
-        browserInfo: {
-            vendor: navigator.vendor,
-            language: navigator.language,
-            hardwareConcurrency: navigator.hardwareConcurrency
-        }
-    };
+  return {
+    timestamp: new Date().toISOString(),
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    cpus: os.cpus().length,
+    totalMemory: os.totalmem(),
+    freeMemory: os.freemem(),
+    userAgent: navigator.userAgent, // 浏览器端
+    browserInfo: {
+      vendor: navigator.vendor,
+      language: navigator.language,
+      hardwareConcurrency: navigator.hardwareConcurrency,
+    },
+  };
 }
 
 // 执行环境信息
 function collectExecutionMetadata(options) {
-    return {
-        configFile: options.configPath,
-        executionMode: options.parallel ? 'parallel' : 'sequential',
-        timeout: options.timeout,
-        maxParallel: options.maxParallel,
-        failureThreshold: options.failureThreshold,
-        quickMode: options.quick
-    };
+  return {
+    configFile: options.configPath,
+    executionMode: options.parallel ? "parallel" : "sequential",
+    timeout: options.timeout,
+    maxParallel: options.maxParallel,
+    failureThreshold: options.failureThreshold,
+    quickMode: options.quick,
+  };
 }
 ```
 
@@ -851,6 +890,7 @@ function collectExecutionMetadata(options) {
 ### **6.1 错误处理机制**
 
 #### **多层超时保护**
+
 ```javascript
 // 1. 全局超时 (Makefile 级别)
 // 整个 make run-quick 命令的总时间限制
@@ -877,31 +917,35 @@ taskTimeout: 30000  // 单个 WASM 任务的最大执行时间
 ```
 
 #### **重试机制**
+
 ```javascript
 class BenchmarkOrchestrator {
-    async executeWithRetry(task, maxRetries = 3) {
-        let lastError;
+  async executeWithRetry(task, maxRetries = 3) {
+    let lastError;
 
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                return await this.executeSingleBenchmark(task);
-            } catch (error) {
-                lastError = error;
-                this.logger.warn(`Attempt ${attempt}/${maxRetries} failed: ${error.message}`);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await this.executeSingleBenchmark(task);
+      } catch (error) {
+        lastError = error;
+        this.logger.warn(
+          `Attempt ${attempt}/${maxRetries} failed: ${error.message}`
+        );
 
-                if (attempt < maxRetries) {
-                    const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-            }
+        if (attempt < maxRetries) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          await new Promise((resolve) => setTimeout(resolve, delay));
         }
-
-        throw lastError;
+      }
     }
+
+    throw lastError;
+  }
 }
 ```
 
 #### **失败阈值控制**
+
 ```javascript
 validateFailureThreshold() {
     const failureRate = this.failedTasks / this.totalTasks;
@@ -914,6 +958,7 @@ validateFailureThreshold() {
 ```
 
 #### **紧急清理机制**
+
 ```javascript
 async emergencyCleanup() {
     this.logger.warn('[BenchmarkOrchestrator] Performing emergency cleanup...');
@@ -950,6 +995,7 @@ async emergencyCleanup() {
 ### **6.2 性能优化策略**
 
 #### **并行执行控制**
+
 ```javascript
 async executeInParallel(benchmarks, options = {}) {
     const parallelConfig = this.configService.getParallelConfig();
@@ -983,182 +1029,208 @@ async executeInParallel(benchmarks, options = {}) {
 ```
 
 #### **资源管理优化**
+
 ```javascript
 // 浏览器实例池
 class BrowserService {
-    constructor() {
-        this.browserPool = new Map();
-        this.maxPoolSize = 3;
+  constructor() {
+    this.browserPool = new Map();
+    this.maxPoolSize = 3;
+  }
+
+  async getBrowserInstance(config) {
+    const key = this.generateBrowserKey(config);
+
+    if (this.browserPool.has(key)) {
+      return this.browserPool.get(key);
     }
 
-    async getBrowserInstance(config) {
-        const key = this.generateBrowserKey(config);
-
-        if (this.browserPool.has(key)) {
-            return this.browserPool.get(key);
-        }
-
-        if (this.browserPool.size >= this.maxPoolSize) {
-            // 回收最久未使用的实例
-            const [oldestKey] = this.browserPool.keys();
-            const oldestBrowser = this.browserPool.get(oldestKey);
-            await oldestBrowser.close();
-            this.browserPool.delete(oldestKey);
-        }
-
-        const browser = await puppeteer.launch(config);
-        this.browserPool.set(key, browser);
-        return browser;
+    if (this.browserPool.size >= this.maxPoolSize) {
+      // 回收最久未使用的实例
+      const [oldestKey] = this.browserPool.keys();
+      const oldestBrowser = this.browserPool.get(oldestKey);
+      await oldestBrowser.close();
+      this.browserPool.delete(oldestKey);
     }
+
+    const browser = await puppeteer.launch(config);
+    this.browserPool.set(key, browser);
+    return browser;
+  }
 }
 ```
 
 #### **内存监控**
+
 ```javascript
 // 内存使用跟踪
 function trackMemoryUsage() {
-    if (performance.memory) {
-        const memInfo = {
-            used: performance.memory.usedJSHeapSize,
-            total: performance.memory.totalJSHeapSize,
-            limit: performance.memory.jsHeapSizeLimit,
-            timestamp: Date.now()
-        };
+  if (performance.memory) {
+    const memInfo = {
+      used: performance.memory.usedJSHeapSize,
+      total: performance.memory.totalJSHeapSize,
+      limit: performance.memory.jsHeapSizeLimit,
+      timestamp: Date.now(),
+    };
 
-        // 内存压力检测
-        const usageRatio = memInfo.used / memInfo.limit;
-        if (usageRatio > 0.8) {
-            console.warn(`High memory usage detected: ${(usageRatio * 100).toFixed(1)}%`);
-            // 触发垃圾回收 (如果可用)
-            if (window.gc) {
-                window.gc();
-            }
-        }
-
-        return memInfo;
+    // 内存压力检测
+    const usageRatio = memInfo.used / memInfo.limit;
+    if (usageRatio > 0.8) {
+      console.warn(
+        `High memory usage detected: ${(usageRatio * 100).toFixed(1)}%`
+      );
+      // 触发垃圾回收 (如果可用)
+      if (window.gc) {
+        window.gc();
+      }
     }
-    return null;
+
+    return memInfo;
+  }
+  return null;
 }
 ```
 
 ### **6.3 可观测性和监控**
 
 #### **分层日志系统**
+
 ```javascript
 class LoggingService {
-    constructor(config = {}) {
-        this.logLevel = config.logLevel || 'info';
-        this.enableColors = config.enableColors !== false;
-        this.enableTimestamp = config.enableTimestamp !== false;
-        this.prefix = config.prefix || '';
-    }
+  constructor(config = {}) {
+    this.logLevel = config.logLevel || "info";
+    this.enableColors = config.enableColors !== false;
+    this.enableTimestamp = config.enableTimestamp !== false;
+    this.prefix = config.prefix || "";
+  }
 
-    // 不同级别的日志方法
-    debug(message, ...args) { this.log('debug', message, ...args); }
-    info(message, ...args) { this.log('info', message, ...args); }
-    warn(message, ...args) { this.log('warn', message, ...args); }
-    error(message, ...args) { this.log('error', message, ...args); }
-    success(message, ...args) { this.log('success', message, ...args); }
+  // 不同级别的日志方法
+  debug(message, ...args) {
+    this.log("debug", message, ...args);
+  }
+  info(message, ...args) {
+    this.log("info", message, ...args);
+  }
+  warn(message, ...args) {
+    this.log("warn", message, ...args);
+  }
+  error(message, ...args) {
+    this.log("error", message, ...args);
+  }
+  success(message, ...args) {
+    this.log("success", message, ...args);
+  }
 
-    // 结构化日志输出
-    log(level, message, ...args) {
-        if (!this.shouldLog(level)) return;
+  // 结构化日志输出
+  log(level, message, ...args) {
+    if (!this.shouldLog(level)) return;
 
-        const timestamp = this.enableTimestamp ? new Date().toISOString() : '';
-        const prefix = this.prefix ? `[${this.prefix}]` : '';
-        const coloredLevel = this.enableColors ? this.colorize(level) : level.toUpperCase();
+    const timestamp = this.enableTimestamp ? new Date().toISOString() : "";
+    const prefix = this.prefix ? `[${this.prefix}]` : "";
+    const coloredLevel = this.enableColors
+      ? this.colorize(level)
+      : level.toUpperCase();
 
-        const logMessage = `${timestamp} ${coloredLevel} ${prefix} ${message}`;
-        console.log(logMessage, ...args);
-    }
+    const logMessage = `${timestamp} ${coloredLevel} ${prefix} ${message}`;
+    console.log(logMessage, ...args);
+  }
 
-    // 特殊格式的日志方法
-    section(title) {
-        this.log('info', '');
-        this.log('info', '='.repeat(50));
-        this.log('info', title);
-        this.log('info', '='.repeat(50));
-    }
+  // 特殊格式的日志方法
+  section(title) {
+    this.log("info", "");
+    this.log("info", "=".repeat(50));
+    this.log("info", title);
+    this.log("info", "=".repeat(50));
+  }
 
-    progress(message, current, total) {
-        const percentage = ((current / total) * 100).toFixed(1);
-        const progressBar = this.createProgressBar(current, total);
-        this.log('info', `${message}: ${progressBar} ${current}/${total} (${percentage}%)`);
-    }
+  progress(message, current, total) {
+    const percentage = ((current / total) * 100).toFixed(1);
+    const progressBar = this.createProgressBar(current, total);
+    this.log(
+      "info",
+      `${message}: ${progressBar} ${current}/${total} (${percentage}%)`
+    );
+  }
 }
 ```
 
 #### **实时进度跟踪**
+
 ```javascript
 // 进度更新机制
 function updateProgress(current, total, taskName, language) {
-    const progress = (current / total) * 100;
+  const progress = (current / total) * 100;
 
-    // 更新全局状态
-    window.benchmarkState.progress = progress;
-    window.benchmarkState.currentTask = taskName;
-    window.benchmarkState.currentLang = language;
-    window.benchmarkState.currentRun = current;
-    window.benchmarkState.totalRuns = total;
+  // 更新全局状态
+  window.benchmarkState.progress = progress;
+  window.benchmarkState.currentTask = taskName;
+  window.benchmarkState.currentLang = language;
+  window.benchmarkState.currentRun = current;
+  window.benchmarkState.totalRuns = total;
 
-    // 更新 UI
-    document.getElementById('progress').style.width = `${progress}%`;
-    document.getElementById('current-task').textContent = taskName || 'None';
-    document.getElementById('current-lang').textContent = language || 'None';
-    document.getElementById('current-run').textContent = `${current}/${total}`;
+  // 更新 UI
+  document.getElementById("progress").style.width = `${progress}%`;
+  document.getElementById("current-task").textContent = taskName || "None";
+  document.getElementById("current-lang").textContent = language || "None";
+  document.getElementById("current-run").textContent = `${current}/${total}`;
 
-    // 日志记录
-    window.logResult(`Progress: ${taskName}/${language} - ${current}/${total} (${progress.toFixed(1)}%)`);
+  // 日志记录
+  window.logResult(
+    `Progress: ${taskName}/${language} - ${current}/${total} (${progress.toFixed(
+      1
+    )}%)`
+  );
 }
 ```
 
 #### **性能指标收集**
+
 ```javascript
 // 详细的性能指标
 class PerformanceCollector {
-    constructor() {
-        this.metrics = {
-            executionTimes: [],
-            memoryUsage: [],
-            cpuUsage: [],
-            networkLatency: [],
-            renderingMetrics: []
-        };
-    }
+  constructor() {
+    this.metrics = {
+      executionTimes: [],
+      memoryUsage: [],
+      cpuUsage: [],
+      networkLatency: [],
+      renderingMetrics: [],
+    };
+  }
 
-    collectTaskMetrics(taskResult) {
-        return {
-            // 执行时间指标
-            executionTime: taskResult.executionTime,
-            setupTime: taskResult.setupTime,
-            teardownTime: taskResult.teardownTime,
+  collectTaskMetrics(taskResult) {
+    return {
+      // 执行时间指标
+      executionTime: taskResult.executionTime,
+      setupTime: taskResult.setupTime,
+      teardownTime: taskResult.teardownTime,
 
-            // 内存指标
-            memoryBefore: taskResult.memoryBefore,
-            memoryAfter: taskResult.memoryAfter,
-            memoryPeak: taskResult.memoryPeak,
-            memoryDelta: taskResult.memoryAfter - taskResult.memoryBefore,
+      // 内存指标
+      memoryBefore: taskResult.memoryBefore,
+      memoryAfter: taskResult.memoryAfter,
+      memoryPeak: taskResult.memoryPeak,
+      memoryDelta: taskResult.memoryAfter - taskResult.memoryBefore,
 
-            // WebAssembly 特定指标
-            wasmCompileTime: taskResult.wasmCompileTime,
-            wasmInstantiateTime: taskResult.wasmInstantiateTime,
-            wasmExecutionTime: taskResult.wasmExecutionTime,
+      // WebAssembly 特定指标
+      wasmCompileTime: taskResult.wasmCompileTime,
+      wasmInstantiateTime: taskResult.wasmInstantiateTime,
+      wasmExecutionTime: taskResult.wasmExecutionTime,
 
-            // 验证指标
-            resultHash: taskResult.resultHash,
-            verificationTime: taskResult.verificationTime,
-            verificationSuccess: taskResult.verificationSuccess
-        };
-    }
+      // 验证指标
+      resultHash: taskResult.resultHash,
+      verificationTime: taskResult.verificationTime,
+      verificationSuccess: taskResult.verificationSuccess,
+    };
+  }
 
-    generateReport() {
-        return {
-            summary: this.calculateSummaryStats(),
-            details: this.metrics,
-            trends: this.analyzeTrends(),
-            recommendations: this.generateRecommendations()
-        };
-    }
+  generateReport() {
+    return {
+      summary: this.calculateSummaryStats(),
+      details: this.metrics,
+      trends: this.analyzeTrends(),
+      recommendations: this.generateRecommendations(),
+    };
+  }
 }
 ```
 
@@ -1169,121 +1241,125 @@ class PerformanceCollector {
 ### **7.1 快速反馈原则**
 
 #### **时间优化策略**
+
 ```yaml
 # 执行时间对比分析
 Normal Mode:
-  warmup_runs: 10          # 10次预热
-  measure_runs: 100        # 100次测量
-  repetitions: 5           # 5次重复
-  scales: [small, medium, large]  # 3个规模
-  total_time: ~35 minutes  # 总计约35分钟
+  warmup_runs: 25 # 25次预热
+  measure_runs: 120 # 120次测量
+  repetitions: 2 # 2次重复
+  scales: [small, medium, large] # 3个规模
+  total_time: ~5 minutes # 总计约5分钟
 
 Quick Mode:
-  warmup_runs: 3           # 3次预热 (70% 减少)
-  measure_runs: 15         # 15次测量 (85% 减少)
-  repetitions: 1           # 1次重复 (80% 减少)
-  scales: [micro]          # 仅微型规模 (67% 减少)
-  total_time: ~2.5 minutes # 总计约2.5分钟 (93% 减少)
+  warmup_runs: 3 # 3次预热 (70% 减少)
+  measure_runs: 15 # 15次测量 (85% 减少)
+  repetitions: 1 # 1次重复 (80% 减少)
+  scales: [micro] # 仅微型规模 (67% 减少)
+  total_time: ~1 minutes # 总计约1分钟 (80% 减少)
 ```
 
 #### **精度 vs 速度权衡**
+
 ```javascript
 // 统计精度分析
 const precisionTradeoffs = {
-    statistical_power: {
-        normal: 0.95,      // 高统计功效
-        quick: 0.8         // 降低但仍可接受
-    },
-    confidence_level: {
-        normal: 0.99,      // 99% 置信水平
-        quick: 0.90        // 90% 置信水平
-    },
-    measurement_error: {
-        normal: '±2%',     // 低测量误差
-        quick: '±5%'       // 略高但可接受的误差
-    },
-    trend_detection: {
-        normal: 'high',    // 高精度趋势检测
-        quick: 'medium'    // 中等精度足够开发使用
-    }
+  statistical_power: {
+    normal: 0.95, // 高统计功效
+    quick: 0.8, // 降低但仍可接受
+  },
+  confidence_level: {
+    normal: 0.99, // 99% 置信水平
+    quick: 0.9, // 90% 置信水平
+  },
+  measurement_error: {
+    normal: "±2%", // 低测量误差
+    quick: "±5%", // 略高但可接受的误差
+  },
+  trend_detection: {
+    normal: "high", // 高精度趋势检测
+    quick: "medium", // 中等精度足够开发使用
+  },
 };
 ```
 
 ### **7.2 开发工作流集成**
 
 #### **适用场景矩阵**
+
 ```markdown
-| 场景 | Normal Mode | Quick Mode | 推荐 |
-|------|-------------|------------|------|
-| 代码变更验证 | ❌ 太慢 | ✅ 快速反馈 | Quick |
-| 性能回归检测 | ❌ 太慢 | ✅ 趋势检测 | Quick |
-| CI/CD 集成 | ❌ 超时 | ✅ 3分钟内 | Quick |
-| 开发调试 | ❌ 打断流程 | ✅ 快速迭代 | Quick |
-| 正式基准测试 | ✅ 高精度 | ❌ 精度不足 | Normal |
-| 研究发布 | ✅ 可重复 | ❌ 不够严谨 | Normal |
-| 环境验证 | ❌ 过度 | ✅ 足够 | Quick |
-| 冒烟测试 | ❌ 过度 | ✅ 完美 | Quick |
+| 场景         | Normal Mode | Quick Mode  | 推荐   |
+| ------------ | ----------- | ----------- | ------ |
+| 代码变更验证 | ❌ 太慢     | ✅ 快速反馈 | Quick  |
+| 性能回归检测 | ❌ 太慢     | ✅ 趋势检测 | Quick  |
+| 开发调试     | ❌ 打断流程 | ✅ 快速迭代 | Quick  |
+| 正式基准测试 | ✅ 高精度   | ❌ 精度不足 | Normal |
+| 研究发布     | ✅ 可重复   | ❌ 不够严谨 | Normal |
+| 环境验证     | ❌ 过度     | ✅ 足够     | Quick  |
+| 冒烟测试     | ❌ 过度     | ✅ 完美     | Quick  |
 ```
 
 #### **开发者体验优化**
+
 ```javascript
 // 开发者友好的设计
 const developerExperience = {
-    feedback_time: {
-        target: '< 3 minutes',
-        actual: '2.5 minutes average',
-        satisfaction: 'high'
-    },
+  feedback_time: {
+    target: "< 3 minutes",
+    actual: "2.5 minutes average",
+    satisfaction: "high",
+  },
 
-    cognitive_load: {
-        configuration: 'zero - automatic',
-        interpretation: 'simple - trend only',
-        action_required: 'minimal'
-    },
+  cognitive_load: {
+    configuration: "zero - automatic",
+    interpretation: "simple - trend only",
+    action_required: "minimal",
+  },
 
-    integration: {
-        make_command: 'make run-quick',
-        ci_friendly: true,
-        watch_mode: 'planned',
-        ide_integration: 'possible'
-    },
+  integration: {
+    make_command: "make run-quick",
+    ci_friendly: true,
+    watch_mode: "planned",
+    ide_integration: "possible",
+  },
 
-    error_handling: {
-        timeout_protection: 'aggressive',
-        failure_recovery: 'graceful',
-        debug_information: 'sufficient'
-    }
+  error_handling: {
+    timeout_protection: "aggressive",
+    failure_recovery: "graceful",
+    debug_information: "sufficient",
+  },
 };
 ```
 
 ### **7.3 质量保证策略**
 
 #### **最小可行精度 (MVP Precision)**
+
 ```javascript
 // 质量控制的平衡点
 const qualityControls = {
-    // 仍然保持的验证
-    result_verification: {
-        hash_checking: true,        // 结果正确性验证
-        cross_language: true,       // 跨语言结果一致性
-        sanity_bounds: true         // 合理性边界检查
-    },
+  // 仍然保持的验证
+  result_verification: {
+    hash_checking: true, // 结果正确性验证
+    cross_language: true, // 跨语言结果一致性
+    sanity_bounds: true, // 合理性边界检查
+  },
 
-    // 简化的统计要求
-    statistical_requirements: {
-        min_samples: 10,            // 最少10个样本 (vs 正常50+)
-        outlier_detection: true,    // 保持异常值检测
-        coefficient_variation: 0.2, // 放宽变异系数 (vs 正常0.1)
-        normality_test: false       // 跳过正态性测试
-    },
+  // 简化的统计要求
+  statistical_requirements: {
+    min_samples: 10, // 最少10个样本 (vs 正常50+)
+    outlier_detection: true, // 保持异常值检测
+    coefficient_variation: 0.2, // 放宽变异系数 (vs 正常0.1)
+    normality_test: false, // 跳过正态性测试
+  },
 
-    // 保留的监控
-    essential_monitoring: {
-        execution_time: true,       // 执行时间监控
-        memory_basic: true,         // 基础内存监控
-        success_rate: true,         // 成功率跟踪
-        error_patterns: true        // 错误模式识别
-    }
+  // 保留的监控
+  essential_monitoring: {
+    execution_time: true, // 执行时间监控
+    memory_basic: true, // 基础内存监控
+    success_rate: true, // 成功率跟踪
+    error_patterns: true, // 错误模式识别
+  },
 };
 ```
 
@@ -1294,6 +1370,7 @@ const qualityControls = {
 ### **8.1 添加新的基准测试任务**
 
 #### **步骤 1: 配置文件更新**
+
 ```yaml
 # configs/bench-quick.yaml
 tasks:
@@ -1309,6 +1386,7 @@ tasks:
 ```
 
 #### **步骤 2: WebAssembly 实现**
+
 ```rust
 // tasks/new_task/rust/src/lib.rs
 #[no_mangle]
@@ -1319,132 +1397,122 @@ pub extern "C" fn run_new_task(param1: u32, param2: f64) -> u64 {
 ```
 
 #### **步骤 3: 浏览器集成**
+
 ```javascript
 // harness/web/wasm_loader.js
 const taskRunners = {
-    new_task: {
-        rust: async (wasmInstance, config) => {
-            const result = wasmInstance.exports.run_new_task(
-                config.param1, config.param2
-            );
-            return { result, hash: result };
-        },
-        tinygo: async (wasmInstance, config) => {
-            // TinyGo 实现
-        }
-    }
+  new_task: {
+    rust: async (wasmInstance, config) => {
+      const result = wasmInstance.exports.run_new_task(
+        config.param1,
+        config.param2
+      );
+      return { result, hash: result };
+    },
+    tinygo: async (wasmInstance, config) => {
+      // TinyGo 实现
+    },
+  },
 };
 ```
 
 ### **8.2 性能调优建议**
 
-#### **配置优化**
-```yaml
-# 针对不同场景的优化建议
-scenarios:
-  ultra_fast:           # 超快速 (<1分钟)
-    warmup_runs: 1
-    measure_runs: 5
-    timeout_ms: 15000
-
-  development:          # 开发模式 (2-3分钟)
-    warmup_runs: 3
-    measure_runs: 15
-    timeout_ms: 30000
-
-  ci_pipeline:          # CI流水线 (5分钟内)
-    warmup_runs: 5
-    measure_runs: 25
-    timeout_ms: 60000
-
-  pre_release:          # 预发布验证 (10分钟内)
-    warmup_runs: 8
-    measure_runs: 50
-    timeout_ms: 120000
-```
-
 #### **并行化策略**
+
 ```javascript
 // 动态并发控制
 class AdaptiveParallelism {
-    constructor() {
-        this.systemLoad = this.detectSystemLoad();
-        this.optimalConcurrency = this.calculateOptimalConcurrency();
-    }
+  constructor() {
+    this.systemLoad = this.detectSystemLoad();
+    this.optimalConcurrency = this.calculateOptimalConcurrency();
+  }
 
-    calculateOptimalConcurrency() {
-        const cpuCores = navigator.hardwareConcurrency || 4;
-        const memoryGb = this.estimateAvailableMemory();
+  calculateOptimalConcurrency() {
+    const cpuCores = navigator.hardwareConcurrency || 4;
+    const memoryGb = this.estimateAvailableMemory();
 
-        // 基于系统资源计算最优并发数
-        const cpuBased = Math.max(1, Math.floor(cpuCores * 0.8));
-        const memoryBased = Math.max(1, Math.floor(memoryGb / 0.5)); // 每个任务约0.5GB
+    // 基于系统资源计算最优并发数
+    const cpuBased = Math.max(1, Math.floor(cpuCores * 0.8));
+    const memoryBased = Math.max(1, Math.floor(memoryGb / 0.5)); // 每个任务约0.5GB
 
-        return Math.min(cpuBased, memoryBased, 6); // 最大6个并发
-    }
+    return Math.min(cpuBased, memoryBased, 6); // 最大6个并发
+  }
 }
 ```
 
 ### **8.3 故障排除指南**
 
 #### **常见问题和解决方案**
+
 ```markdown
 ## 问题诊断 Checklist
 
 ### 1. 配置问题
+
 - [ ] `configs/bench-quick.json` 是否存在且有效
 - [ ] `node_modules` 是否正确安装
 - [ ] WebAssembly 模块是否已构建
 
 ### 2. 超时问题
+
 - [ ] 检查网络连接和模块下载
 - [ ] 验证任务规模配置是否合理
 - [ ] 确认系统资源充足
 
 ### 3. 结果验证失败
+
 - [ ] 检查 WebAssembly 模块版本
 - [ ] 验证输入参数正确性
 - [ ] 确认 hash 计算算法一致
 
 ### 4. 性能异常
+
 - [ ] 监控内存使用和垃圾回收
 - [ ] 检查并发数配置
 - [ ] 分析系统负载情况
 ```
 
 #### **调试工具和技巧**
+
 ```javascript
 // 调试助手
 window.debugBenchmark = {
-    // 启用详细日志
-    enableVerboseLogging() {
-        window.benchmarkState.verbose = true;
-        console.log('Verbose logging enabled');
-    },
+  // 启用详细日志
+  enableVerboseLogging() {
+    window.benchmarkState.verbose = true;
+    console.log("Verbose logging enabled");
+  },
 
-    // 单步执行模式
-    enableStepMode() {
-        window.benchmarkState.stepMode = true;
-        console.log('Step mode enabled - will pause between tasks');
-    },
+  // 单步执行模式
+  enableStepMode() {
+    window.benchmarkState.stepMode = true;
+    console.log("Step mode enabled - will pause between tasks");
+  },
 
-    // 性能分析
-    startProfiling() {
-        if (performance.mark) {
-            performance.mark('benchmark-start');
-        }
-    },
-
-    // 内存快照
-    takeMemorySnapshot() {
-        if (performance.memory) {
-            console.log('Memory usage:', {
-                used: `${(performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2)} MB`,
-                total: `${(performance.memory.totalJSHeapSize / 1024 / 1024).toFixed(2)} MB`,
-                limit: `${(performance.memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2)} MB`
-            });
-        }
+  // 性能分析
+  startProfiling() {
+    if (performance.mark) {
+      performance.mark("benchmark-start");
     }
+  },
+
+  // 内存快照
+  takeMemorySnapshot() {
+    if (performance.memory) {
+      console.log("Memory usage:", {
+        used: `${(performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(
+          2
+        )} MB`,
+        total: `${(performance.memory.totalJSHeapSize / 1024 / 1024).toFixed(
+          2
+        )} MB`,
+        limit: `${(performance.memory.jsHeapSizeLimit / 1024 / 1024).toFixed(
+          2
+        )} MB`,
+      });
+    }
+  },
 };
 ```
 
@@ -1453,15 +1521,18 @@ window.debugBenchmark = {
 ## 📚 **9. 相关文档**
 
 ### **9.1 架构文档**
+
 - [`command-reference-guide.md`](./command-reference-guide.md) - 命令参考指南
 - [`testing-strategy-guide.md`](./testing-strategy-guide.md) - 测试策略指南
 - [`experiment-plan-en.md`](./experiment-plan-en.md) - 实验计划文档
 
 ### **9.2 开发文档**
+
 - [`development-todo-en.md`](./development-todo-en.md) - 开发待办事项
 - [`development-todo-zh.md`](./development-todo-zh.md) - 开发待办事项 (中文)
 
 ### **9.3 代码文件索引**
+
 ```
 关键文件映射:
 ├── Makefile                           # 构建系统入口
@@ -1490,15 +1561,17 @@ window.debugBenchmark = {
 
 ## 🎯 **总结**
 
-`make run-quick` 命令代表了一个精心设计的快速开发反馈系统，通过以下关键设计实现了93%的执行时间减少：
+`make run-quick` 命令代表了一个精心设计的快速开发反馈系统，通过以下关键设计实现了 93%的执行时间减少：
 
 ### **🏆 核心成就**
-1. **极速反馈**: 从30+分钟降至2-3分钟
+
+1. **极速反馈**: 从 5+分钟降至 1 分钟
 2. **保持精度**: 在速度和准确性间找到最佳平衡点
 3. **开发友好**: 零配置、自动化、可靠的执行
 4. **架构优雅**: 服务导向、模块化、可扩展的设计
 
 ### **🛠️ 技术亮点**
+
 - **配置驱动**: YAML/JSON 双格式配置系统
 - **依赖注入**: 纯服务导向架构
 - **多层超时**: 全方位的超时保护机制
@@ -1506,8 +1579,8 @@ window.debugBenchmark = {
 - **实时监控**: 全面的可观测性
 
 ### **📈 应用价值**
+
 - **开发效率**: 大幅提升迭代速度
-- **CI/CD集成**: 完美适配持续集成流水线
 - **质量保证**: 早期发现性能回归
 - **团队协作**: 一致的开发环境和基准
 
