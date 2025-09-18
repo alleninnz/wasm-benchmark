@@ -116,6 +116,11 @@ qc:
   treat_timeout_as: "failure"     # Timeouts are failures, not data
   max_timeout_rate: 0.1          # 10% timeout rate maximum
 
+  # Overall quality evaluation thresholds (layered threshold strategy)
+  quality_invalid_threshold: 0.15    # 10% invalid groups triggers INVALID overall
+  quality_high_risk_threshold: 0.3  # 30% problem groups triggers INVALID overall
+  quality_warning_threshold: 0.3    # 30% warning groups triggers WARNING overall
+
 # Engineering-focused statistical analysis
 statistics:
   confidence_level: 0.95           # Standard 95% confidence
