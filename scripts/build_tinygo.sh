@@ -74,7 +74,7 @@ build_tinygo_task() {
     # TinyGo build command with optimizations
     local build_flags=(
         "-target=${WASM_TARGET}"
-        "-opt=2"                    # Speed optimization (equivalent to Rust O3)
+        "-opt=3"                    # Maximum optimization (equivalent to Rust O3)
         "-panic=trap"               # Use trap on panic instead of runtime
         "-no-debug"                 # Remove debug information
         "-scheduler=none"           # Disable scheduler for single-threaded WASM

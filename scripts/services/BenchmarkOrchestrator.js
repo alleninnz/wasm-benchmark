@@ -268,19 +268,14 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             await dedicatedPage.waitForSelector('body', { timeout: 10000 });
             await dedicatedPage.waitForSelector('#status', { timeout: 10000 });
 
-            // Parse task name from benchmark name (e.g., mandelbrot_micro -> mandelbrot)
-            const taskName = benchmark.name.replace(/_micro$/, '');
+            // Extract task details from the benchmark configuration
+            const taskName = benchmark.task || benchmark.name.replace(/_micro$/, '');
+            const scale = benchmark.scale || 'small';
+            const language = benchmark.language || 'unknown';
 
-            // Get the full config to determine available scales for this task
+            // Get the full config to get the task configuration
             const fullConfig = this.configService.getConfig();
             const taskConfiguration = fullConfig.tasks ? fullConfig.tasks[taskName] : null;
-
-            // Determine appropriate scale from task configuration or fallback to 'small'
-            let scale = 'small'; // fallback
-            if (taskConfiguration && taskConfiguration.scales) {
-                const availableScales = Object.keys(taskConfiguration.scales);
-                scale = availableScales.length > 0 ? availableScales[0] : 'small';
-            }
 
             // Run benchmark for each implementation (language)
             const results = [];
@@ -288,8 +283,6 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
 
             for (let i = 0; i < benchmark.implementations.length; i++) {
                 const implementation = benchmark.implementations[i];
-                // Extract language from implementation name (e.g., matrix_mul_rust -> rust)
-                const language = implementation.name.split('_').pop();
 
                 // Execute benchmark in browser
                 const taskConfig = {

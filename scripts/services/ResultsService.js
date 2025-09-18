@@ -189,8 +189,8 @@ export class ResultsService extends IResultsService {
         if (format.toLowerCase() === 'json') {
             const transformedResults = this.getResults().map(result => {
                 // Flatten the results array to remove numeric key nesting
-                let flattenedResults = [];
-                
+                const flattenedResults = [];
+
                 if (result.results && Array.isArray(result.results)) {
                     result.results.forEach(item => {
                         if (typeof item === 'object' && !Array.isArray(item)) {
@@ -202,7 +202,7 @@ export class ResultsService extends IResultsService {
                         }
                     });
                 }
-                
+
                 return {
                     benchmark: result.benchmark,
                     success: result.success,
@@ -212,14 +212,14 @@ export class ResultsService extends IResultsService {
                     id: result.id
                 };
             });
-            
+
             const data = {
                 summary: this.getSummary(),
                 results: transformedResults
             };
             return JSON.stringify(data, null, 2);
         }
-        
+
         // For other formats, maintain backward compatibility
         const data = {
             summary: this.getSummary(),
@@ -317,10 +317,9 @@ export class ResultsService extends IResultsService {
      * Save results to file
      * @param {string} filepath - Path to save file
      * @param {string} format - File format
-     * @param {Object} options - Save options
      * @returns {Promise<void>}
      */
-    async saveToFile(filepath, format = 'json', options = {}) {
+    async saveToFile(filepath, format = 'json') {
         try {
             // Ensure directory exists
             const dir = path.dirname(filepath);

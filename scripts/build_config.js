@@ -184,14 +184,27 @@ function optimizeConfig(config) {
     });
     optimized.scales = Array.from(actualScales);
 
-    // Add required benchmarks array for ConfigurationService compatibility
-    optimized.benchmarks = optimized.taskNames.map(taskName => ({
-        name: taskName,
-        implementations: optimized.enabledLanguages.map(lang => ({
-            name: `${taskName}_${lang}`,
-            path: `/builds/${lang}/${taskName}-${lang}-o3.wasm`
-        }))
-    }));
+    // Generate benchmarks for all task-scale-language combinations
+    optimized.benchmarks = [];
+    optimized.taskNames.forEach(taskName => {
+        const task = optimized.tasks[taskName];
+        const taskScales = task.scales ? Object.keys(task.scales) : ['small'];
+        
+        taskScales.forEach(scale => {
+            optimized.enabledLanguages.forEach(lang => {
+                optimized.benchmarks.push({
+                    name: `${taskName}_${scale}_${lang}`,
+                    task: taskName,
+                    scale: scale,
+                    language: lang,
+                    implementations: [{
+                        name: `${taskName}_${lang}`,
+                        path: `/builds/${lang}/${taskName}-${lang}-o3.wasm`
+                    }]
+                });
+            });
+        });
+    });
 
     // Add required output configuration
     optimized.output = {
