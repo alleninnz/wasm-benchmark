@@ -157,6 +157,7 @@ export class ConfigLoader {
         // JSON now uses camelCase, maintain camelCase interface for consistency
         config.warmupRuns = config.environment.warmupRuns || 3;
         config.measureRuns = config.environment.measureRuns || 10;
+        config.repetitions = config.environment.repetitions || 1;
         config.timeout = config.environment.timeout || 60000;
         config.taskTimeouts = config.environment.taskTimeouts || {};
         config.gcThreshold = config.environment.gcThreshold || 100;

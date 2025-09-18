@@ -101,10 +101,13 @@ export class BenchmarkRunner {
      */
     _calculateTotalRuns(config) {
         let total = 0;
-        for (const _task of config.tasks) {
-            for (const _lang of config.languages) {
-                for (const _scale of config.scales) {
-                    total += config.warmupRuns + config.measureRuns;
+        const repetitions = config.repetitions || 1;
+        for (let rep = 0; rep < repetitions; rep++) {
+            for (const _task of config.tasks) {
+                for (const _lang of config.languages) {
+                    for (const _scale of config.scales) {
+                        total += config.warmupRuns + config.measureRuns;
+                    }
                 }
             }
         }
@@ -132,19 +135,33 @@ export class BenchmarkRunner {
             const activeConfig = this.currentConfig;
 
             window.benchmarkState.status = 'running';
-            window.logResult('Starting benchmark suite execution', 'success');
+            const repetitions = activeConfig.repetitions || 1;
+            window.logResult(`Starting benchmark suite execution (${repetitions} repetition${repetitions > 1 ? 's' : ''})`, 'success');
 
-            for (const taskName of activeConfig.tasks) {
+            // Add repetitions loop as outer loop
+            for (let rep = 0; rep < repetitions; rep++) {
                 if (this.cancelled) break;
 
-                for (const language of activeConfig.languages) {
+                if (repetitions > 1) {
+                    window.logResult(`\n=== Repetition ${rep + 1} of ${repetitions} ===`, 'info');
+                }
+
+                for (const taskName of activeConfig.tasks) {
                     if (this.cancelled) break;
 
-                    for (const scale of activeConfig.scales) {
+                    for (const language of activeConfig.languages) {
                         if (this.cancelled) break;
 
-                        await this._runTaskBenchmark(taskName, language, scale, activeConfig);
+                        for (const scale of activeConfig.scales) {
+                            if (this.cancelled) break;
+
+                            await this._runTaskBenchmark(taskName, language, scale, activeConfig, rep + 1);
+                        }
                     }
+                }
+
+                if (repetitions > 1 && rep < repetitions - 1) {
+                    window.logResult(`Repetition ${rep + 1} completed. Starting next repetition...`, 'success');
                 }
             }
 
@@ -167,8 +184,8 @@ export class BenchmarkRunner {
      * Run benchmark for a specific task, language, and scale
      * @private
      */
-    async _runTaskBenchmark(taskName, language, scale, config) {
-        const moduleId = `${taskName}-${language}-${scale}`;
+    async _runTaskBenchmark(taskName, language, scale, config, repetition = 1) {
+        const moduleId = `${taskName}-${language}-${scale}-rep${repetition}`;
         // Convert camelCase taskName back to snake_case for file path
         const taskNameSnakeCase = taskName.replace(/([A-Z])/g, '_$1').toLowerCase();
         const wasmPath = `/builds/${language}/${taskNameSnakeCase}-${language}-o3.wasm`;
@@ -176,7 +193,11 @@ export class BenchmarkRunner {
         window.benchmarkState.currentTask = taskName;
         window.benchmarkState.currentLang = language;
 
-        window.logResult(`Running ${taskName} (${language}, ${scale})`);
+        const repetitions = config.repetitions || 1;
+        const logMsg = repetitions > 1
+            ? `Running ${taskName} (${language}, ${scale}) - Repetition ${repetition}`
+            : `Running ${taskName} (${language}, ${scale})`;
+        window.logResult(logMsg);
 
         try {
             // Load the WASM module
@@ -217,6 +238,7 @@ export class BenchmarkRunner {
                     language: language,
                     scale: scale,
                     run: i + 1,
+                    repetition: repetition,
                     moduleId: moduleId,
                     inputData: inputData,
                     inputDataHash: this._computeInputDataHash(inputData)
@@ -232,13 +254,17 @@ export class BenchmarkRunner {
 
         } catch (error) {
             window.benchmarkState.failedRuns++;
-            window.logResult(`Failed ${taskName} (${language}, ${scale}): ${error.message}`, 'error');
+            const errorLogMsg = repetitions > 1
+                ? `Failed ${taskName} (${language}, ${scale}) - Repetition ${repetition}: ${error.message}`
+                : `Failed ${taskName} (${language}, ${scale}): ${error.message}`;
+            window.logResult(errorLogMsg, 'error');
 
             // Continue with next task rather than failing completely
             this.results.push({
                 task: taskName,
                 language: language,
                 scale: scale,
+                repetition: repetition,
                 error: error.message,
                 timestamp: Date.now(),
                 success: false
