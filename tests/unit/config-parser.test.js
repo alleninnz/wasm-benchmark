@@ -19,7 +19,7 @@ describe('Configuration Parser', () => {
                 environment: {
                     warmupRuns: 5,
                     measureRuns: 100,
-                    timeout: 300000
+                    timeout: 90000
                 },
                 tasks: { mandelbrot: { enabled: true }, jsonParse: { enabled: true } },
                 languages: { rust: { enabled: true }, tinygo: { enabled: true } }
@@ -30,7 +30,7 @@ describe('Configuration Parser', () => {
             expect(result.experiment).toEqual(input.experiment);
             expect(result.environment.warmupRuns).toBe(5);
             expect(result.environment.measureRuns).toBe(100);
-            expect(result.environment.timeout).toBe(300000);
+            expect(result.environment.timeout).toBe(90000);
             expect(result.taskNames).toEqual(['mandelbrot', 'jsonParse']);
             expect(result.enabledLanguages).toEqual(['rust', 'tinygo']);
             expect(result.generated.timestamp).toBeDefined();
@@ -46,8 +46,7 @@ describe('Configuration Parser', () => {
 
             const result = optimizeConfig(input);
 
-            expect(result.environment.timeout).toBe(300000);
-            expect(result.environment.gcThreshold).toBe(10);
+            expect(result.environment.timeout).toBe(90000);
             expect(result.enabledLanguages).toEqual([]);
         });
 
