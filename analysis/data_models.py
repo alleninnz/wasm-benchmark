@@ -27,6 +27,50 @@ class EffectSize(Enum):
     LARGE = "large"
 
 @dataclass
+class QCConfiguration:
+    """Quality Control configuration parameters"""
+
+    max_coefficient_variation: float
+    outlier_iqr_multiplier: float
+    min_valid_samples: int
+    failure_rate: float
+    quality_invalid_threshold: float
+    quality_high_risk_threshold: float
+    quality_warning_threshold: float
+
+
+@dataclass
+class StatisticsConfiguration:
+    """Statistical Analysis configuration parameters"""
+
+    confidence_level: float
+    significance_alpha: float
+    effect_size_thresholds: Dict[str, float]
+    minimum_detectable_effect: float
+
+
+@dataclass
+class PlotsConfiguration:
+    """Plotting and visualization configuration parameters"""
+
+    dpi_basic: int
+    dpi_detailed: int
+    output_format: str
+    figure_size_basic: List[int]
+    figure_size_detailed: List[int]
+    font_sizes: Dict[str, int]
+    color_scheme: Dict[str, str]
+
+
+@dataclass
+class ConfigurationData:
+    """Complete configuration data containing all specialized configurations"""
+
+    qc: QCConfiguration
+    statistics: StatisticsConfiguration
+    plots: PlotsConfiguration
+
+@dataclass
 class BenchmarkSample:
     """Single benchmark execution sample"""
 
@@ -82,6 +126,13 @@ class TaskResult:
     failed_runs: int
     success_rate: float
 
+@dataclass
+class CleanedDataset:
+    """Dataset after quality control and cleaning"""
+
+    task_results: List[TaskResult]
+    removed_outliers: List[BenchmarkSample]
+    cleaning_log: List[str]
 
 @dataclass
 class QualityMetrics:
@@ -93,11 +144,16 @@ class QualityMetrics:
     coefficient_variation: float
     outlier_count: int
     outlier_rate: float
-    timeout_rate: float
     success_rate: float
     data_quality: DataQuality
     quality_issues: List[str]
 
+@dataclass
+class QualityAssessment:
+    quality_summary: Optional[Dict[str, QualityMetrics]]
+    overall_quality: DataQuality
+    quality_reason: str
+    quality_stats: Dict[str, int]
 
 @dataclass
 class StatisticalResult:
@@ -187,62 +243,6 @@ class DecisionMetrics:
     practical_significance: bool
     quality_sufficient: bool
     decision_confidence: float
-
-
-@dataclass
-class QCConfiguration:
-    """Quality Control configuration parameters"""
-
-    max_coefficient_variation: float
-    outlier_iqr_multiplier: float
-    min_valid_samples: int
-    max_timeout_rate: float
-    quality_invalid_threshold: float
-    quality_high_risk_threshold: float
-    quality_warning_threshold: float
-
-
-@dataclass
-class StatisticsConfiguration:
-    """Statistical Analysis configuration parameters"""
-
-    confidence_level: float
-    significance_alpha: float
-    effect_size_thresholds: Dict[str, float]
-    minimum_detectable_effect: float
-
-
-@dataclass
-class PlotsConfiguration:
-    """Plotting and visualization configuration parameters"""
-
-    dpi_basic: int
-    dpi_detailed: int
-    output_format: str
-    figure_size_basic: List[int]
-    figure_size_detailed: List[int]
-    font_sizes: Dict[str, int]
-    color_scheme: Dict[str, str]
-
-
-@dataclass
-class ConfigurationData:
-    """Complete configuration data containing all specialized configurations"""
-
-    qc: QCConfiguration
-    statistics: StatisticsConfiguration
-    plots: PlotsConfiguration
-
-
-@dataclass
-class CleanedDataset:
-    """Dataset after quality control and cleaning"""
-
-    task_results: List[TaskResult]
-    removed_outliers: List[BenchmarkSample]
-    quality_summary: Dict[str, QualityMetrics]
-    overall_quality: DataQuality
-    cleaning_log: List[str]
 
 
 @dataclass
