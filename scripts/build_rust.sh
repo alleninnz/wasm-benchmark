@@ -11,6 +11,7 @@ source "${SCRIPT_DIR}/common.sh"
 TASKS_DIR="${PROJECT_ROOT}/tasks"
 # BUILDS_DIR already defined in common.sh
 RUST_OUTPUT_DIR="${BUILDS_DIR}/rust"
+CONFIG_FILE="${PROJECT_ROOT}/configs/bench.json"
 WASM_TARGET="wasm32-unknown-unknown"
 PROFILE="release"
 
@@ -54,6 +55,37 @@ check_wasm_tools() {
     fi
     
     log_success "WebAssembly tools checked"
+}
+
+# Read Rust configuration from bench.json and set CARGO environment variables
+read_rust_config() {
+    if [[ -f "${CONFIG_FILE}" ]] && command -v jq &> /dev/null; then
+        log_info "Reading Rust configuration from ${CONFIG_FILE}..."
+
+        # Read cargo config settings and set environment variables
+        local opt_level=$(jq -r '.languages.rust.optimizationLevels[0].cargoConfig.optLevel // 3' "${CONFIG_FILE}" 2>/dev/null)
+        local lto=$(jq -r '.languages.rust.optimizationLevels[0].cargoConfig.lto // "fat"' "${CONFIG_FILE}" 2>/dev/null)
+        local codegen_units=$(jq -r '.languages.rust.optimizationLevels[0].cargoConfig.codegenUnits // 1' "${CONFIG_FILE}" 2>/dev/null)
+        local panic=$(jq -r '.languages.rust.optimizationLevels[0].cargoConfig.panic // "abort"' "${CONFIG_FILE}" 2>/dev/null)
+        local strip=$(jq -r '.languages.rust.optimizationLevels[0].cargoConfig.strip // "debuginfo"' "${CONFIG_FILE}" 2>/dev/null)
+
+        # Set CARGO environment variables to override profile settings
+        export CARGO_PROFILE_RELEASE_OPT_LEVEL="$opt_level"
+        export CARGO_PROFILE_RELEASE_LTO="$lto"
+        export CARGO_PROFILE_RELEASE_CODEGEN_UNITS="$codegen_units"
+        export CARGO_PROFILE_RELEASE_PANIC="$panic"
+        export CARGO_PROFILE_RELEASE_STRIP="$strip"
+
+        # Read target
+        local target=$(jq -r '.languages.rust.target // "wasm32-unknown-unknown"' "${CONFIG_FILE}" 2>/dev/null)
+        WASM_TARGET="$target"
+
+        log_success "Configuration loaded: opt-level=${opt_level}, lto=${lto}, codegen-units=${codegen_units}, panic=${panic}, strip=${strip}"
+        log_info "Using target: ${WASM_TARGET}"
+    else
+        log_warning "Configuration file not found or jq not available, using defaults"
+        log_info "Default settings: opt-level=3, lto=fat, codegen-units=1, panic=abort, strip=debuginfo"
+    fi
 }
 
 # Build a single Rust task
@@ -190,10 +222,13 @@ EOF
 # Main build function
 main() {
     log_info "Starting Rust WebAssembly build process..."
-    
+
     # Check prerequisites
     check_rust_toolchain
     check_wasm_tools
+
+    # Load configuration
+    read_rust_config
     
     # Define tasks to build
     local tasks=("mandelbrot" "json_parse" "matrix_mul")
@@ -231,6 +266,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         # Build single task
         check_rust_toolchain
         check_wasm_tools
+        read_rust_config
         build_rust_task "$1"
     else
         # Build all tasks

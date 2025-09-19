@@ -10,7 +10,11 @@ source "${SCRIPT_DIR}/common.sh"
 # Configuration
 TASKS_DIR="${PROJECT_ROOT}/tasks"
 TINYGO_BUILDS_DIR="${BUILDS_DIR}/tinygo"
+CONFIG_FILE="${PROJECT_ROOT}/configs/bench.json"
+
+# Default values (will be overridden by configuration)
 WASM_TARGET="wasm"
+TINYGO_BUILD_FLAGS=()
 
 # Check if Go and TinyGo toolchain is available
 check_tinygo_toolchain() {
@@ -46,6 +50,16 @@ check_wasm_tools() {
     log_success "WebAssembly tools checked"
 }
 
+# Read TinyGo configuration from bench.json
+read_tinygo_config() {
+    WASM_TARGET=$(jq -r '.languages.tinygo.target // "wasm"' "${CONFIG_FILE}" 2>/dev/null || echo "wasm")
+    TINYGO_BUILD_FLAGS=($(jq -r '.languages.tinygo.optimizationLevels[0].buildFlags[]? // empty' "${CONFIG_FILE}" 2>/dev/null))
+
+    [[ ${#TINYGO_BUILD_FLAGS[@]} -eq 0 ]] && TINYGO_BUILD_FLAGS=("-opt=2" "-panic=trap" "-no-debug" "-scheduler=none" "-gc=conservative")
+
+    log_info "TinyGo: target=${WASM_TARGET}, flags=${TINYGO_BUILD_FLAGS[*]}"
+}
+
 # Build a single TinyGo task
 build_tinygo_task() {
     local task_name="$1"
@@ -74,11 +88,7 @@ build_tinygo_task() {
     # TinyGo build command with optimizations
     local build_flags=(
         "-target=${WASM_TARGET}"
-        "-opt=3"                    # Maximum optimization (equivalent to Rust O3)
-        "-panic=trap"               # Use trap on panic instead of runtime
-        "-no-debug"                 # Remove debug information
-        "-scheduler=none"           # Disable scheduler for single-threaded WASM
-        "-gc=conservative"          # Use conservative GC
+        "${TINYGO_BUILD_FLAGS[@]}"
     )
     
     if ! tinygo build "${build_flags[@]}" -o "${output_path}" .; then
@@ -138,11 +148,7 @@ generate_manifest() {
     "tinygo_version": "$(tinygo version)",
     "build_flags": [
         "-target=${WASM_TARGET}",
-        "-opt=2",
-        "-panic=trap",
-        "-no-debug",
-        "-scheduler=none",
-        "-gc=conservative"
+        $(printf '"%s",' "${TINYGO_BUILD_FLAGS[@]}" | sed 's/,$//')
     ],
     "tasks": [
 EOF
@@ -185,11 +191,14 @@ EOF
 # Main build function
 main() {
     log_info "Starting TinyGo WebAssembly build process..."
-    
+
     # Check prerequisites
     check_tinygo_toolchain
     check_wasm_tools
-    
+
+    # Load configuration
+    read_tinygo_config
+
     # Define tasks to build
     local tasks=("mandelbrot" "json_parse" "matrix_mul")
     local failed_tasks=()
@@ -226,6 +235,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         # Build single task
         check_tinygo_toolchain
         check_wasm_tools
+        read_tinygo_config
         build_tinygo_task "$1"
     else
         # Build all tasks
