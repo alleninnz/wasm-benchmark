@@ -84,7 +84,7 @@ languages:
     optimization_levels:
       - name: "optimized"
         build_flags:
-          - "-opt=3"
+          - "-opt=2"
           - "-panic=trap"
           - "-no-debug"
           - "-scheduler=none"
@@ -110,7 +110,7 @@ qc:
   failure_rate: 0.1          # 10% failure rate maximum
 
   # Overall quality evaluation thresholds (layered threshold strategy)
-  quality_invalid_threshold: 0.15    # 10% invalid groups triggers INVALID overall
+  quality_invalid_threshold: 0.1    # 10% invalid groups triggers INVALID overall
   quality_high_risk_threshold: 0.3  # 30% problem groups triggers INVALID overall
   quality_warning_threshold: 0.3    # 30% warning groups triggers WARNING overall
 
@@ -131,16 +131,16 @@ plots:
   # Output settings
   dpi_basic: 150                   # DPI for basic comparison charts
   dpi_detailed: 300                # DPI for detailed analysis charts
-  format: "png"                    # Output file format
+  output_format: "png"             # Output file format
 
-  # Styling configuration
-  figure_size_basic: [10, 6]       # Figure size for basic charts [width, height]
-  figure_size_detailed: [16, 12]   # Figure size for detailed charts [width, height]
+  figure_sizes:
+    basic: [10, 6]                  # Figure size for basic charts [width, height]
+    detailed: [16, 12]              # Figure size for detailed charts [width, height]
 
-  # Font configuration
-  font_size_default: 11            # Default font size
-  font_size_labels: 12             # Axis and label font size
-  font_size_titles: 14             # Title font size
+  font_sizes: 
+    default: 11                       # Default font size
+    labels: 12                        # Axis and label font size
+    titles: 14                        # Title font size
 
   # Color scheme for languages
   color_scheme:

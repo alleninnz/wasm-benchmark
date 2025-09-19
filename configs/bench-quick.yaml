@@ -9,7 +9,7 @@ experiment:
 # Minimal measurement parameters for speed
 environment:
   warmup_runs: 5               # Minimal warmup for development
-  measure_runs: 15             # Basic sampling for trend detection
+  measure_runs: 20             # Basic sampling for trend detection
   repetitions: 1               # Single run for maximum speed
 
   # Quick timeout for fast feedback
@@ -24,10 +24,6 @@ tasks:
         width: 64             # 64x64 grid for quick validation
         height: 64
         max_iter: 100         # Reduced iterations
-    fixed_params:
-      center_real: -0.743643887037
-      center_imag: 0.131825904205
-      scale_factor: 3.0
 
   json_parse:
     description: "Micro-scale JSON processing test"
@@ -46,10 +42,6 @@ tasks:
     scales:
       micro:                  # Quick matrix computation
         dimension: 64         # 64x64 matrices for speed
-    computation:
-      data_type: "f32"
-      algorithm: "naive_triple_loop"
-      precision_digits: 6
 
 # Same optimized language configurations
 languages:
@@ -75,10 +67,11 @@ languages:
     optimization_levels:
       - name: "optimized"
         build_flags:
-          - "-opt=3"
+          - "-opt=2"
           - "-panic=trap"
           - "-no-debug"
           - "-scheduler=none"
+          - "-gc=conservative"
     post_processing:
       - "wasm-strip"
       - "wasm-opt -Oz"
@@ -89,4 +82,52 @@ verification:
   hash_offset_basis: 2166136261
   hash_prime: 16777619
   floating_point_precision: 6
+
+# Engineering-focused quality control
+qc:
+  max_coefficient_variation: 0.15
+  outlier_iqr_multiplier: 1.5
+  min_valid_samples: 10
+  # timeout handling
+  treat_timeout_as: "failure" 
+  failure_rate: 0.1          # 10% failure rate maximum
+
+  # Overall quality evaluation thresholds (layered threshold strategy)
+  quality_invalid_threshold: 0.1    # 10% invalid groups triggers INVALID overall
+  quality_high_risk_threshold: 0.3  # 30% problem groups triggers INVALID overall
+  quality_warning_threshold: 0.3    # 30% warning groups triggers WARNING overall
+
+# Engineering-focused statistical analysis
+statistics:
+  confidence_level: 0.95           # Standard 95% confidence
+  significance_alpha: 0.05         # Standard α = 0.05
+  effect_size_metric: "cohens_d"   # Cohen's d for effect size
+
+  effect_size_thresholds:
+    small: 0.3
+    medium: 0.6
+    large: 1.0
+  minimum_detectable_effect: 0.3
+
+# Visualization and plotting configuration
+plots:
+  # Output settings
+  dpi_basic: 150                   # DPI for basic comparison charts
+  dpi_detailed: 300                # DPI for detailed analysis charts
+  output_format: "png"             # Output file format
+
+  figure_sizes:
+    basic: [10, 6]                  # Figure size for basic charts [width, height]
+    detailed: [16, 12]              # Figure size for detailed charts [width, height]
+
+  font_sizes: 
+    default: 11                       # Default font size
+    labels: 12                        # Axis and label font size
+    titles: 14                        # Title font size
+
+  # Color scheme for languages
+  color_scheme:
+    rust: "#CE422B"                # Rust orange-red
+    tinygo: "#00ADD8"              # Go cyan-blue
+
 
