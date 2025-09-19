@@ -106,8 +106,8 @@ qc:
   outlier_iqr_multiplier: 1.5
   min_valid_samples: 80
   # timeout handling
-  treat_timeout_as: "failure"     # Timeouts are failures, not data
-  max_timeout_rate: 0.1          # 10% timeout rate maximum
+  treat_timeout_as: "failure" 
+  failure_rate: 0.1          # 10% failure rate maximum
 
   # Overall quality evaluation thresholds (layered threshold strategy)
   quality_invalid_threshold: 0.15    # 10% invalid groups triggers INVALID overall
