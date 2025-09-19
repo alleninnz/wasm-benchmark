@@ -16,7 +16,6 @@ strip = "debuginfo"
 [dependencies]
 # No external dependencies - pure hand-written implementation
 
-[dev-dependencies]
 # serde dependencies only for reference hash generation
 serde = { version = "1.0.225", features = ["derive"] }
 serde_json = "1.0.145"
