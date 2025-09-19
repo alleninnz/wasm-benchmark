@@ -6,22 +6,19 @@
  * Eliminates need for runtime YAML parsing service
  */
 
+import chalk from 'chalk';
 import fs from 'fs/promises';
 import path from 'path';
-import yaml from 'yaml';
 import { fileURLToPath } from 'url';
-import chalk from 'chalk';
+import yaml from 'yaml';
 
 // Configuration constants
-const DEFAULT_TIMEOUT_MS = 300000;
-const DEFAULT_GC_THRESHOLD_MB = 10;
-const DEFAULT_REPETITIONS = 1;
+const DEFAULT_TIMEOUT_MS = 90000;
+const DEFAULT_REPETITIONS = 3;
 
 // Environment detection
 const EXCLUDED_ENV_KEYS = [
-    'warmup_runs', 'measure_runs', 'repetitions', 'timeout_ms',
-    'task_timeouts', 'gc_threshold_mb', 'memory_monitoring',
-    'gc_monitoring', 'timeout_as_data'
+    'warmup_runs', 'measure_runs', 'repetitions', 'timeout_ms'
 ];
 
 const __filename = fileURLToPath(import.meta.url);
@@ -106,15 +103,10 @@ function createOptimizedEnvironment(config) {
 
     // Core environment settings - convert snake_case to camelCase
     const optimizedEnv = {
-        warmupRuns: env.warmup_runs !== undefined ? env.warmup_runs : env.warmupRuns,
-        measureRuns: env.measure_runs !== undefined ? env.measure_runs : env.measureRuns,
+        warmupRuns: env.warmup_runs !== undefined ? env.warmup_runs : env.warmupRuns || 20,
+        measureRuns: env.measure_runs !== undefined ? env.measure_runs : env.measureRuns || 100,
         repetitions: env.repetitions !== undefined ? env.repetitions : DEFAULT_REPETITIONS,
-        timeout: env.timeout_ms !== undefined ? env.timeout_ms : DEFAULT_TIMEOUT_MS,
-        taskTimeouts: env.task_timeouts || {},
-        gcThreshold: env.gc_threshold_mb !== undefined ? env.gc_threshold_mb : DEFAULT_GC_THRESHOLD_MB,
-        memoryMonitoring: env.memory_monitoring !== undefined ? env.memory_monitoring : true,
-        gcMonitoring: env.gc_monitoring !== undefined ? env.gc_monitoring : true,
-        timeoutAsData: env.timeout_as_data !== undefined ? env.timeout_as_data : false
+        timeout: env.timeout_ms !== undefined ? env.timeout_ms : DEFAULT_TIMEOUT_MS
     };
 
     // Convert additional environment settings to camelCase

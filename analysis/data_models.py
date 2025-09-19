@@ -56,8 +56,7 @@ class PlotsConfiguration:
     dpi_basic: int
     dpi_detailed: int
     output_format: str
-    figure_size_basic: List[int]
-    figure_size_detailed: List[int]
+    figure_sizes: Dict[str, List[int]]
     font_sizes: Dict[str, int]
     color_scheme: Dict[str, str]
 

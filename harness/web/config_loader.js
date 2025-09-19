@@ -153,18 +153,12 @@ export class ConfigLoader {
             throw new Error('Configuration missing environment section');
         }
 
-        // Add legacy compatibility fields with safe fallbacks
         // JSON now uses camelCase, maintain camelCase interface for consistency
-        config.warmupRuns = config.environment.warmupRuns || 3;
-        config.measureRuns = config.environment.measureRuns || 10;
-        config.repetitions = config.environment.repetitions || 1;
-        config.timeout = config.environment.timeout || 60000;
-        config.taskTimeouts = config.environment.taskTimeouts || {};
-        config.gcThreshold = config.environment.gcThreshold || 100;
-        config.memoryMonitoring = config.environment.memoryMonitoring || false;
-        config.gcMonitoring = config.environment.gcMonitoring || false;
+        config.warmupRuns = config.environment.warmupRuns || 20;
+        config.measureRuns = config.environment.measureRuns || 100;
+        config.repetitions = config.environment.repetitions || 3;
+        config.timeout = config.environment.timeout || 90000;
 
-        // Legacy arrays (already present in optimized config)
         config.tasks = config.taskNames || [];
         config.languages = config.enabledLanguages || [];
         config.scales = config.availableScales || ['small', 'medium', 'large'];
@@ -214,19 +208,18 @@ export class ConfigLoader {
             scaleConfig: scaleConfig,
             warmupRuns: this.config.warmupRuns,
             measureRuns: this.config.measureRuns,
-            timeout: this.config.taskTimeouts[`${taskName}_${scale}`] || this.config.timeout
+            timeout: this.config.timeout
         };
     }
 
     /**
      * Get timeout for specific task and scale
-     * @param {string} taskName - Task name
-     * @param {string} scale - Scale name
+     * @param {string} _taskName - Task name (unused - all tasks use same timeout)
+     * @param {string} _scale - Scale name (unused - all tasks use same timeout)
      * @returns {number} Timeout in milliseconds
      */
-    getTaskTimeout(taskName, scale) {
-        const taskKey = `${taskName}_${scale}`;
-        return this.config.taskTimeouts[taskKey] || this.config.timeout;
+    getTaskTimeout(_taskName, _scale) {
+        return this.config.timeout;
     }
 
     /**

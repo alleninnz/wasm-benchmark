@@ -8,8 +8,9 @@ to quality control, statistical analysis, and visualization parameters.
 from pathlib import Path
 from typing import Optional
 
-from .data_models import (ConfigurationData, PlotsConfiguration,
-                          QCConfiguration, StatisticsConfiguration)
+import yaml
+from data_models import (ConfigurationData, PlotsConfiguration,
+                         QCConfiguration, StatisticsConfiguration)
 
 
 class ConfigParser:
@@ -32,37 +33,80 @@ class ConfigParser:
             yaml.YAMLError: If config file is malformed
             ValueError: If required configuration sections are missing
         """
-        # TODO: Implement configuration file loading and validation
-        # TODO: Parse YAML configuration from self.config_path
-        # TODO: Validate required sections: qc, statistics, plots
-        # TODO: Apply default values for missing optional parameters
-        # TODO: Return ConfigurationData instance with parsed values
+        if not self.config_path.exists():
+            raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
 
+        try:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                config_data = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            raise yaml.YAMLError(f"Failed to parse YAML configuration: {e}")
+
+        if not isinstance(config_data, dict):
+            raise ValueError("Configuration file must contain a YAML object")
+
+        # Validate required sections exist
+        required_sections = ['qc', 'statistics', 'plots']
+        missing_sections = [section for section in required_sections
+                          if section not in config_data]
+        if missing_sections:
+            raise ValueError(f"Missing required configuration sections: {missing_sections}")
+
+        # Parse QC configuration
+        qc_section = config_data['qc']
         qc_config = QCConfiguration(
-            max_coefficient_variation=0.15,
-            outlier_iqr_multiplier=1.5,
-            min_valid_samples=30,
-            failure_rate=0.1,
-            quality_invalid_threshold=0.20,
-            quality_high_risk_threshold=0.50,
-            quality_warning_threshold=0.40,
+            max_coefficient_variation=qc_section.get('max_coefficient_variation', 0.15),
+            outlier_iqr_multiplier=qc_section.get('outlier_iqr_multiplier', 1.5),
+            min_valid_samples=qc_section.get('min_valid_samples', 80),
+            failure_rate=qc_section.get('failure_rate', 0.1),
+            quality_invalid_threshold=qc_section.get('quality_invalid_threshold', 0.1),
+            quality_high_risk_threshold=qc_section.get('quality_high_risk_threshold', 0.3),
+            quality_warning_threshold=qc_section.get('quality_warning_threshold', 0.3),
         )
+
+        # Parse statistics configuration
+        stats_section = config_data['statistics']
+        effect_size_thresholds = stats_section.get('effect_size_thresholds', {})
+        # Ensure we have the required effect size thresholds
+        default_thresholds = {"small": 0.3, "medium": 0.6, "large": 1.0}
+        default_thresholds.update(effect_size_thresholds)
 
         stats_config = StatisticsConfiguration(
-            confidence_level=0.95,
-            significance_alpha=0.05,
-            effect_size_thresholds={"small": 0.3, "medium": 0.6, "large": 1.0},
-            minimum_detectable_effect=0.3,
+            confidence_level=stats_section.get('confidence_level', 0.95),
+            significance_alpha=stats_section.get('significance_alpha', 0.05),
+            effect_size_thresholds=default_thresholds,
+            minimum_detectable_effect=stats_section.get('minimum_detectable_effect', 0.3),
         )
 
+        # Parse plots configuration
+        plots_section = config_data['plots']
+
+        # Handle font sizes - support nested structure
+        font_sizes = plots_section.get('font_sizes', {
+            "default": 11,
+            "labels": 12,
+            "titles": 14,
+        })
+
+        # Handle figure sizes - support nested structure
+        figure_sizes = plots_section.get('figure_sizes', {
+            "basic": [10, 6],
+            "detailed": [16, 12],
+        })
+
+        # Handle color scheme - default colors for rust and tinygo
+        color_scheme = plots_section.get('color_scheme', {
+            "rust": "#CE422B",
+            "tinygo": "#00ADD8",
+        })
+
         plots_config = PlotsConfiguration(
-            dpi_basic=150,
-            dpi_detailed=300,
-            output_format="png",
-            figure_size_basic=[10, 6],
-            figure_size_detailed=[16, 12],
-            font_sizes={"default": 11, "labels": 12, "titles": 14},
-            color_scheme={"rust": "#CE422B", "tinygo": "#00ADD8"},
+            dpi_basic=plots_section.get('dpi_basic', 150),
+            dpi_detailed=plots_section.get('dpi_detailed', 300),
+            output_format=plots_section.get('output_format', 'png'),
+            figure_sizes=figure_sizes,
+            font_sizes=font_sizes,
+            color_scheme=color_scheme,
         )
 
         self._configuration_data = ConfigurationData(
@@ -77,20 +121,14 @@ class ConfigParser:
 
         Returns:
             QCConfiguration: Typed QC configuration object
-        """
-        # TODO: Extract and validate QC configuration section
-        # TODO: Apply engineering-grade defaults for missing values
-        # TODO: Validate parameter ranges and constraints
 
-        return QCConfiguration(
-            max_coefficient_variation=0.15,
-            outlier_iqr_multiplier=1.5,
-            min_valid_samples=30,
-            failure_rate=0.1,
-            quality_invalid_threshold=0.20,
-            quality_high_risk_threshold=0.50,
-            quality_warning_threshold=0.40,
-        )
+        Raises:
+            RuntimeError: If configuration has not been loaded yet
+        """
+        if self._configuration_data is None:
+            raise RuntimeError("Configuration not loaded. Call load() first.")
+
+        return self._configuration_data.qc
 
     def get_stats_config(self) -> StatisticsConfiguration:
         """
@@ -98,17 +136,14 @@ class ConfigParser:
 
         Returns:
             StatisticsConfiguration: Typed statistics configuration object
-        """
-        # TODO: Extract statistical analysis configuration
-        # TODO: Validate effect size thresholds (small, medium, large)
-        # TODO: Ensure alpha and confidence levels are valid probabilities
 
-        return StatisticsConfiguration(
-            confidence_level=0.95,
-            significance_alpha=0.05,
-            effect_size_thresholds={"small": 0.3, "medium": 0.6, "large": 1.0},
-            minimum_detectable_effect=0.3,
-        )
+        Raises:
+            RuntimeError: If configuration has not been loaded yet
+        """
+        if self._configuration_data is None:
+            raise RuntimeError("Configuration not loaded. Call load() first.")
+
+        return self._configuration_data.statistics
 
     def get_plots_config(self) -> PlotsConfiguration:
         """
@@ -116,17 +151,11 @@ class ConfigParser:
 
         Returns:
             PlotsConfiguration: Typed plots configuration object
-        """
-        # TODO: Extract plotting configuration section
-        # TODO: Apply sensible defaults for visualization parameters
-        # TODO: Validate color scheme for rust/tinygo languages
 
-        return PlotsConfiguration(
-            dpi_basic=150,
-            dpi_detailed=300,
-            output_format="png",
-            figure_size_basic=[10, 6],
-            figure_size_detailed=[16, 12],
-            font_sizes={"default": 11, "labels": 12, "titles": 14},
-            color_scheme={"rust": "#CE422B", "tinygo": "#00ADD8"},
-        )
+        Raises:
+            RuntimeError: If configuration has not been loaded yet
+        """
+        if self._configuration_data is None:
+            raise RuntimeError("Configuration not loaded. Call load() first.")
+
+        return self._configuration_data.plots
