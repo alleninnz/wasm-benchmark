@@ -5,8 +5,7 @@
   "main": "harness/web/bench.js",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/dev-server.js & sleep 2 && (curl -s http://localhost:2025 > /dev/null && open http://localhost:2025/) && wait",
-    "serve": "node scripts/dev-server.js",
+    "dev": "nohup node scripts/dev-server.js > dev-server.log 2>&1 &",
     "serve:port": "PORT=${PORT:-2025} node scripts/dev-server.js",
     "test": "WASM_BENCH_TEST_LEVEL=full vitest run tests --reporter=verbose --testTimeout=300000 && node tests/utils/prettify-test-results.js",
     "test:smoke": "WASM_BENCH_TEST_LEVEL=smoke vitest run tests/unit tests/integration/cross-language.test.js --testTimeout=10000 && node tests/utils/prettify-test-results.js",
@@ -31,14 +30,14 @@
   "license": "MIT",
   "dependencies": {
     "chalk": "5.6.2",
-    "puppeteer": "24.20.0",
+    "puppeteer": "24.22.0",
     "yaml": "^2.8.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.35.0",
-    "@types/node": "24.3.1",
+    "@eslint/js": "9.36.0",
+    "@types/node": "24.5.2",
     "cors": "^2.8.5",
-    "eslint": "^9.35.0",
+    "eslint": "9.36.0",
     "express": "^5.1.0",
     "vitest": "^3.2.4"
   },
