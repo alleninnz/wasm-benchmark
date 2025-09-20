@@ -52,3 +52,6 @@ test-results.json
 
 # pytest
 .pytest_cache/
+
+# playwright
+.playwright-mcp/
