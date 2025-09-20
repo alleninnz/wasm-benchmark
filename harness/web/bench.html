@@ -35,17 +35,31 @@
         }
         .progress-bar {
             width: 100%;
-            height: 20px;
+            height: 30px;
             background: #333;
-            border-radius: 10px;
+            border-radius: 15px;
             overflow: hidden;
             margin: 10px 0;
+            position: relative;
+            border: 2px solid #555;
         }
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #00ff00, #ffff00);
+            background: linear-gradient(90deg, #00ff00, #44ff44, #88ff88);
             width: 0%;
-            transition: width 0.3s ease;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            font-size: 14px;
+            z-index: 10;
         }
         .results {
             margin: 20px 0;
@@ -92,6 +106,7 @@
         
         <div class="progress-bar">
             <div class="progress-fill" id="progress"></div>
+            <div class="progress-text" id="progress-text">0%</div>
         </div>
         
         <div class="status">
@@ -105,7 +120,6 @@
         </div>
         
         <div class="status">
-            <span>Total Runs: <span id="total-runs">0</span></span>
             <span>Successful: <span id="successful-runs">0</span></span>
             <span>Failed: <span id="failed-runs">0</span></span>
         </div>
@@ -127,17 +141,23 @@
             currentTask: null,
             currentLang: null,
             currentRun: 0,
-            totalRuns: 0,
             successfulRuns: 0,
             failedRuns: 0,
             results: [],
             memoryUsage: 0,
             startTime: performance.now(),
+            endTime: null,
             // Additional state for improved error handling
             lastError: null,
             errorCount: 0,
             detailedMetrics: false,
-            taskTimeout: 30000
+            taskTimeout: 30000,
+            uiUpdateInterval: null,
+            // Enhanced state for multi-task tracking
+            allTasks: [],
+            completedTasks: 0,
+            currentTaskIndex: 0,
+            taskHistory: []
         };
         
         // Update UI elements
@@ -146,18 +166,86 @@
             document.getElementById('status').textContent = state.status;
             document.getElementById('current-task').textContent = state.currentTask || 'None';
             document.getElementById('current-lang').textContent = state.currentLang || 'None';
-            document.getElementById('current-run').textContent = `${state.currentRun}/${state.totalRuns}`;
-            document.getElementById('total-runs').textContent = state.totalRuns;
+            
+            // Update current run display - always use task-based counting for consistency
+            if (state.allTasks.length > 0) {
+                // Use task-based tracking for consistent display
+                document.getElementById('current-run').textContent = `${state.completedTasks}/${state.allTasks.length}`;
+            } else {
+                // Fallback when no tasks are defined yet
+                document.getElementById('current-run').textContent = `0/0`;
+            }
+            
             document.getElementById('successful-runs').textContent = state.successfulRuns;
             document.getElementById('failed-runs').textContent = state.failedRuns;
-            document.getElementById('progress').style.width = `${state.progress}%`;
-            document.getElementById('elapsed-time').textContent = `${((performance.now() - state.startTime) / 1000).toFixed(1)}s`;
             
+            // Calculate progress - use task-based counting for consistency
+            let progressPercent = 0;
+            let progressText = "0%";
+
+            if (state.allTasks.length > 0) {
+                progressPercent = (state.completedTasks / state.allTasks.length) * 100;
+                progressText = `${state.completedTasks}/${state.allTasks.length} (${Math.round(progressPercent)}%)`;
+            } else {
+                progressText = "Initializing...";
+                progressPercent = 0;
+            }
+            
+            // Ensure progress is between 0 and 100
+            progressPercent = Math.min(100, Math.max(0, progressPercent));
+            
+            document.getElementById('progress').style.width = `${progressPercent}%`;
+            document.getElementById('progress-text').textContent = progressText;
+
+            // Calculate elapsed time - always update during running state
+            let elapsedTime;
+            if (state.endTime && state.status === 'benchmarks_finished') {
+                // Only use endTime if benchmarks are completely finished
+                elapsedTime = ((state.endTime - state.startTime) / 1000).toFixed(1);
+            } else if (state.status === 'benchmarks_finished') {
+                // Set final time and stop timer only when all benchmarks are done
+                if (!state.endTime) {
+                    state.endTime = performance.now();
+                }
+                elapsedTime = ((state.endTime - state.startTime) / 1000).toFixed(1);
+                // Stop the UI update timer only after benchmarks are completely finished
+                if (state.uiUpdateInterval) {
+                    clearInterval(state.uiUpdateInterval);
+                    state.uiUpdateInterval = null;
+                }
+            } else {
+                // Continue updating timer during running, completed tasks, etc.
+                elapsedTime = ((performance.now() - state.startTime) / 1000).toFixed(1);
+            }
+            document.getElementById('elapsed-time').textContent = `${elapsedTime}s`;
+
             // Update memory if available
             if (performance.memory) {
                 const memMB = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1);
                 document.getElementById('memory-usage').textContent = `${memMB} MB`;
                 state.memoryUsage = parseFloat(memMB);
+            }
+        }
+
+        // Start UI update timer
+        function startUIUpdates() {
+            // Stop any existing timer first
+            stopUIUpdates();
+            
+            if (!window.benchmarkState.uiUpdateInterval) {
+                window.benchmarkState.uiUpdateInterval = setInterval(() => {
+                    updateUI();
+                }, 200); // Update every 200ms for smooth updates
+                console.log('UI update timer started');
+            }
+        }
+
+        // Stop UI update timer
+        function stopUIUpdates() {
+            if (window.benchmarkState.uiUpdateInterval) {
+                clearInterval(window.benchmarkState.uiUpdateInterval);
+                window.benchmarkState.uiUpdateInterval = null;
+                console.log('UI update timer stopped');
             }
         }
         
@@ -197,8 +285,100 @@
             }
         };
         
-        // Periodic UI updates
-        setInterval(updateUI, 100);
+        // Task management functions for single-window experience
+        window.initializeBenchmarkSuite = function(taskList) {
+            const state = window.benchmarkState;
+
+            // Reset all state
+            state.allTasks = taskList || [];
+            state.completedTasks = 0;
+            state.currentTaskIndex = 0;
+            state.taskHistory = [];
+            state.currentRun = 0;
+            state.successfulRuns = 0;
+            state.failedRuns = 0;
+            state.status = 'initializing';
+            state.currentTask = null;
+            state.currentLang = null;
+            state.progress = 0;
+            state.startTime = performance.now(); // Reset start time
+            state.endTime = null;
+
+            window.logResult(`Initialized benchmark suite with ${state.allTasks.length} tasks`, 'success');
+
+            // Start UI updates and immediately update display
+            startUIUpdates();
+            updateUI();
+
+            // Mark as ready after a brief moment to show initialization
+            setTimeout(() => {
+                state.status = 'ready';
+                updateUI();
+            }, 100);
+        };
+        
+        window.startTask = function(taskName, language) {
+            const state = window.benchmarkState;
+            state.currentTask = taskName;
+            state.currentLang = language;
+            state.status = 'running';
+            state.currentRun = state.completedTasks + 1; // Update current run
+            
+            const taskLabel = `${taskName} (${language})`;
+            window.logResult(`🚀 Starting task: ${taskLabel}`, 'log');
+            updateUI();
+        };
+        
+        window.completeTask = function(taskName, language, success, results) {
+            const state = window.benchmarkState;
+            state.completedTasks++;
+            state.currentRun = state.completedTasks; // Update current run to match completed
+
+            const taskLabel = `${taskName} (${language})`;
+            const taskResult = {
+                task: taskName,
+                language: language,
+                success: success,
+                timestamp: new Date().toISOString(),
+                results: results
+            };
+            state.taskHistory.push(taskResult);
+
+            if (success) {
+                state.successfulRuns++;
+                window.logResult(`✅ Completed: ${taskLabel}`, 'success');
+            } else {
+                state.failedRuns++;
+                window.logResult(`❌ Failed: ${taskLabel}`, 'error');
+            }
+
+            // Update progress percentage
+            if (state.allTasks.length > 0) {
+                state.progress = (state.completedTasks / state.allTasks.length) * 100;
+            }
+
+            // Check if all tasks are completed
+            if (state.completedTasks >= state.allTasks.length) {
+                state.status = 'completed';
+                state.currentTask = null;
+                state.currentLang = null;
+                window.logResult(`🎉 All tasks completed! Success: ${state.successfulRuns}/${state.completedTasks}`, 'success');
+
+                // Show completion message in the browser
+                const completionMsg = `✅ Benchmark Complete!\n\nResults:\n- Total Tasks: ${state.completedTasks}\n- Successful: ${state.successfulRuns}\n- Failed: ${state.failedRuns}\n- Success Rate: ${((state.successfulRuns/state.completedTasks)*100).toFixed(1)}%\n\nYou can now inspect the detailed logs above or close this window.`;
+                window.logResult(completionMsg, 'success');
+            }
+
+            updateUI();
+        };
+
+        // Function to signal that the entire benchmark suite is finished
+        window.finishBenchmarkSuite = function() {
+            const state = window.benchmarkState;
+            state.status = 'benchmarks_finished';
+            window.logResult(`📊 Benchmark suite execution finished`, 'success');
+            updateUI(); // This will trigger the timer to stop
+        };
         
         // Expose benchmark runner functions globally for tests
         window.runTask = async function(taskName, language, taskData) {
@@ -332,6 +512,27 @@
         
         // Initial log
         window.logResult('Benchmark harness loaded successfully', 'success');
+
+        // Start UI updates immediately when page loads
+        function initializePage() {
+            console.log('Page initializing...');
+            
+            // Reset any existing state to defaults
+            window.benchmarkState.status = 'initializing';
+            window.benchmarkState.startTime = performance.now();
+            
+            startUIUpdates();
+            updateUI();
+            
+            console.log('Page initialization complete, UI updates started');
+        }
+
+        // Start updates when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializePage);
+        } else {
+            initializePage();
+        }
     </script>
 </body>
 </html>

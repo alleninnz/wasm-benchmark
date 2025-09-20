@@ -166,6 +166,10 @@ export class BenchmarkRunner {
             }
 
             window.benchmarkState.status = this.cancelled ? 'cancelled' : 'completed';
+            // Ensure progress bar reaches 100% when completed
+            if (!this.cancelled) {
+                window.benchmarkState.progress = 100;
+            }
             window.logResult(`Benchmark suite ${this.cancelled ? 'cancelled' : 'completed'}`,
                 this.cancelled ? 'warning' : 'success');
 
@@ -394,7 +398,16 @@ export class BenchmarkRunner {
      * @private
      */
     _generateInputData(taskName, scale, config) {
+        // Debug: Check what we actually received
+        console.log(`DEBUG _generateInputData: taskName=${taskName}, scale=${scale}`);
+        console.log(`DEBUG config.taskConfigs:`, config.taskConfigs);
+        console.log(`DEBUG config.taskConfigs[${taskName}]:`, config.taskConfigs[taskName]);
+
         const taskConfig = config.taskConfigs[taskName];
+        if (!taskConfig || !taskConfig.scales) {
+            console.error(`ERROR: Missing task configuration for ${taskName}, taskConfig:`, taskConfig);
+            throw new Error(`Missing task configuration for ${taskName}`);
+        }
         const scaleConfig = taskConfig.scales[scale];
 
         // Convert camelCase taskName back to snake_case for switch statement
@@ -630,6 +643,10 @@ export class BenchmarkRunner {
             taskResults.push(...newResults);
 
             window.benchmarkState.status = this.cancelled ? 'cancelled' : 'completed';
+            // Ensure progress bar reaches 100% when completed
+            if (!this.cancelled) {
+                window.benchmarkState.progress = 100;
+            }
             window.logResult(`Single task benchmark ${this.cancelled ? 'cancelled' : 'completed'}`,
                 this.cancelled ? 'warning' : 'success');
 
