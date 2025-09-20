@@ -66,7 +66,7 @@ endef
 
 # Smart cleanup function with statistics
 define smart_clean
-	@echo -e "$(CYAN)$(BOLD)[CLEANUP]$(NC) Cleaning $(1)..."
+	@echo -e "$(CYAN)$(BOLD)[CLEANUP]$(NC) 🧹 Cleaning $(1)..."
 	@BEFORE_SIZE=$$(du -sk $(2) 2>/dev/null | cut -f1 || echo "0"); \
 	FILE_COUNT=$$(find $(2) $(3) 2>/dev/null | wc -l | tr -d ' '); \
 	if [ "$$FILE_COUNT" -gt 0 ]; then \
@@ -95,36 +95,36 @@ endef
 
 # Function to start development server if not already running
 define start_dev_server
-	@echo -e "$(CYAN)$(BOLD)[DEV-SERVER]$(NC) Checking development server status..."
+	@echo -e "$(CYAN)$(BOLD)[DEV-SERVER]$(NC) 🔍 Checking development server status..."
 	@if ! pgrep -f "dev-server.js" > /dev/null 2>&1; then \
-		echo -e "$(CYAN)$(BOLD)[DEV-SERVER]$(NC) Starting development server in background..."; \
+		echo -e "$(CYAN)$(BOLD)[DEV-SERVER]$(NC) 🚀 Starting development server in background..."; \
 		npm run dev || { echo -e "$(RED)$(BOLD)[ERROR]$(NC) Failed to start development server"; exit 1; }; \
 		sleep 2; \
-		echo -e "$(GREEN)$(BOLD)[DEV-SERVER]$(NC) Development server started successfully"; \
+		echo -e "$(GREEN)$(BOLD)[DEV-SERVER]$(NC) ✅ Development server started successfully"; \
 	else \
-		echo -e "$(GREEN)$(BOLD)[DEV-SERVER]$(NC) Development server already running"; \
+		echo -e "$(GREEN)$(BOLD)[DEV-SERVER]$(NC) ✅ Development server already running"; \
 	fi
 endef
 
 help: ## Show this help message
-	@echo -e "$(BOLD)WebAssembly Benchmark Automation$(NC)"
+	@echo -e "$(BOLD)🚀 WebAssembly Benchmark Automation 🚀$(NC)"
 	@echo "================================="
 	@echo ""
-	@echo -e "$(BOLD)Core Workflow:$(NC)"
-	@echo -e "  $(CYAN)make init$(NC)          Initialize environment and dependencies"
-	@echo -e "  $(CYAN)make build$(NC)         Build all WebAssembly modules" 
-	@echo -e "  $(CYAN)make run$(NC)           Run browser benchmark suite"
-	@echo -e "  $(CYAN)make analyze$(NC)       Run statistical analysis and generate plots"
-	@echo -e "  $(CYAN)make all$(NC)           Run complete experiment pipeline"
+	@echo -e "$(BOLD)⚡ Core Workflow:$(NC)"
+	@echo -e "  $(CYAN)make init$(NC)          🔧 Initialize environment and dependencies"
+	@echo -e "  $(CYAN)make build$(NC)         📦 Build all WebAssembly modules" 
+	@echo -e "  $(CYAN)make run$(NC)           🏃 Run browser benchmark suite"
+	@echo -e "  $(CYAN)make analyze$(NC)       📊 Run statistical analysis and generate plots"
+	@echo -e "  $(CYAN)make all$(NC)           🎯 Run complete experiment pipeline"
 	@echo ""
-	@echo -e "$(BOLD)Available Targets:$(NC)"
+	@echo -e "$(BOLD)📋 Available Targets:$(NC)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[0;36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
-	@echo -e "$(BOLD)Quick Examples:$(NC)"
-	@echo -e "  $(GREEN)make check-deps$(NC)    Check if all required tools are installed"
-	@echo -e "  $(GREEN)make status$(NC)        Show current project status"
-	@echo -e "  $(GREEN)make all-quick$(NC)     Run quick experiment for testing"
-	@echo -e "  $(GREEN)make clean-all$(NC)     Clean everything and start fresh"
+	@echo -e "$(BOLD)💡 Quick Examples:$(NC)"
+	@echo -e "  $(GREEN)make check-deps$(NC)    ✅ Check if all required tools are installed"
+	@echo -e "  $(GREEN)make status$(NC)        📈 Show current project status"
+	@echo -e "  $(GREEN)make all-quick$(NC)     ⚡ Run quick experiment for testing"
+	@echo -e "  $(GREEN)make clean-all$(NC)     🧹 Clean everything and start fresh"
 
 # ============================================================================
 # Environment Setup Targets
@@ -137,8 +137,8 @@ init: $(NODE_MODULES) versions.lock ## Initialize environment and install depend
 		exit 1; \
 	fi
 	python3 -m pip install --user -r requirements.txt
-	$(call log_success,Python dependencies installed)
-	$(call log_success,Environment initialized successfully)
+	$(call log_success,🐍 Python dependencies installed)
+	$(call log_success,🎉 Environment initialized successfully)
 	@echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Ready to run: make build"
 
 $(NODE_MODULES): package.json
@@ -148,7 +148,7 @@ $(NODE_MODULES): package.json
 		exit 1; \
 	fi
 	npm ci
-	$(call log_success,Node.js dependencies installed)
+	$(call log_success,📦 Node.js dependencies installed)
 
 versions.lock: scripts/fingerprint.sh
 	$(call log_step,Generating environment fingerprint...)
@@ -158,7 +158,7 @@ versions.lock: scripts/fingerprint.sh
 	fi
 	chmod +x scripts/fingerprint.sh
 	scripts/fingerprint.sh
-	$(call log_success,Environment fingerprint generated)
+	$(call log_success,🔐 Environment fingerprint generated)
 
 # ============================================================================
 # Configuration Targets
@@ -167,37 +167,37 @@ versions.lock: scripts/fingerprint.sh
 build-config: ## Build configuration file (bench.json)
 	$(call log_step,Building configuration file...)
 	node scripts/build_config.js
-	$(call log_success,Configuration files built successfully)
+	$(call log_success,⚙️ Configuration files built successfully)
 
 build-config-quick: ## Build quick configuration file (bench-quick.json)
 	$(call log_step,Building quick configuration file...)
 	node scripts/build_config.js --quick
-	$(call log_success,Quick configuration file built successfully)
+	$(call log_success,⚡ Quick configuration file built successfully)
 
 # ============================================================================
 # Build Targets
 # ============================================================================
 
 build: build-rust build-tinygo ## Build all WebAssembly modules
-	$(call log_success,All modules built successfully)
+	$(call log_success,🎯 All modules built successfully)
 
 build-rust: ## Build Rust WebAssembly modules
 	$(call log_step,Building Rust modules...)
 	$(call check_script_exists,scripts/build_rust.sh)
 	scripts/build_rust.sh
-	$(call log_success,Rust modules built)
+	$(call log_success,🦀 Rust modules built)
 
 build-tinygo: ## Build TinyGo WebAssembly modules
 	$(call log_step,Building TinyGo modules...)
 	$(call check_script_exists,scripts/build_tinygo.sh)
 	scripts/build_tinygo.sh
-	$(call log_success,TinyGo modules built)
+	$(call log_success,🐹 TinyGo modules built)
 
 build-all: ## Build all modules with optimization and size reporting
 	$(call log_step,Building all modules with full pipeline...)
 	$(call check_script_exists,scripts/build_all.sh)
 	scripts/build_all.sh
-	$(call log_success,Complete build pipeline finished)
+	$(call log_success,🚀 Complete build pipeline finished)
 
 # ============================================================================
 # Execution Targets
@@ -208,21 +208,21 @@ run: $(NODE_MODULES) build-config ## Run browser benchmark suite
 	$(call start_dev_server)
 	$(call check_script_exists,scripts/run_bench.js)
 	node scripts/run_bench.js
-	$(call log_success,Benchmarks completed)
+	$(call log_success,🏁 Benchmarks completed)
 
 run-headed: $(NODE_MODULES) build-config ## Run benchmarks with visible browser
 	$(call log_step,Running benchmarks with headed browser...)
 	$(call start_dev_server)
 	$(call check_script_exists,scripts/run_bench.js)
 	node scripts/run_bench.js --headed
-	$(call log_success,Headed benchmarks completed)
+	$(call log_success,👁️ Headed benchmarks completed)
 
 run-quick: $(NODE_MODULES) build-config-quick ## Run quick benchmarks for development (fast feedback ~2-3 min vs 30+ min full suite)
 	$(call log_step,Running quick benchmark suite for development feedback...)
 	$(call start_dev_server)
 	$(call check_script_exists,scripts/run_bench.js)
 	node scripts/run_bench.js --quick
-	$(call log_success,Quick benchmarks completed - results saved with timestamp)
+	$(call log_success,⚡ Quick benchmarks completed - results saved with timestamp)
 
 # ============================================================================
 # Analysis Targets
@@ -237,7 +237,7 @@ qc: ## Run quality control on benchmark data
 		else \
 			$(call log_warning,analysis/qc.py not found, skipping quality control); \
 		fi; \
-		$(call log_success,Quality control completed for $$LATEST_RESULT); \
+		$(call log_success,🔍 Quality control completed for $$LATEST_RESULT); \
 	else \
 		$(call log_error,No benchmark results found); \
 		exit 1; \
@@ -257,7 +257,7 @@ analyze: ## Run statistical analysis and generate plots
 		else \
 			$(call log_warning,analysis/plots.py not found, skipping plots); \
 		fi; \
-		$(call log_success,Analysis completed for $$LATEST_RESULT); \
+		$(call log_success,📊 Analysis completed for $$LATEST_RESULT); \
 	else \
 		$(call log_error,No benchmark results found); \
 		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Run 'make run' first to generate benchmark data"; \
@@ -269,7 +269,7 @@ analyze: ## Run statistical analysis and generate plots
 # ============================================================================
 
 all: init build run qc analyze ## Run complete experiment pipeline
-	$(call log_success,Complete experiment pipeline finished!)
+	$(call log_success,🎉 Complete experiment pipeline finished!)
 	@echo ""
 	@LATEST_RESULT=$(call find_latest_result); \
 	if [ -n "$$LATEST_RESULT" ]; then \
@@ -277,7 +277,7 @@ all: init build run qc analyze ## Run complete experiment pipeline
 	fi
 
 all-quick: init build run-quick qc analyze ## Run quick experiment for development/testing
-	$(call log_success,Quick experiment pipeline completed!)
+	$(call log_success,⚡ Quick experiment pipeline completed!)
 
 # ============================================================================
 # Cleanup Targets
@@ -291,7 +291,7 @@ clean: ## Clean build artifacts and temporary files
 	find . -name "*.tmp" -delete 2>/dev/null || true
 	find . -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -name "*.pyc" -delete 2>/dev/null || true
-	$(call log_success,Build artifacts cleaned)
+	$(call log_success,🧹 Build artifacts cleaned)
 
 clean-results: ## Clean all benchmark results
 	$(call log_warning,Cleaning all benchmark results...)
@@ -299,7 +299,7 @@ clean-results: ## Clean all benchmark results
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		rm -rf results/* 2>/dev/null || true; \
-		$(call log_success,Results cleaned); \
+		$(call log_success,🗑️ Results cleaned); \
 	else \
 		$(call log_info,Operation cancelled); \
 	fi
@@ -317,7 +317,7 @@ clean-all: clean clean-results ## Clean everything including dependencies and ca
 		rm -f dev-server.log 2>/dev/null || true; \
 		find tasks/ -name 'target' -type d -exec rm -rf {} + 2>/dev/null || true; \
 		find tasks/ -name 'Cargo.lock' -delete 2>/dev/null || true; \
-		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Complete cleanup finished"; \
+		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 🧹 Complete cleanup finished"; \
 		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Run 'make init' to reinitialize"; \
 	else \
 		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Operation cancelled"; \
@@ -328,7 +328,7 @@ clean-all: clean clean-results ## Clean everything including dependencies and ca
 # ============================================================================
 
 lint: lint-python lint-rust lint-go lint-js ## Run all code quality checks
-	$(call log_success,All linting completed)
+	$(call log_success,✨ All linting completed successfully! ✨)
 
 lint-python: ## Run Python code quality checks with ruff
 	$(call log_step,Running Python code quality checks with ruff...)
@@ -336,7 +336,7 @@ lint-python: ## Run Python code quality checks with ruff
 	if [ -n "$$python_files" ]; then \
 		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Using ruff for Python linting..."; \
 		if ruff check . --exclude="node_modules,__pycache__"; then \
-			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Python linting completed - no issues found"; \
+			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 🐍 Python linting completed - no issues found"; \
 		else \
 			echo -e "$(RED)$(BOLD)[ERROR]$(NC) Python linting failed - issues found"; \
 			echo -e "$(YELLOW)$(BOLD)[FIX]$(NC) To automatically fix issues, run:"; \
@@ -359,7 +359,7 @@ lint-rust: ## Run Rust code quality checks
 				(cd "$$rust_project" && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings) || exit 1; \
 			fi; \
 		done; \
-		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Rust linting completed"; \
+		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 🦀 Rust linting completed"; \
 	else \
 		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Rust projects found, skipping Rust lint"; \
 	fi
@@ -380,7 +380,7 @@ lint-go: ## Run Go code quality checks
 				fi; \
 			fi; \
 		done; \
-		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Go linting completed"; \
+		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 🐹 Go linting completed"; \
 	else \
 		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Go files found, skipping Go lint"; \
 	fi
@@ -409,7 +409,7 @@ lint-js: ## Run JavaScript code quality checks
 				--ignore-pattern "tasks/**" \
 				--ignore-pattern "configs/**" \
 				--no-error-on-unmatched-pattern; then \
-				echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) JavaScript linting completed successfully"; \
+				echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 📜 JavaScript linting completed successfully"; \
 			else \
 				echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) ESLint found issues in JavaScript code"; \
 				echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Fix with: $(NODE_MODULES)/.bin/eslint --fix scripts/ harness/ tests/"; \
@@ -425,7 +425,7 @@ lint-js: ## Run JavaScript code quality checks
 	fi
 
 format: format-python format-rust format-go ## Format all code
-	$(call log_success,All code formatting completed)
+	$(call log_success,✨ All code formatting completed successfully! ✨)
 
 format-python: ## Format Python code with black
 	$(call log_step,Formatting Python code with black...)
@@ -433,7 +433,7 @@ format-python: ## Format Python code with black
 	if [ -n "$$python_files" ]; then \
 		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Using black for Python formatting..."; \
 		python3 -m black . --exclude="node_modules|__pycache__"; \
-		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Python code formatted with black"; \
+		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 🐍 Python code formatted with black"; \
 	else \
 		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Python files found, skipping Python format"; \
 	fi
@@ -448,7 +448,7 @@ format-rust: ## Format Rust code
 				(cd "$$rust_project" && cargo fmt); \
 			fi; \
 		done; \
-		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Rust code formatted"; \
+		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 🦀 Rust code formatted"; \
 	else \
 		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Rust projects found, skipping Rust format"; \
 	fi
@@ -463,7 +463,7 @@ format-go: ## Format Go code
 				(cd "$$go_dir" && gofmt -w .); \
 			fi; \
 		done; \
-		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) Go code formatted"; \
+		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 🐹 Go code formatted"; \
 	else \
 		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Go files found, skipping Go format"; \
 	fi
@@ -481,7 +481,7 @@ test: ## Run tests (JavaScript and Python)
 			python3 -m pytest tests/ -v && TEST_RAN=true; \
 		fi; \
 		if [ "$$TEST_RAN" = "true" ]; then \
-			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) All tests completed"; \
+			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 🧪 All tests completed"; \
 		else \
 			echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No suitable test runner found (npm or pytest)"; \
 			echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Install with: npm install or pip install pytest"; \
@@ -495,17 +495,17 @@ validate: ## Run WASM task validation suite
 	$(call log_step,Running WASM task validation...)
 	$(call check_script_exists,scripts/validate-tasks.sh)
 	@scripts/validate-tasks.sh
-	$(call log_success,Task validation completed)
+	$(call log_success,✅ Task validation completed)
 
 # ============================================================================
 # Information and Status Targets
 # ============================================================================
 
 status: ## Show current project status
-	@echo -e "$(BOLD)Project Status$(NC)"
+	@echo -e "$(BOLD)📊 Project Status 📊$(NC)"
 	@echo "=============="
 	@echo ""
-	@echo -e "$(BOLD)Environment:$(NC)"
+	@echo -e "$(BOLD)🔧 Environment:$(NC)"
 	@if python3 -c "import sys; print('Python', sys.version.split()[0])" 2>/dev/null; then \
 		echo -e "  $(GREEN)✓$(NC) Python ready"; \
 	else \
@@ -522,13 +522,13 @@ status: ## Show current project status
 		echo -e "  $(RED)✗$(NC) Environment not fingerprinted (run '$(CYAN)make init$(NC)')"; \
 	fi
 	@echo ""
-	@echo -e "$(BOLD)Build Artifacts:$(NC)"
+	@echo -e "$(BOLD)📦 Build Artifacts:$(NC)"
 	@RUST_COUNT=$$(find builds/rust -name "*.wasm" 2>/dev/null | wc -l | tr -d ' '); \
-	echo "  Rust modules: $$RUST_COUNT"
+	echo "  🦀 Rust modules: $$RUST_COUNT"
 	@TINYGO_COUNT=$$(find builds/tinygo -name "*.wasm" 2>/dev/null | wc -l | tr -d ' '); \
-	echo "  TinyGo modules: $$TINYGO_COUNT"
+	echo "  🐹 TinyGo modules: $$TINYGO_COUNT"
 	@echo ""
-	@echo -e "$(BOLD)Results:$(NC)"
+	@echo -e "$(BOLD)📈 Results:$(NC)"
 	@RESULT_COUNT=$$(ls -d results/20* 2>/dev/null | wc -l | tr -d ' '); \
 	echo "  Experiment runs: $$RESULT_COUNT"; \
 	if [ "$$RESULT_COUNT" -gt 0 ] 2>/dev/null; then \
@@ -537,14 +537,14 @@ status: ## Show current project status
 	fi
 
 info: ## Show system information
-	@echo -e "$(BOLD)System Information$(NC)"
+	@echo -e "$(BOLD)💻 System Information 💻$(NC)"
 	@echo "=================="
-	@echo "OS: $$(uname -s) $$(uname -r)"
-	@echo "Architecture: $$(uname -m)"
+	@echo "🖥️  OS: $$(uname -s) $$(uname -r)"
+	@echo "🏗️  Architecture: $$(uname -m)"
 	@CPU_CORES=$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 'unknown'); \
-	echo "CPU cores: $$CPU_CORES"
+	echo "⚡ CPU cores: $$CPU_CORES"
 	@echo ""
-	@echo -e "$(BOLD)Tool Versions:$(NC)"
+	@echo -e "$(BOLD)🛠️  Tool Versions:$(NC)"
 	@printf "  Make: %s\n" "$$(make --version 2>/dev/null | head -n1 || echo 'unknown')"
 	@printf "  Node.js: %s\n" "$$(node --version 2>/dev/null || echo 'not found')"
 	@printf "  Python: %s\n" "$$(python3 --version 2>/dev/null || echo 'not found')"
@@ -553,66 +553,66 @@ info: ## Show system information
 	@printf "  TinyGo: %s\n" "$$(tinygo version 2>/dev/null || echo 'not found')"
 
 check-deps: ## Check if all required dependencies are available
-	@echo -e "$(BOLD)Dependency Check$(NC)"
+	@echo -e "$(BOLD)🔍 Dependency Check 🔍$(NC)"
 	@echo "================"
 	@echo ""
-	@echo -e "$(BOLD)Required Tools:$(NC)"
+	@echo -e "$(BOLD)🛠️  Required Tools:$(NC)"
 	@if command -v rustc >/dev/null 2>&1; then \
 		version=$$(rustc --version 2>/dev/null); \
-		echo -e "  $(GREEN)✓$(NC) rustc:     $$version"; \
+		echo -e "  $(GREEN)✓$(NC) 🦀 rustc:     $$version"; \
 	else \
-		echo -e "  $(RED)✗$(NC) rustc:     not found"; \
+		echo -e "  $(RED)✗$(NC) 🦀 rustc:     not found"; \
 	fi
 	@if command -v cargo >/dev/null 2>&1; then \
 		version=$$(cargo --version 2>/dev/null); \
-		echo -e "  $(GREEN)✓$(NC) cargo:     $$version"; \
+		echo -e "  $(GREEN)✓$(NC) 📦 cargo:     $$version"; \
 	else \
-		echo -e "  $(RED)✗$(NC) cargo:     not found"; \
+		echo -e "  $(RED)✗$(NC) 📦 cargo:     not found"; \
 	fi
 	@if command -v go >/dev/null 2>&1; then \
 		version=$$(go version 2>/dev/null); \
-		echo -e "  $(GREEN)✓$(NC) go:        $$version"; \
+		echo -e "  $(GREEN)✓$(NC) 🐹 go:        $$version"; \
 	else \
-		echo -e "  $(RED)✗$(NC) go:        not found"; \
+		echo -e "  $(RED)✗$(NC) 🐹 go:        not found"; \
 	fi
 	@if command -v tinygo >/dev/null 2>&1; then \
 		version=$$(tinygo version 2>/dev/null); \
-		echo -e "  $(GREEN)✓$(NC) tinygo:    $$version"; \
+		echo -e "  $(GREEN)✓$(NC) 🐹 tinygo:    $$version"; \
 	else \
-		echo -e "  $(RED)✗$(NC) tinygo:    not found"; \
+		echo -e "  $(RED)✗$(NC) 🐹 tinygo:    not found"; \
 	fi
 	@if command -v node >/dev/null 2>&1; then \
 		version=$$(node --version 2>/dev/null); \
-		echo -e "  $(GREEN)✓$(NC) node:      $$version"; \
+		echo -e "  $(GREEN)✓$(NC) 📜 node:      $$version"; \
 	else \
-		echo -e "  $(RED)✗$(NC) node:      not found"; \
+		echo -e "  $(RED)✗$(NC) 📜 node:      not found"; \
 	fi
 	@if command -v python3 >/dev/null 2>&1; then \
 		version=$$(python3 --version 2>/dev/null); \
-		echo -e "  $(GREEN)✓$(NC) python3:   $$version"; \
+		echo -e "  $(GREEN)✓$(NC) 🐍 python3:   $$version"; \
 	else \
-		echo -e "  $(RED)✗$(NC) python3:   not found"; \
+		echo -e "  $(RED)✗$(NC) 🐍 python3:   not found"; \
 	fi
 	@if command -v pip3 >/dev/null 2>&1; then \
 		version=$$(pip3 --version 2>/dev/null | head -n1); \
-		echo -e "  $(GREEN)✓$(NC) pip3:      $$version"; \
+		echo -e "  $(GREEN)✓$(NC) 📦 pip3:      $$version"; \
 	else \
-		echo -e "  $(RED)✗$(NC) pip3:      not found"; \
+		echo -e "  $(RED)✗$(NC) 📦 pip3:      not found"; \
 	fi
 	@echo ""
-	@echo -e "$(BOLD)Optional WebAssembly Tools:$(NC)"
+	@echo -e "$(BOLD)🔧 Optional WebAssembly Tools:$(NC)"
 	@if command -v wasm-strip >/dev/null 2>&1; then \
 		version=$$(wasm-strip --version 2>/dev/null || echo "available"); \
-		echo -e "  $(GREEN)✓$(NC) wasm-strip:  $$version"; \
+		echo -e "  $(GREEN)✓$(NC) 🏗️  wasm-strip:  $$version"; \
 	else \
-		echo -e "  $(YELLOW)○$(NC) wasm-strip:  not found (from wabt package)"; \
+		echo -e "  $(YELLOW)○$(NC) 🏗️  wasm-strip:  not found (from wabt package)"; \
 	fi
 	@if command -v wasm-opt >/dev/null 2>&1; then \
 		version=$$(wasm-opt --version 2>/dev/null || echo "available"); \
-		echo -e "  $(GREEN)✓$(NC) wasm-opt:    $$version"; \
+		echo -e "  $(GREEN)✓$(NC) ⚡ wasm-opt:    $$version"; \
 	else \
-		echo -e "  $(YELLOW)○$(NC) wasm-opt:    not found (from binaryen package)"; \
+		echo -e "  $(YELLOW)○$(NC) ⚡ wasm-opt:    not found (from binaryen package)"; \
 	fi
 	@echo ""
 	$(call log_info,Install missing tools with:)
-	@echo -e "  $(CYAN)brew install rust go tinygo node python wabt binaryen$(NC)"
+	@echo -e "  $(CYAN)🍺 brew install rust go tinygo node python wabt binaryen$(NC)"
