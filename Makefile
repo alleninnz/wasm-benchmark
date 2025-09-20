@@ -93,6 +93,19 @@ define check_command
 $(shell command -v $(1) >/dev/null 2>&1 && echo "$(1)" || echo "")
 endef
 
+# Function to start development server if not already running
+define start_dev_server
+	@echo -e "$(CYAN)$(BOLD)[DEV-SERVER]$(NC) Checking development server status..."
+	@if ! pgrep -f "dev-server.js" > /dev/null 2>&1; then \
+		echo -e "$(CYAN)$(BOLD)[DEV-SERVER]$(NC) Starting development server in background..."; \
+		npm run dev || { echo -e "$(RED)$(BOLD)[ERROR]$(NC) Failed to start development server"; exit 1; }; \
+		sleep 2; \
+		echo -e "$(GREEN)$(BOLD)[DEV-SERVER]$(NC) Development server started successfully"; \
+	else \
+		echo -e "$(GREEN)$(BOLD)[DEV-SERVER]$(NC) Development server already running"; \
+	fi
+endef
+
 help: ## Show this help message
 	@echo -e "$(BOLD)WebAssembly Benchmark Automation$(NC)"
 	@echo "================================="
@@ -192,18 +205,21 @@ build-all: ## Build all modules with optimization and size reporting
 
 run: $(NODE_MODULES) build-config ## Run browser benchmark suite
 	$(call log_step,Running browser benchmarks...)
+	$(call start_dev_server)
 	$(call check_script_exists,scripts/run_bench.js)
 	node scripts/run_bench.js
 	$(call log_success,Benchmarks completed)
 
 run-headed: $(NODE_MODULES) build-config ## Run benchmarks with visible browser
 	$(call log_step,Running benchmarks with headed browser...)
+	$(call start_dev_server)
 	$(call check_script_exists,scripts/run_bench.js)
 	node scripts/run_bench.js --headed
 	$(call log_success,Headed benchmarks completed)
 
 run-quick: $(NODE_MODULES) build-config-quick ## Run quick benchmarks for development (fast feedback ~2-3 min vs 30+ min full suite)
 	$(call log_step,Running quick benchmark suite for development feedback...)
+	$(call start_dev_server)
 	$(call check_script_exists,scripts/run_bench.js)
 	node scripts/run_bench.js --quick
 	$(call log_success,Quick benchmarks completed - results saved with timestamp)

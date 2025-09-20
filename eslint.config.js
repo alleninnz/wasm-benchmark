@@ -78,7 +78,7 @@ export default [
             'keyword-spacing': 'warn',
             'space-infix-ops': 'warn',
             'eol-last': 'warn',
-            'no-trailing-spaces': 'warn',
+            'no-trailing-spaces': 'off',
             'max-len': ['warn', {
                 code: 120,
                 ignoreUrls: true,
