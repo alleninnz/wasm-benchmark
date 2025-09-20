@@ -26,6 +26,7 @@ class EffectSize(Enum):
     MEDIUM = "medium"
     LARGE = "large"
 
+
 @dataclass
 class QCConfiguration:
     """Quality Control configuration parameters"""
@@ -69,6 +70,7 @@ class ConfigurationData:
     statistics: StatisticsConfiguration
     plots: PlotsConfiguration
 
+
 @dataclass
 class BenchmarkSample:
     """Single benchmark execution sample"""
@@ -104,6 +106,7 @@ class BenchmarkResult:
     duration: int
     id: str
 
+
 @dataclass
 class RawBenchmarkData:
     """Raw benchmark data as loaded from JSON files"""
@@ -112,6 +115,7 @@ class RawBenchmarkData:
     results: List[BenchmarkResult]
     file_path: str
     load_timestamp: str
+
 
 @dataclass
 class TaskResult:
@@ -125,6 +129,7 @@ class TaskResult:
     failed_runs: int
     success_rate: float
 
+
 @dataclass
 class CleanedDataset:
     """Dataset after quality control and cleaning"""
@@ -132,6 +137,7 @@ class CleanedDataset:
     task_results: List[TaskResult]
     removed_outliers: List[BenchmarkSample]
     cleaning_log: List[str]
+
 
 @dataclass
 class QualityMetrics:
@@ -147,12 +153,14 @@ class QualityMetrics:
     data_quality: DataQuality
     quality_issues: List[str]
 
+
 @dataclass
 class QualityAssessment:
     quality_summary: Optional[Dict[str, QualityMetrics]]
     overall_quality: DataQuality
     quality_reason: str
     quality_stats: Dict[str, int]
+
 
 @dataclass
 class StatisticalResult:
@@ -193,6 +201,7 @@ class EffectSizeResult:
     pooled_std: float
     magnitude: float
     interpretation: str
+    meets_minimum_detectable_effect: bool
 
 
 @dataclass
@@ -205,10 +214,6 @@ class ComparisonResult:
     tinygo_stats: StatisticalResult
     t_test: TTestResult
     effect_size: EffectSizeResult
-    rust_quality: Optional[QualityMetrics]
-    tinygo_quality: Optional[QualityMetrics]
-    overall_quality: DataQuality
-    recommendation: str
     confidence_level: str
 
 
@@ -258,4 +263,3 @@ class AnalysisReport:
     recommendations: Dict[str, DecisionMetrics]
     plots_generated: List[str]
     analysis_quality: DataQuality
-

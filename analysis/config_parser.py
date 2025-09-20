@@ -9,8 +9,12 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
-from data_models import (ConfigurationData, PlotsConfiguration,
-                         QCConfiguration, StatisticsConfiguration)
+from data_models import (
+    ConfigurationData,
+    PlotsConfiguration,
+    QCConfiguration,
+    StatisticsConfiguration,
+)
 
 
 class ConfigParser:
@@ -37,7 +41,7 @@ class ConfigParser:
             raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
 
         try:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
+            with open(self.config_path, "r", encoding="utf-8") as f:
                 config_data = yaml.safe_load(f)
         except yaml.YAMLError as e:
             raise yaml.YAMLError(f"Failed to parse YAML configuration: {e}")
@@ -46,64 +50,80 @@ class ConfigParser:
             raise ValueError("Configuration file must contain a YAML object")
 
         # Validate required sections exist
-        required_sections = ['qc', 'statistics', 'plots']
-        missing_sections = [section for section in required_sections
-                          if section not in config_data]
+        required_sections = ["qc", "statistics", "plots"]
+        missing_sections = [
+            section for section in required_sections if section not in config_data
+        ]
         if missing_sections:
-            raise ValueError(f"Missing required configuration sections: {missing_sections}")
+            raise ValueError(
+                f"Missing required configuration sections: {missing_sections}"
+            )
 
         # Parse QC configuration
-        qc_section = config_data['qc']
+        qc_section = config_data["qc"]
         qc_config = QCConfiguration(
-            max_coefficient_variation=qc_section.get('max_coefficient_variation', 0.15),
-            outlier_iqr_multiplier=qc_section.get('outlier_iqr_multiplier', 1.5),
-            min_valid_samples=qc_section.get('min_valid_samples', 80),
-            failure_rate=qc_section.get('failure_rate', 0.1),
-            quality_invalid_threshold=qc_section.get('quality_invalid_threshold', 0.1),
-            quality_high_risk_threshold=qc_section.get('quality_high_risk_threshold', 0.3),
-            quality_warning_threshold=qc_section.get('quality_warning_threshold', 0.3),
+            max_coefficient_variation=qc_section.get("max_coefficient_variation", 0.15),
+            outlier_iqr_multiplier=qc_section.get("outlier_iqr_multiplier", 1.5),
+            min_valid_samples=qc_section.get("min_valid_samples", 80),
+            failure_rate=qc_section.get("failure_rate", 0.1),
+            quality_invalid_threshold=qc_section.get("quality_invalid_threshold", 0.1),
+            quality_high_risk_threshold=qc_section.get(
+                "quality_high_risk_threshold", 0.3
+            ),
+            quality_warning_threshold=qc_section.get("quality_warning_threshold", 0.3),
         )
 
         # Parse statistics configuration
-        stats_section = config_data['statistics']
-        effect_size_thresholds = stats_section.get('effect_size_thresholds', {})
+        stats_section = config_data["statistics"]
+        effect_size_thresholds = stats_section.get("effect_size_thresholds", {})
         # Ensure we have the required effect size thresholds
         default_thresholds = {"small": 0.3, "medium": 0.6, "large": 1.0}
         default_thresholds.update(effect_size_thresholds)
 
         stats_config = StatisticsConfiguration(
-            confidence_level=stats_section.get('confidence_level', 0.95),
-            significance_alpha=stats_section.get('significance_alpha', 0.05),
+            confidence_level=stats_section.get("confidence_level", 0.95),
+            significance_alpha=stats_section.get("significance_alpha", 0.05),
             effect_size_thresholds=default_thresholds,
-            minimum_detectable_effect=stats_section.get('minimum_detectable_effect', 0.3),
+            minimum_detectable_effect=stats_section.get(
+                "minimum_detectable_effect", 0.3
+            ),
         )
 
         # Parse plots configuration
-        plots_section = config_data['plots']
+        plots_section = config_data["plots"]
 
         # Handle font sizes - support nested structure
-        font_sizes = plots_section.get('font_sizes', {
-            "default": 11,
-            "labels": 12,
-            "titles": 14,
-        })
+        font_sizes = plots_section.get(
+            "font_sizes",
+            {
+                "default": 11,
+                "labels": 12,
+                "titles": 14,
+            },
+        )
 
         # Handle figure sizes - support nested structure
-        figure_sizes = plots_section.get('figure_sizes', {
-            "basic": [10, 6],
-            "detailed": [16, 12],
-        })
+        figure_sizes = plots_section.get(
+            "figure_sizes",
+            {
+                "basic": [10, 6],
+                "detailed": [16, 12],
+            },
+        )
 
         # Handle color scheme - default colors for rust and tinygo
-        color_scheme = plots_section.get('color_scheme', {
-            "rust": "#CE422B",
-            "tinygo": "#00ADD8",
-        })
+        color_scheme = plots_section.get(
+            "color_scheme",
+            {
+                "rust": "#CE422B",
+                "tinygo": "#00ADD8",
+            },
+        )
 
         plots_config = PlotsConfiguration(
-            dpi_basic=plots_section.get('dpi_basic', 150),
-            dpi_detailed=plots_section.get('dpi_detailed', 300),
-            output_format=plots_section.get('output_format', 'png'),
+            dpi_basic=plots_section.get("dpi_basic", 150),
+            dpi_detailed=plots_section.get("dpi_detailed", 300),
+            output_format=plots_section.get("output_format", "png"),
             figure_sizes=figure_sizes,
             font_sizes=font_sizes,
             color_scheme=color_scheme,

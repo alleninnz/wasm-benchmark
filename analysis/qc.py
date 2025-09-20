@@ -13,16 +13,24 @@ from pathlib import Path
 from typing import List, Tuple
 
 from analysis.config_parser import ConfigParser
-from analysis.data_models import (BenchmarkResult, BenchmarkSample,
-                                  CleanedDataset, DataQuality, QCConfiguration,
-                                  QualityAssessment, QualityMetrics,
-                                  TaskResult)
+from analysis.data_models import (
+    BenchmarkResult,
+    BenchmarkSample,
+    CleanedDataset,
+    DataQuality,
+    QCConfiguration,
+    QualityAssessment,
+    QualityMetrics,
+    TaskResult,
+)
 
 
 class QualityController:
     """Data quality control and validation for benchmark analysis pipeline"""
 
-    def __init__(self, benchmark_results: List[BenchmarkResult], qc_config: QCConfiguration):
+    def __init__(
+        self, benchmark_results: List[BenchmarkResult], qc_config: QCConfiguration
+    ):
         """
         Initialize quality controller with benchmark results and configuration parameters.
 
@@ -46,7 +54,9 @@ class QualityController:
             CleanedDataset: Validated and cleaned benchmark data ready for analysis
         """
         self.cleaning_log.clear()
-        self.cleaning_log.append(f"Starting quality control pipeline at {datetime.now().isoformat()}")
+        self.cleaning_log.append(
+            f"Starting quality control pipeline at {datetime.now().isoformat()}"
+        )
 
         # Extract all samples from benchmark results
         all_samples = []
@@ -54,7 +64,9 @@ class QualityController:
             for sample in result.samples:
                 all_samples.append(sample)
 
-        self.cleaning_log.append(f"Extracted {len(all_samples)} samples from {len(self.benchmark_results)} benchmark results")
+        self.cleaning_log.append(
+            f"Extracted {len(all_samples)} samples from {len(self.benchmark_results)} benchmark results"
+        )
 
         # Group samples by task, language, and scale
         task_groups = {}
@@ -64,7 +76,9 @@ class QualityController:
                 task_groups[key] = []
             task_groups[key].append(sample)
 
-        self.cleaning_log.append(f"Grouped samples into {len(task_groups)} task-language-scale combinations")
+        self.cleaning_log.append(
+            f"Grouped samples into {len(task_groups)} task-language-scale combinations"
+        )
 
         # Process each group: validate counts, detect outliers, assess quality
         cleaned_task_results = []
@@ -108,7 +122,9 @@ class QualityController:
                 samples=final_samples,
                 successful_runs=len(cleaned_samples),
                 failed_runs=failed_runs,
-                success_rate=len(cleaned_samples) / len(final_samples) if final_samples else 0.0
+                success_rate=(
+                    len(cleaned_samples) / len(final_samples) if final_samples else 0.0
+                ),
             )
 
             cleaned_task_results.append(task_result)
@@ -116,16 +132,24 @@ class QualityController:
         # Generate overall quality assessment summary
         total_outliers = len(all_removed_outliers)
         total_samples = len(all_samples)
-        outlier_percentage = (total_outliers / total_samples * 100) if total_samples > 0 else 0
+        outlier_percentage = (
+            (total_outliers / total_samples * 100) if total_samples > 0 else 0
+        )
 
         self.cleaning_log.append("Quality control pipeline completed:")
         self.cleaning_log.append(f"  - Total samples processed: {total_samples}")
-        self.cleaning_log.append(f"  - Total outliers removed: {total_outliers} ({outlier_percentage:.1f}%)")
-        self.cleaning_log.append(f"  - Task-language combinations: {len(cleaned_task_results)}")
+        self.cleaning_log.append(
+            f"  - Total outliers removed: {total_outliers} ({outlier_percentage:.1f}%)"
+        )
+        self.cleaning_log.append(
+            f"  - Task-language combinations: {len(cleaned_task_results)}"
+        )
         # Add threshold information for transparency
-        self.cleaning_log.append(f"  - Quality thresholds: invalid>{self.config.quality_invalid_threshold:.1%}, "
-                                f"high-risk>{self.config.quality_high_risk_threshold:.1%}, "
-                                f"warning>{self.config.quality_warning_threshold:.1%}")
+        self.cleaning_log.append(
+            f"  - Quality thresholds: invalid>{self.config.quality_invalid_threshold:.1%}, "
+            f"high-risk>{self.config.quality_high_risk_threshold:.1%}, "
+            f"warning>{self.config.quality_warning_threshold:.1%}"
+        )
 
         return CleanedDataset(
             task_results=cleaned_task_results,
@@ -156,8 +180,12 @@ class QualityController:
         # Extract execution times from successful samples only
         successful_samples = [sample for sample in samples if sample.success]
 
-        if len(successful_samples) < self.min_samples: # Minimum samples required for IQR
-            self.cleaning_log.append(f"Insufficient samples for outlier detection: {len(successful_samples)} successful samples")
+        if (
+            len(successful_samples) < self.min_samples
+        ):  # Minimum samples required for IQR
+            self.cleaning_log.append(
+                f"Insufficient samples for outlier detection: {len(successful_samples)} successful samples"
+            )
             return successful_samples, []
 
         # Extract execution times and sort for percentile calculation
@@ -174,12 +202,16 @@ class QualityController:
         q3_frac = 0.75 * (n - 1) - q3_index
 
         if q1_index + 1 < n:
-            q1 = execution_times[q1_index] + q1_frac * (execution_times[q1_index + 1] - execution_times[q1_index])
+            q1 = execution_times[q1_index] + q1_frac * (
+                execution_times[q1_index + 1] - execution_times[q1_index]
+            )
         else:
             q1 = execution_times[q1_index]
 
         if q3_index + 1 < n:
-            q3 = execution_times[q3_index] + q3_frac * (execution_times[q3_index + 1] - execution_times[q3_index])
+            q3 = execution_times[q3_index] + q3_frac * (
+                execution_times[q3_index + 1] - execution_times[q3_index]
+            )
         else:
             q3 = execution_times[q3_index]
 
@@ -193,7 +225,10 @@ class QualityController:
         outliers = []
 
         for sample in successful_samples:
-            if sample.executionTime < lower_threshold or sample.executionTime > upper_threshold:
+            if (
+                sample.executionTime < lower_threshold
+                or sample.executionTime > upper_threshold
+            ):
                 outliers.append(sample)
             else:
                 cleaned_samples.append(sample)
@@ -224,7 +259,9 @@ class QualityController:
         """
 
         # Extract execution times from successful samples only
-        successful_samples = [sample for sample in task_result.samples if sample.success]
+        successful_samples = [
+            sample for sample in task_result.samples if sample.success
+        ]
         execution_times = [sample.executionTime for sample in successful_samples]
 
         sample_count = len(successful_samples)
@@ -242,7 +279,9 @@ class QualityController:
             coefficient_variation = 0.0
         else:
             mean_execution_time = sum(execution_times) / sample_count
-            variance = sum((t - mean_execution_time) ** 2 for t in execution_times) / (sample_count - 1)
+            variance = sum((t - mean_execution_time) ** 2 for t in execution_times) / (
+                sample_count - 1
+            )
             std_execution_time = math.sqrt(variance)
 
             # Calculate coefficient of variation (handle near-zero mean)
@@ -298,7 +337,9 @@ class QualityController:
             quality_issues=quality_issues,
         )
 
-    def calculate_overall_quality(self, task_results: List[TaskResult]) -> QualityAssessment:
+    def calculate_overall_quality(
+        self, task_results: List[TaskResult]
+    ) -> QualityAssessment:
         """
         Calculate overall quality using layered threshold evaluation strategy.
 
@@ -324,7 +365,7 @@ class QualityController:
                 quality_summary=None,
                 overall_quality=DataQuality.VALID,
                 quality_reason="No groups to evaluate",
-                quality_stats={}
+                quality_stats={},
             )
 
         # Count groups by quality level
@@ -332,7 +373,7 @@ class QualityController:
         quality_counts = {
             DataQuality.INVALID: 0,
             DataQuality.WARNING: 0,
-            DataQuality.VALID: 0
+            DataQuality.VALID: 0,
         }
 
         for metrics in quality_summary.values():
@@ -349,24 +390,31 @@ class QualityController:
 
         # Detailed statistics for reporting
         stats = {
-            'total_groups': total_groups,
-            'invalid_count': invalid_count,
-            'warning_count': warning_count,
-            'valid_count': valid_count,
-            'invalid_ratio': invalid_ratio,
-            'warning_ratio': warning_ratio,
-            'problem_ratio': problem_ratio
+            "total_groups": total_groups,
+            "invalid_count": invalid_count,
+            "warning_count": warning_count,
+            "valid_count": valid_count,
+            "invalid_ratio": invalid_ratio,
+            "warning_ratio": warning_ratio,
+            "problem_ratio": problem_ratio,
         }
 
         # Layered threshold evaluation
         if invalid_ratio > self.config.quality_invalid_threshold:
-            reason = (f"Critical quality issues: {invalid_count}/{total_groups} groups are invalid "
-                     f"({invalid_ratio:.1%}, threshold: {self.config.quality_invalid_threshold:.1%})")
+            reason = (
+                f"Critical quality issues: {invalid_count}/{total_groups} groups are invalid "
+                f"({invalid_ratio:.1%}, threshold: {self.config.quality_invalid_threshold:.1%})"
+            )
             overall_quality = DataQuality.INVALID
 
-        elif invalid_count > 0 and problem_ratio > self.config.quality_high_risk_threshold:
-            reason = (f"High risk quality issues: {invalid_count} invalid + {warning_count} warning groups "
-                     f"= {problem_ratio:.1%} total problems (threshold: {self.config.quality_high_risk_threshold:.1%})")
+        elif (
+            invalid_count > 0
+            and problem_ratio > self.config.quality_high_risk_threshold
+        ):
+            reason = (
+                f"High risk quality issues: {invalid_count} invalid + {warning_count} warning groups "
+                f"= {problem_ratio:.1%} total problems (threshold: {self.config.quality_high_risk_threshold:.1%})"
+            )
             overall_quality = DataQuality.INVALID
 
         elif warning_ratio > self.config.quality_warning_threshold or invalid_count > 0:
@@ -384,7 +432,7 @@ class QualityController:
             quality_summary=quality_summary,
             overall_quality=overall_quality,
             quality_reason=reason,
-            quality_stats=stats
+            quality_stats=stats,
         )
 
 
@@ -470,7 +518,7 @@ def main():
                 success=sample_data.get("success", False),
                 implementation=sample_data.get("implementation", ""),
                 resultDimensions=sample_data.get("resultDimensions"),
-                recordsProcessed=sample_data.get("recordsProcessed")
+                recordsProcessed=sample_data.get("recordsProcessed"),
             )
             samples.append(sample)
 
@@ -481,7 +529,7 @@ def main():
             samples=samples,
             timestamp=result_data.get("timestamp", ""),
             duration=result_data.get("duration", 0),
-            id=result_data.get("id", "")
+            id=result_data.get("id", ""),
         )
         benchmark_results.append(benchmark_result)
 
@@ -497,7 +545,9 @@ def main():
 
         # Calculate quality assessment separately
         print("🔄 Calculating quality assessment...")
-        quality_assessment = quality_controller.calculate_overall_quality(cleaned_dataset.task_results)
+        quality_assessment = quality_controller.calculate_overall_quality(
+            cleaned_dataset.task_results
+        )
         print("✅ Quality assessment completed")
     except Exception as e:
         print(f"❌ Error during quality control: {e}")
@@ -519,26 +569,30 @@ def main():
             "overall_quality": quality_assessment.overall_quality.value,
             "cleaning_operations": len(cleaned_dataset.cleaning_log),
         },
-        "quality_metrics": {
-            key: {
-                "sample_count": metrics.sample_count,
-                "mean_execution_time": metrics.mean_execution_time,
-                "std_execution_time": metrics.std_execution_time,
-                "coefficient_variation": metrics.coefficient_variation,
-                "outlier_count": metrics.outlier_count,
-                "outlier_rate": metrics.outlier_rate,
-                "success_rate": metrics.success_rate,
-                "data_quality": metrics.data_quality.value,
-                "quality_issues": metrics.quality_issues,
+        "quality_metrics": (
+            {
+                key: {
+                    "sample_count": metrics.sample_count,
+                    "mean_execution_time": metrics.mean_execution_time,
+                    "std_execution_time": metrics.std_execution_time,
+                    "coefficient_variation": metrics.coefficient_variation,
+                    "outlier_count": metrics.outlier_count,
+                    "outlier_rate": metrics.outlier_rate,
+                    "success_rate": metrics.success_rate,
+                    "data_quality": metrics.data_quality.value,
+                    "quality_issues": metrics.quality_issues,
+                }
+                for key, metrics in quality_assessment.quality_summary.items()
             }
-            for key, metrics in quality_assessment.quality_summary.items()
-        } if quality_assessment.quality_summary else {},
+            if quality_assessment.quality_summary
+            else {}
+        ),
         "cleaning_log": cleaned_dataset.cleaning_log,
         "quality_assessment": {
             "overall_quality": quality_assessment.overall_quality.value,
             "quality_reason": quality_assessment.quality_reason,
-            "quality_statistics": quality_assessment.quality_stats
-        }
+            "quality_statistics": quality_assessment.quality_stats,
+        },
     }
 
     # Save quality control report
@@ -606,20 +660,24 @@ def main():
                 }
                 for s in cleaned_dataset.removed_outliers
             ],
-            "quality_summary": {
-                key: {
-                    "sample_count": metrics.sample_count,
-                    "mean_execution_time": metrics.mean_execution_time,
-                    "std_execution_time": metrics.std_execution_time,
-                    "coefficient_variation": metrics.coefficient_variation,
-                    "outlier_count": metrics.outlier_count,
-                    "outlier_rate": metrics.outlier_rate,
-                    "success_rate": metrics.success_rate,
-                    "data_quality": metrics.data_quality.value,
-                    "quality_issues": metrics.quality_issues,
+            "quality_summary": (
+                {
+                    key: {
+                        "sample_count": metrics.sample_count,
+                        "mean_execution_time": metrics.mean_execution_time,
+                        "std_execution_time": metrics.std_execution_time,
+                        "coefficient_variation": metrics.coefficient_variation,
+                        "outlier_count": metrics.outlier_count,
+                        "outlier_rate": metrics.outlier_rate,
+                        "success_rate": metrics.success_rate,
+                        "data_quality": metrics.data_quality.value,
+                        "quality_issues": metrics.quality_issues,
+                    }
+                    for key, metrics in quality_assessment.quality_summary.items()
                 }
-                for key, metrics in quality_assessment.quality_summary.items()
-            } if quality_assessment.quality_summary else {},
+                if quality_assessment.quality_summary
+                else {}
+            ),
             "overall_quality": quality_assessment.overall_quality.value,
             "cleaning_log": cleaned_dataset.cleaning_log,
         }
@@ -639,8 +697,10 @@ def main():
     print(f"   • Cleaning Operations: {len(cleaned_dataset.cleaning_log)}")
     if quality_assessment.quality_stats:
         stats = quality_assessment.quality_stats
-        print(f"   • Quality Distribution: {stats.get('valid_count', 0)} valid, "
-              f"{stats.get('warning_count', 0)} warning, {stats.get('invalid_count', 0)} invalid")
+        print(
+            f"   • Quality Distribution: {stats.get('valid_count', 0)} valid, "
+            f"{stats.get('warning_count', 0)} warning, {stats.get('invalid_count', 0)} invalid"
+        )
 
     print()
     print("🔍 Quality control analysis complete!")
