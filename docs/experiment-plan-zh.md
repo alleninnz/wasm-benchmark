@@ -2,7 +2,7 @@
 
 ## 实验概览
 
-**实验环境**
+### 实验环境
 
 **硬件：** MacBook Pro M4 10Core CPU 16GB RAM
 **操作系统：** macOS 15.6+
@@ -74,12 +74,14 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 ```
 
 **产物体积：**
+
 1. 原始 `.wasm` 大小
 2. 压缩（gzip）大小（模拟网络传输成本）
 
 ## 统计分析
 
 **核心统计方法：**
+
 - **描述性统计：** 均值、标准差、变异系数、95%置信区间
 - **显著性检验：** t检验（p < 0.05）
 - **效应量：** Cohen's d计算
@@ -90,16 +92,19 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 ## 成功标准
 
 **数据完备性：**
+
 - 3个任务 × 2种语言 × 3种规模 = 18个数据集
 - 每个数据集≥30个有效样本（剔除异常值后）
 - 变异系数CV < 20%
 
 **统计要求：**
+
 - 基本描述统计：均值、标准差、95%CI
 - 显著性检验：t检验（p < 0.05）
 - 效应量：Cohen's d（小/中/大效应解释）
 
 **产出标准：**
+
 - 统计分析报告：`analysis/report.md`
 - 核心图表：条形图 + 箱线图
 - 原始数据：完整CSV格式，带校验和
@@ -107,18 +112,21 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 ## 实施时间表（4周）
 
 ### Week 1: 环境配置 + 核心实现
+
 - 环境配置确认与工具链验证
 - 基准测试任务实现与验证
 - 构建系统配置和自动化
 - 基础测试框架建立
 
 ### Week 2: 质量控制 + 数据收集框架
+
 - 数据质量控制系统实现
 - 跨语言一致性验证
 - 统计分析基础
 - 自动化测试流水线
 
 ### Week 3-4: 集成测试 + 分析增强
+
 - 端到端测试验证
 - 统计分析和可视化
 - 性能优化与验证
@@ -126,13 +134,14 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 
 ---
 
-# Stage 1：语言工具链安装与固定
+## Stage 1：语言工具链安装与固定
 
 • 安装并固定：
-  - **Rust 1.89+** + `wasm32-unknown-unknown` 目标（无需 wasm-bindgen/wasm-pack）
-  - **Go 1.25+** + **TinyGo 0.39+**
-  - **Node.js 22 LTS**
-  - **Python 3.13+** + 科学计算库（numpy 2.3+, scipy 1.16+, pandas 2.3+, matplotlib 3.10+, seaborn 0.13+）
+
+- **Rust 1.89+** + `wasm32-unknown-unknown` 目标（无需 wasm-bindgen/wasm-pack）
+- **Go 1.25+** + **TinyGo 0.39+**
+- **Node.js 22 LTS**
+- **Python 3.13+** + 科学计算库（numpy 2.3+, scipy 1.16+, pandas 2.3+, matplotlib 3.10+, seaborn 0.13+）
 
 • 安装 Chromium 与无头运行依赖
 
@@ -142,9 +151,9 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 
 ---
 
-# Stage 2：项目结构
+## Stage 2：项目结构
 
-```
+```text
 wasm-benchmark/
 ├── analysis/                   # 统计分析模块
 │   ├── plots.py               # 可视化生成
@@ -247,12 +256,14 @@ wasm-benchmark/
 
 ---
 
-# Stage 3：基准任务设计与参数固化（Task Design）
+## Stage 3：基准任务设计与参数固化（Task Design）
 
 ## 1) 全局约定（对所有任务生效）
 
 ### 导出接口（Wasm 侧）
+
 **Rust 实现（#[no_mangle] 裸接口）：**
+
 ```rust
 #[no_mangle]
 pub extern "C" fn init(seed: u32);
@@ -263,6 +274,7 @@ pub extern "C" fn run_task(params_ptr: u32) -> u32;  // 返回哈希值
 ```
 
 **TinyGo 实现（对应导出）：**
+
 ```go
 //export init
 func init(seed uint32)
@@ -275,14 +287,17 @@ func runTask(paramsPtr uint32) uint32  // 返回哈希值
 • 两种语言均导出 memory，直接进行指针操作
 
 ### 固定随机性
+
 使用 xorshift32（Uint32），跨语言实现一致。
 
 ### FNV-1a 哈希校验机制
+
 • 使用**FNV-1a 哈希算法**替代简单累加：具有更好的分布特性和抗冲突性
 • **算法**：`hash = 2166136261; for each byte: hash ^= byte; hash *= 16777619`
 • **优势**：检测顺序差异、极低冲突率、雪崩效应、跨语言一致
 • `run_task` 返回 u32 哈希值，确保算法实现的正确性验证
 • **统一实现**：
+
   ```c
   uint32_t hash = 2166136261;  // FNV 偏移基础
   for (each byte) {
@@ -291,9 +306,11 @@ func runTask(paramsPtr uint32) uint32  // 返回哈希值
   }
   return hash;
   ```
+
 • 对于浮点运算，先归一化到固定精度（如 `round(x * 1e6)`）再参与哈希
 
 ### JS↔Wasm 往返最小化
+
 • JS 侧仅：① alloc+memcpy 输入一次；② init(seed) 一次；③ 多次 run_task() 计时
 • 不跨界读回大数据，结果只以 u32 哈希值返回
 
@@ -320,7 +337,9 @@ strip = "debuginfo"     # 删除调试信息
 后处理：`wasm-strip target/wasm32-unknown-unknown/release/*.wasm`
 
 ### TinyGo
+
 编译：
+
 ```bash
 tinygo build -target=wasm \
   -opt=3 -panic=trap -no-debug -scheduler=none \
@@ -333,9 +352,10 @@ tinygo build -target=wasm \
 
 **输入**（通过 JS→Wasm 一次性写入的是参数区，像素缓冲在 Wasm 内部分配）：
 • **基准参数**（小/中/大）
-  - S：256×256，max_iter=500
-  - M：512×512，max_iter=1000
-  - L：1024×1024，max_iter=2000
+
+- S：256×256，max_iter=500
+- M：512×512，max_iter=1000
+- L：1024×1024，max_iter=2000
 • **固定视区：** center=(-0.743643887037, 0.131825904205)；scale 分别为 3.0/宽度
 
 **校验：** 对迭代次数序列进行 FNV-1a 哈希，跨语言结果一致。
@@ -347,6 +367,7 @@ tinygo build -target=wasm \
 **目的：** 测试文本扫描、数字解析、对象构建与内存分配。
 
 **输入：** 规范化 JSON（ASCII），是一段数组：
+
 ```json
 [
   {"id":0,"value":123456,"flag":true,"name":"a0"},
@@ -356,17 +377,19 @@ tinygo build -target=wasm \
 ```
 
 • **生成规则**（JS 侧一次性生成字符串字节并写入）：
-  - 无多余空白，字段顺序固定：id,value,flag,name
-  - id 单调递增；value 由 xorshift32 生成（取 31 位非负）
-  - flag = (value & 1) == 0；name = "a" + id（ASCII）
+
+- 无多余空白，字段顺序固定：id,value,flag,name
+- id 单调递增；value 由 xorshift32 生成（取 31 位非负）
+- flag = (value & 1) == 0；name = "a" + id（ASCII）
 • **规模**（条目数，渐进式GC触发设计）
-  - S：6,000（~300KB JSON + 600KB解析对象 = 900KB，**不触发GC**）
-  - M：20,000（~1MB JSON + 2MB解析对象 = 3MB，**轻度触发GC**）
-  - L：50,000（~2.5MB JSON + 5MB解析对象 = 7.5MB，**中度触发GC**）
+- S：6,000（~300KB JSON + 600KB解析对象 = 900KB，**不触发GC**）
+- M：20,000（~1MB JSON + 2MB解析对象 = 3MB，**轻度触发GC**）
+- L：50,000（~2.5MB JSON + 5MB解析对象 = 7.5MB，**中度触发GC**）
 
 以平均每条 ~50 字节JSON + ~100字节解析对象估算，测试小对象分配的GC影响。
 
 **过程**（Wasm 内）
+
 1. 在 Wasm 内部解析 JSON（手写微型解析器或使用最小依赖），解析为临时结构或边扫边聚合
 2. **聚合指标：**
    - sum_id（u64）
@@ -374,6 +397,7 @@ tinygo build -target=wasm \
    - cnt_true_flag（u32）
    - hash_name（对所有 name 字节进行 FNV-1a 哈希）
 3. 将四个聚合值按顺序进行 FNV-1a 哈希：
+
    ```c
    hash = 2166136261;  // FNV 偏移基础
    // 将每个 u32 值转换为字节序列并用 FNV-1a 哈希
@@ -393,7 +417,8 @@ tinygo build -target=wasm \
 **数据类型：** f32（两语言一致）。
 
 **输入：** 两矩阵 A, B（行主序，连续 Float32Array），元素由 xorshift32 生成并映射到 [0,1)：
-```
+
+```text
 val = (x >>> 0) * (1.0 / 4294967296.0)
 ```
 
@@ -403,6 +428,7 @@ val = (x >>> 0) * (1.0 / 4294967296.0)
 • L：512（3MB：A/B/C 各1MB + 计算临时变量 ≈ 8MB，**中度触发GC**）
 
 **过程**（Wasm 内）
+
 1. 读取 A,B，分配 C
 2. 朴素三重循环（i,j,k 同序），保证不同语言浮点舍入路径一致
 3. **生成摘要：** 将 C 每个元素按 `round(x * 1e6)` 转为 i32，进行 FNV-1a 哈希，返回哈希值
@@ -412,31 +438,37 @@ val = (x >>> 0) * (1.0 / 4294967296.0)
 ## GC触发导向的测试规模设计原则
 
 **TinyGo GC触发梯度设计**：
+
 - **S（不触发GC）**：< 1MB内存使用，基本无GC影响，测试纯计算性能差异
 - **M（轻度触发GC）**：2-4MB内存使用，开始有GC开销，性能差异开始显现
 - **L（中度触发GC）**：6-10MB内存使用，GC开销明显，Rust零成本优势突出
 
 **各任务GC压力特点**：
+
 - **JSON解析**：大量小对象分配，测试细粒度GC开销
 - **矩阵乘法**：大块连续内存，测试大对象分配的GC影响
 - **Mandelbrot**：纯计算基线，几乎无内存分配，GC影响最小
 
 **实验立场确认**：
+
 - **目标**：通过渐进式GC压力量化"GC vs 零成本抽象"的性能差异
 - **方法**：S规模建立无GC基线，M/L规模逐步暴露GC成本
 - **预期**：S规模差异最小，M规模开始分化，L规模Rust优势明显
 
 ## 产物命名规范
+
 `{task}-{lang}-{opt}.wasm`
 
 例：
+
 - `mandelbrot-rust-o3.wasm`（Rust 裸接口 + O3 优化）
 - `mandelbrot-tinygo-oz.wasm`（TinyGo + Oz 优化）
 - `json_parse-rust-o3.wasm`
 - `json_parse-tinygo-oz.wasm`
 
 **构建目录结构：**
-```
+
+```text
 builds/
 ├─ rust/
 │  ├─ mandelbrot-rust-o3.wasm
@@ -449,33 +481,38 @@ builds/
 ```
 
 ## 公平性与一致性守则（强制）
+
 • **同算法同序：** 排序/矩阵乘法的循环与比较顺序保持一致；Mandelbrot 统一 f64；MatMul 统一 f32
 • **零外部依赖：** Rust 使用 `#[no_mangle]` 裸接口，TinyGo 使用 `//export`，均不引入高阶库
 • **单线程 / 无 SIMD：** 本轮基线不启用多线程与 SIMD（可做扩展实验另立变体，如 o3-simd）
 • **内存管理策略说明：**
-  - **Rust**：零成本抽象，编译时内存管理，无运行时GC开销
-  - **TinyGo**：带垃圾回收器，存在GC暂停和分配开销
-  - **实验立场**：将内存管理差异视为**语言特性的组成部分**，不试图消除，而是在分析中区分"纯计算性能"与"内存管理开销"的影响
+
+- **Rust**：零成本抽象，编译时内存管理，无运行时GC开销
+- **TinyGo**：带垃圾回收器，存在GC暂停和分配开销
+- **实验立场**：将内存管理差异视为**语言特性的组成部分**，不试图消除，而是在分析中区分"纯计算性能"与"内存管理开销"的影响
 • **一次拷入：** 所有输入通过 alloc 区一次性写入
 • **同样的后处理：** wasm-strip → wasm-opt -O*/-Oz → gzip
 
 ## 结果与异常处理（落盘格式不变）
+
 • `results/bench-*.ndjson` 保留每次 100 样本的 ms，以及 hash（来自返回值 u32）
 • 对于失败（解析错误等），`run_task` 可返回固定错误码（如 `0xDEAD_xxxx`），JS 端把这次样本标记为 `ok:false` 并计入异常统计（不纳入均值）
 • 二进制大小来自 `*.manifest.json`（raw/opt/gz）
 
 ---
 
-# Stage 4：数据采集与质量控制
+## Stage 4：数据采集与质量控制
 
 ## 1. 数据采集流程
 
 ### 1. 初始化测试环境
+
 - 确认硬件与软件环境与 Stage 2 配置一致
 - 清理浏览器缓存及 Node.js 临时文件，确保测试前无残留状态
 - 关闭后台高占用程序，减少干扰
 
 ### 2. 运行测试任务
+
 - 在浏览器端（Puppeteer 驱动 Headless Chrome）Stage 3 中定义的 3 个任务
 - 每个任务执行 10 次冷启动（首次加载计时）与 100 次热启动（已加载模块重复调用计时）
 - 每次执行记录以下原始指标：
@@ -497,10 +534,11 @@ builds/
 ```
 
 ### 3. 结果文件存储
+
 • 按 YYYYMMDD-HHMM 时间戳命名文件夹，保证可追溯性
 • 原始数据保存为 CSV 与 JSON 两种格式，方便后续分析：
 
-```
+```text
 /results/20250815/
   ├── raw_data.json
   ├── raw_data.csv
@@ -513,11 +551,13 @@ builds/
 **目标：** 确保数据可靠性
 
 ### 自动化QC检查
+
 • **数值验证：** 执行时间 > 0，内存使用合理范围
 • **异常值检测：** IQR方法，超出Q1-1.5×IQR或Q3+1.5×IQR直接剔除
 • **重复性验证：** CV < 20%，否则标记为"需复测"
 
 ### 数据汇总
+
 • 生成 `final_dataset.csv`
 • 计算基本统计量：均值、标准差、变异系数
 • SHA256校验和锁定最终数据集
@@ -525,12 +565,14 @@ builds/
 ## 3. 数据交付
 
 ### 数据处理
+
 - 通过质量控制流水线处理基准测试结果
 - 生成综合统计分析报告
 - 在 `reports/plots/` 创建可视化图表和图形
 - 通过自动化QC检查验证数据完整性
 
 ### 高级分析
+
 - 跨语言性能对比
 - 统计显著性检验
 - 内存使用模式分析
@@ -538,9 +580,10 @@ builds/
 
 ---
 
-# Stage 5：统计分析
+## Stage 5：统计分析
 
 ## 1. 分析准备
+
 • **数据来源：** `results/` 目录中的结果JSON文件（经过QC验证）
 • **分析环境：** Python 3.13+ 配科学计算栈
 • **分析模块：** `analysis/statistics.py`、`analysis/qc.py`、`analysis/plots.py`
@@ -549,12 +592,15 @@ builds/
 ## 2. 核心统计分析
 
 ### 基本统计量计算
+
 对每个 **任务+语言** 组合计算：
+
 - 均值、标准差、变异系数
 - 95%置信区间
 - 二进制体积压缩率
 
 ### 显著性检验
+
 - **t检验：** 检测语言间性能差异（p < 0.05）
 - **效应量：** Cohen's d计算
   - d < 0.5：小效应
@@ -563,7 +609,8 @@ builds/
 
 ## 3. 可视化
 
-### 2个核心图表：
+### 2个核心图表
+
 1. **条形图：** 均值对比 + 错误条（标准差）
    - X轴：任务类型，Y轴：执行时间/内存使用
    - 分组：Rust vs TinyGo
@@ -576,7 +623,8 @@ builds/
 
 ## 4. 分析产出
 
-### 自动生成输出：
+### 自动生成输出
+
 - **质量控制报告：** 自动化QC分析，包含离群值检测
 - **统计分析：** `/reports/` 目录包含综合分析
 - **可视化图表：** `/reports/plots/*.png` 用于发表
@@ -584,23 +632,26 @@ builds/
 
 ---
 
-# Stage 6：结果分析与结论
+## Stage 6：结果分析与结论
 
 ## 结果汇总
+
 • 汇总每任务性能对比结果
 • 分析性能差异的可能原因（GC开销、内存管理、指令优化）
 • 结合二进制体积给出应用场景建议
 
 ## 实验限制
+
 • **环境限制：** 单机Chrome环境，结果适用性有限
 • **任务范围：** 3个基准任务，代表性有限
 • **测量精度：** 浏览器环境存在调度干扰
 
 ---
 
-# Stage 7：自动化
+## Stage 7：自动化
 
 ## 核心自动化
+
 • **`make build`** - 构建所有WASM模块（两种语言）
 • **`make run`** - 执行综合基准测试
 • **`make qc`** - 对结果运行质量控制分析
@@ -608,6 +659,7 @@ builds/
 • **`make all`** - 完整实验工作流（构建 + 运行 + QC + 分析）
 
 ## 一键执行
+
 ```bash
 # 完整实验工作流
 make all
@@ -626,4 +678,3 @@ make analyze         # 统计分析
 # - reports/plots/*.png    # 可视化图表
 # - 质量控制报告
 ```
-

@@ -43,15 +43,15 @@ graph TD
 
 ```makefile
 run-quick: $(NODE_MODULES) ## Run quick benchmarks for development (fast feedback ~2-3 min vs 30+ min full suite)
-	$(call log_step,Running quick benchmark suite for development feedback...)
-	@# Generate quick config if missing
-	@if [ ! -f configs/bench-quick.json ]; then \
-		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Generating bench-quick.json configuration..."; \
-		node scripts/build_config.js --quick || (echo -e "$(RED)$(BOLD)[ERROR]$(NC) Config generation failed"; exit 1); \
-	fi
-	$(call check_script_exists,scripts/run_bench.js)
-	node scripts/run_bench.js --quick
-	$(call log_success,Quick benchmarks completed - results saved with timestamp)
+ $(call log_step,Running quick benchmark suite for development feedback...)
+ @# Generate quick config if missing
+ @if [ ! -f configs/bench-quick.json ]; then \
+  echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Generating bench-quick.json configuration..."; \
+  node scripts/build_config.js --quick || (echo -e "$(RED)$(BOLD)[ERROR]$(NC) Config generation failed"; exit 1); \
+ fi
+ $(call check_script_exists,scripts/run_bench.js)
+ node scripts/run_bench.js --quick
+ $(call log_success,Quick benchmarks completed - results saved with timestamp)
 ```
 
 ### **1.2 依赖关系**
@@ -1533,7 +1533,7 @@ window.debugBenchmark = {
 
 ### **9.3 代码文件索引**
 
-```
+```text
 关键文件映射:
 ├── Makefile                           # 构建系统入口
 ├── configs/
