@@ -3,8 +3,8 @@
  * Coordinates benchmark execution using injected services
  */
 
-import { LoggingService } from './LoggingService.js';
 import { IBenchmarkOrchestrator } from '../interfaces/IBenchmarkOrchestrator.js';
+import { LoggingService } from './LoggingService.js';
 
 export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
     constructor(configService, browserService, resultsService, loggingService = null) {
@@ -21,15 +21,16 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
     /**
      * Initialize the orchestrator
      * @param {string} configPath - Path to configuration file
+     * @param {Object} runtimeOptions - Runtime options (headless, devtools, etc.)
      * @returns {Promise<void>}
      */
-    async initialize(configPath) {
+    async initialize(configPath, runtimeOptions = {}) {
         try {
             // Load configuration
             await this.configService.loadConfig(configPath);
 
-            // Initialize browser
-            const browserConfig = this.configService.getBrowserConfig();
+            // Initialize browser with runtime options
+            const browserConfig = this.configService.getBrowserConfig(runtimeOptions);
             await this.browserService.initialize(browserConfig);
 
             // Initialize results
@@ -64,19 +65,81 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
 
             this.logger.info(`Starting execution of ${benchmarks.length} benchmarks...`);
 
+            // In headed mode, navigate to benchmark page first
+            if (!this.browserService.isHeadless) {
+                try {
+                    const benchmarkUrl = this.configService.getBenchmarkUrl();
+                    this.logger.info(`Navigating to benchmark page: ${benchmarkUrl}`);
+                    await this.browserService.navigateTo(benchmarkUrl);
+                    await this.browserService.waitForElement('#status', { timeout: 10000 });
+                    this.logger.success('Benchmark page loaded successfully');
+                } catch (error) {
+                    throw new Error(`Failed to load benchmark page: ${error.message}`);
+                }
+            }
+
+            // Initialize frontend with task list for better tracking
+            if (!this.browserService.isHeadless) {
+                try {
+                    const taskList = benchmarks.map(b => {
+                        const taskName = b.task || b.name.replace(/_micro$/, '');
+                        const language = b.language || 'unknown';
+                        const scale = b.scale || 'default';
+                        return `${taskName} ${scale} (${language})`;
+                    });
+
+                    await this.browserService.page.evaluate((tasks) => {
+                        if (window.initializeBenchmarkSuite) {
+                            window.initializeBenchmarkSuite(tasks);
+                            console.log('Frontend initialized with', tasks.length, 'tasks');
+                        } else {
+                            console.warn('initializeBenchmarkSuite function not found');
+                        }
+
+                        // Fallback: directly set the state if the function doesn't work
+                        if (window.benchmarkState) {
+                            window.benchmarkState.allTasks = tasks;
+                        }
+                    }, taskList);
+                } catch (error) {
+                    console.warn('Failed to initialize frontend task list:', error.message);
+                }
+            }
+
             let _results;
-            if (parallelConfig.enabled && benchmarks.length > 1) {
-                _results = await this.executeInParallel(benchmarks, options);
+            // In headed mode, force sequential execution to avoid multiple windows
+            const isHeadedMode = this.browserService.isHeadless === false;
+            const shouldUseParallel = parallelConfig.enabled && benchmarks.length > 1 && !isHeadedMode;
+            
+            if (shouldUseParallel) {
+                this.logger.info('Using parallel execution (headless mode)');
+                _results = await this.executeInParallel(benchmarks, { ...options, parallel: true });
             } else {
-                _results = await this.executeSequentially(benchmarks, options);
+                if (isHeadedMode && parallelConfig.enabled) {
+                    this.logger.info('Forcing sequential execution in headed mode for single window experience');
+                }
+                _results = await this.executeSequentially(benchmarks, { ...options, parallel: false });
             }
 
             // Finalize results
             this.resultsService.finalize({
-                executionMode: parallelConfig.enabled ? 'parallel' : 'sequential',
+                executionMode: shouldUseParallel ? 'parallel' : 'sequential',
                 totalBenchmarks: benchmarks.length,
                 options
             });
+
+            // Signal to frontend that entire benchmark suite is finished
+            if (!this.browserService.isHeadless) {
+                try {
+                    await this.browserService.page.evaluate(() => {
+                        if (window.finishBenchmarkSuite) {
+                            window.finishBenchmarkSuite();
+                        }
+                    });
+                } catch (error) {
+                    console.warn('Failed to signal benchmark suite completion to frontend:', error.message);
+                }
+            }
 
             return {
                 summary: this.resultsService.getSummary(),
@@ -252,25 +315,42 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
      * @param {Object} options - Execution options
      * @returns {Promise<Object>} Task result
      */
-    async runBenchmarkTask(benchmark, _options = {}) {
-        // Create a dedicated page for this benchmark to avoid navigation conflicts in parallel execution
-        const dedicatedPage = await this.browserService.createNewPage();
+    async runBenchmarkTask(benchmark, options = {}) {
+        // In headed mode, use main page for single window experience
+        // In headless mode with parallel execution, use dedicated pages to avoid race conditions
+        const shouldUseDedicatedPage = options.parallel && this.browserService.isHeadless !== false;
+        const page = shouldUseDedicatedPage 
+            ? await this.browserService.createNewPage()
+            : this.browserService.page;
 
         try {
-            // Navigate to benchmark page using dedicated page
+            // Navigate to benchmark page
             const benchmarkUrl = this.configService.getBenchmarkUrl();
             const navigationOptions = {
                 waitUntil: 'networkidle0',
                 timeout: 30000
             };
 
-            await dedicatedPage.goto(benchmarkUrl, navigationOptions);
-            await dedicatedPage.waitForSelector('body', { timeout: 10000 });
-            await dedicatedPage.waitForSelector('#status', { timeout: 10000 });
+            // Only navigate if we're not already on the benchmark page (for main page reuse)
+            if (shouldUseDedicatedPage) {
+                await page.goto(benchmarkUrl, navigationOptions);
+                await page.waitForSelector('body', { timeout: 10000 });
+                await page.waitForSelector('#status', { timeout: 10000 });
+            } else {
+                // Check if we need to navigate to benchmark page
+                const currentUrl = await page.url();
+                if (!currentUrl.includes('bench.html') && !currentUrl.includes('localhost')) {
+                    await page.goto(benchmarkUrl, navigationOptions);
+                    await page.waitForSelector('body', { timeout: 10000 });
+                    await page.waitForSelector('#status', { timeout: 10000 });
+                }
+            }
 
             // Extract task details from the benchmark configuration
             const taskName = benchmark.task || benchmark.name.replace(/_micro$/, '');
-            const scale = benchmark.scale || 'small';
+            // Use context-aware scale defaulting: micro for quick mode, small for standard mode
+            const defaultScale = this.configService.isQuickMode ? 'micro' : 'small';
+            const scale = benchmark.scale || defaultScale;
             const language = benchmark.language || 'unknown';
 
             // Get the full config to get the task configuration
@@ -290,14 +370,27 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                     language: language,
                     scale: scale,
                     taskConfig: taskConfiguration, // Pass the full task configuration with scales
-                    warmupRuns: this.configService.getConfig().warmupIterations || 3,
-                    measureRuns: this.configService.getConfig().iterations || 10,
+                    warmupRuns: this.configService.getConfig().environment?.warmupRuns || 3,
+                    measureRuns: this.configService.getConfig().environment?.measureRuns || 10,
                     timeout: 30000 // 30 second timeout for individual tasks
                 };
 
                 try {
-                // Execute benchmark script on dedicated page to avoid navigation conflicts
-                    const result = await dedicatedPage.evaluate(async (config) => {
+                    // Notify frontend about task start (in headed mode)
+                    if (!this.browserService.isHeadless) {
+                        try {
+                            await page.evaluate((task, lang) => {
+                                if (window.startTask) {
+                                    window.startTask(task, lang);
+                                }
+                            }, taskName, language);
+                        } catch {
+                            // Don't fail the task if UI update fails
+                        }
+                    }
+
+                    // Execute benchmark script on appropriate page
+                    const result = await page.evaluate(async (config) => {
                     // This will be executed in browser context
                         if (window.benchmarkRunner && typeof window.benchmarkRunner.runTaskBenchmark === 'function') {
                             return await window.benchmarkRunner.runTaskBenchmark(config);
@@ -313,6 +406,19 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                         implementation: implementation.name
                     });
 
+                    // Notify frontend about task completion (in headed mode)
+                    if (!this.browserService.isHeadless) {
+                        try {
+                            await page.evaluate((task, lang, success, res) => {
+                                if (window.completeTask) {
+                                    window.completeTask(task, lang, success, res);
+                                }
+                            }, taskName, language, true, result);
+                        } catch {
+                            // Don't fail the task if UI update fails
+                        }
+                    }
+
                     this.logger.success(`Completed ${taskName} for ${language}`);
                 } catch (error) {
                     results.push({
@@ -322,6 +428,19 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                         language: language,
                         implementation: implementation.name
                     });
+
+                    // Notify frontend about task failure (in headed mode)
+                    if (!this.browserService.isHeadless) {
+                        try {
+                            await page.evaluate((task, lang, success, err) => {
+                                if (window.completeTask) {
+                                    window.completeTask(task, lang, success, { error: err });
+                                }
+                            }, taskName, language, false, error.message);
+                        } catch {
+                            // Don't fail the task if UI update fails
+                        }
+                    }
 
                     this.logger.error(`Failed ${taskName} for ${language}: ${error.message}`);
                 }
@@ -336,12 +455,14 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             };
 
         } finally {
-            // Always close the dedicated page to prevent resource leaks
-            try {
-                await dedicatedPage.close();
-            } catch (error) {
-                // Log but don't throw - resource cleanup shouldn't fail the benchmark
-                console.warn('Failed to close dedicated page:', error.message);
+            // Close dedicated page if we created one, but keep main page open
+            if (shouldUseDedicatedPage && page !== this.browserService.page) {
+                try {
+                    await page.close();
+                } catch (error) {
+                    // Log but don't throw - resource cleanup shouldn't fail the benchmark
+                    console.warn('Failed to close dedicated page:', error.message);
+                }
             }
         }
     }
@@ -392,7 +513,7 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
 
     /**
      * Cleanup resources with atomic operations
-     * @returns {Promise<void>}
+     * @returns {Promise<Object>} Cleanup result
      */
     async cleanup() {
         const cleanupOperations = [];
@@ -405,9 +526,10 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             }
 
             // Step 2: Cleanup browser atomically
+            let browserCleanupResult = { keptOpen: false };
             if (this.browserService) {
                 cleanupOperations.push('browser-cleanup');
-                await this.browserService.cleanup();
+                browserCleanupResult = await this.browserService.cleanup();
             }
 
             // Step 3: Reset state atomically
@@ -416,7 +538,11 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             this.abortController = null;
 
             this.logger.success('Orchestrator cleanup completed');
-            return { success: true, operations: cleanupOperations };
+            return { 
+                success: true, 
+                operations: cleanupOperations, 
+                keptOpen: browserCleanupResult.keptOpen 
+            };
 
         } catch (error) {
             const errorMsg = `[BenchmarkOrchestrator] Cleanup failed at ${cleanupOperations[cleanupOperations.length - 1]}: ${error.message}`;
@@ -430,19 +556,6 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
      * @returns {Promise<void>}
      */
     async emergencyCleanup() {
-        // Import chalk dynamically to avoid import issues
-        let _chalk;
-        try {
-            const chalkModule = await import('chalk');
-            _chalk = chalkModule.default;
-        } catch {
-            // Fallback to console.log if chalk is not available
-            _chalk = {
-                yellow: (text) => text,
-                red: (text) => text,
-                green: (text) => text
-            };
-        }
 
         this.logger.warn('[BenchmarkOrchestrator] Performing emergency cleanup...');
         const emergencyOperations = [];

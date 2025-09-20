@@ -7,12 +7,12 @@
  * Logs all requests to dev-server.log with minimal terminal output
  */
 
-import express from 'express';
-import cors from 'cors';
-import path from 'path';
-import fs, { promises as fsPromises } from 'fs';
-import { fileURLToPath } from 'url';
 import { exec } from 'child_process';
+import cors from 'cors';
+import express from 'express';
+import fs, { promises as fsPromises } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
@@ -23,17 +23,36 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 2025;
 
-// Log file path
+// Log file path and configuration
 const LOG_FILE = path.join(__dirname, '../dev-server.log');
+const MAX_LOG_LINES = 100;
 
-// Async log writing function
+// Async log writing function with rotation
 async function writeLog(message) {
     try {
         const timestamp = new Date().toISOString();
         const logEntry = `[${timestamp}] ${message}\n`;
-        await fsPromises.appendFile(LOG_FILE, logEntry);
+        
+        // Check if log file exists and count lines
+        let shouldRotate = false;
+        if (fs.existsSync(LOG_FILE)) {
+            const currentContent = await fsPromises.readFile(LOG_FILE, 'utf8');
+            const lines = currentContent.split('\n').filter(line => line.trim() !== '');
+            
+            if (lines.length >= MAX_LOG_LINES) {
+                shouldRotate = true;
+            }
+        }
+        
+        if (shouldRotate) {
+            // Overwrite the entire file when max lines reached
+            await fsPromises.writeFile(LOG_FILE, logEntry);
+        } else {
+            // Append to existing file
+            await fsPromises.appendFile(LOG_FILE, logEntry);
+        }
     } catch {
-    // Silent failure to prevent server crashes from logging issues
+        // Silent failure to prevent server crashes from logging issues
     }
 }
 
@@ -93,8 +112,6 @@ app.use((req, res, next) => {
 // Enhanced request logging to file with timing and response details
 app.use((req, res, next) => {
     const startTime = Date.now();
-    const userAgent = req.get('User-Agent') || '-';
-    const shortUA = userAgent.length > 60 ? `${userAgent.substring(0, 57)}...` : userAgent;
     const clientIP = req.ip || req.connection.remoteAddress || '-';
 
     // Capture response details
@@ -112,8 +129,8 @@ app.use((req, res, next) => {
         const duration = Date.now() - startTime;
         const sizeStr = responseSize > 0 ? `${(responseSize / 1024).toFixed(1)}KB` : '-';
 
-        // Log format: [timestamp] METHOD path STATUS duration size userAgent [ip]
-        const logMessage = `${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms ${sizeStr} "${shortUA}" [${clientIP}]`;
+        // Log format: [timestamp] METHOD path STATUS duration size [ip]
+        const logMessage = `${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms ${sizeStr} [${clientIP}]`;
         writeLog(logMessage);
 
         originalEnd.call(this, chunk, encoding);

@@ -3,14 +3,14 @@
  * Clean architecture with dependency injection
  */
 
-import { ConfigurationService } from './services/ConfigurationService.js';
-import { BrowserService } from './services/BrowserService.js';
-import { ResultsService } from './services/ResultsService.js';
-import { BenchmarkOrchestrator } from './services/BenchmarkOrchestrator.js';
-import { LoggingService } from './services/LoggingService.js';
-import { fileURLToPath } from 'url';
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { BenchmarkOrchestrator } from './services/BenchmarkOrchestrator.js';
+import { BrowserService } from './services/BrowserService.js';
+import { ConfigurationService } from './services/ConfigurationService.js';
+import { LoggingService } from './services/LoggingService.js';
+import { ResultsService } from './services/ResultsService.js';
 
 // Configuration constants
 const DEFAULT_TIMEOUT_MS = 300000;
@@ -139,7 +139,13 @@ Examples:
             process.exit(1);
         }
 
-        await orchestrator.initialize(configPath);
+        // Extract browser-specific options for initialization
+        const browserOptions = {
+            headless: options.headless,
+            devtools: options.devtools
+        };
+
+        await orchestrator.initialize(configPath, browserOptions);
 
         // Execute benchmarks
         const results = await orchestrator.executeBenchmarks(options);
@@ -166,6 +172,13 @@ Examples:
             logger.warn(`Failed: ${results.summary.failedTasks}`);
         }
 
+        // In headed mode, don't exit immediately to keep browser open
+        if (!options.headless) {
+            logger.info('Browser kept open for inspection. Press Ctrl+C to exit.');
+            // Keep process alive without exiting
+            return;
+        }
+
         process.exit(0);
 
     } catch (error) {
@@ -183,11 +196,17 @@ Examples:
 
         process.exit(1);
     } finally {
-        // Graceful cleanup
-        try {
-            await orchestrator.cleanup();
-        } catch (cleanupError) {
-            logger.warn(`Cleanup warning: ${cleanupError.message}`);
+        // Graceful cleanup - only cleanup in headless mode
+        if (options.headless) {
+            try {
+                const cleanupResult = await orchestrator.cleanup();
+                if (cleanupResult && !cleanupResult.keptOpen) {
+                    // Only log if actually cleaned up
+                    logger.info('Resources cleaned up successfully');
+                }
+            } catch (cleanupError) {
+                logger.warn(`Cleanup warning: ${cleanupError.message}`);
+            }
         }
     }
 }
@@ -199,9 +218,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
 // Export services for external use
 export {
-    ConfigurationService,
-    BrowserService,
-    ResultsService,
-    BenchmarkOrchestrator,
-    LoggingService
+    BenchmarkOrchestrator, BrowserService, ConfigurationService, LoggingService, ResultsService
 };
+

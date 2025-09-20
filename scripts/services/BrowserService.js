@@ -4,8 +4,8 @@
  */
 
 import chalk from 'chalk';
-import { LoggingService } from './LoggingService.js';
 import { IBrowserService } from '../interfaces/IBrowserService.js';
+import { LoggingService } from './LoggingService.js';
 
 export class BrowserService extends IBrowserService {
     constructor(loggingService = null) {
@@ -13,6 +13,7 @@ export class BrowserService extends IBrowserService {
         this.browser = null;
         this.page = null;
         this.puppeteer = null;
+        this.isHeadless = true; // Default to headless
         this.logger = loggingService || new LoggingService({ prefix: 'Browser' });
     }
 
@@ -24,34 +25,84 @@ export class BrowserService extends IBrowserService {
     async initialize(browserConfig = {}) {
         this.puppeteer = (await import('puppeteer')).default;
 
+        // Base args for all modes
+        const baseArgs = [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--no-first-run',
+            '--no-default-browser-check'
+        ];
+
+        // Performance args for headless mode
+        const headlessArgs = [
+            '--disable-gpu',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding'
+        ];
+
+        // Visibility args for headed mode
+        const headedArgs = [
+            '--start-maximized',
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor',
+            '--window-size=1200,800',
+            '--window-position=100,100'
+        ];
+
+        // Determine if running in headed mode
+        const isHeaded = browserConfig.headless === false;
+        this.isHeadless = !isHeaded; // Store the headless state
+
         const config = {
-            headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-first-run',
-                '--no-default-browser-check',
-                '--disable-background-timer-throttling',
-                '--disable-backgrounding-occluded-windows',
-                '--disable-renderer-backgrounding'
-            ],
+            headless: true, // default
+            args: isHeaded
+                ? [...baseArgs, ...headedArgs]
+                : [...baseArgs, ...headlessArgs],
             ...browserConfig
         };
 
         try {
+            // Log browser mode for debugging
+            this.logger.info(`Launching browser in ${isHeaded ? 'HEADED' : 'headless'} mode`);
+            if (isHeaded) {
+                this.logger.info('Browser window should be visible - look for Chromium/Chrome window');
+                console.log(chalk.green('🌐 HEADED MODE: Browser window launching...'));
+            }
+
             this.browser = await this.puppeteer.launch(config);
             this.page = await this.browser.newPage();
 
             // Set default timeout
             this.page.setDefaultTimeout(30000);
 
+            // In headed mode, bring window to front and set viewport
+            if (isHeaded) {
+                await this.page.setViewport({ width: 1200, height: 800 });
+                this.logger.success('Browser window launched successfully');
+                console.log(chalk.green('✅ HEADED MODE: Browser window is now active'));
+            }
+
             // Configure console logging
             this.page.on('console', msg => {
                 const type = msg.type();
-                if (type === 'error' || type === 'warning') {
-                    console.log(chalk.gray(`Browser ${type}: ${msg.text()}`));
+                const text = msg.text();
+
+                if (isHeaded) {
+                    // In headed mode, show all console messages for debugging
+                    if (type === 'log' && text.includes('benchmark')) {
+                        console.log(chalk.cyan(`Browser: ${text}`));
+                    } else if (type === 'error') {
+                        console.log(chalk.red(`Browser ERROR: ${text}`));
+                    } else if (type === 'warning') {
+                        console.log(chalk.yellow(`Browser WARNING: ${text}`));
+                    }
+                } else {
+                    // In headless mode, only show errors and warnings
+                    if (type === 'error' || type === 'warning') {
+                        console.log(chalk.gray(`Browser ${type}: ${text}`));
+                    }
                 }
             });
 
@@ -78,17 +129,35 @@ export class BrowserService extends IBrowserService {
             const page = await this.browser.newPage();
             page.setDefaultTimeout(30000);
 
-            // Configure console logging for new page
+            // Check if browser is in headed mode by checking the first page
+            const isHeaded = this.page && (await this.page.browser().isConnected()) &&
+                            (await this.page.browser()).process() !== null;
+
+            // Configure console logging for new page (same logic as main page)
             page.on('console', msg => {
                 const type = msg.type();
-                if (type === 'error' || type === 'warning') {
-                    console.log(chalk.gray(`Browser ${type}: ${msg.text()}`));
+                const text = msg.text();
+
+                if (isHeaded) {
+                    // In headed mode, show all console messages for debugging
+                    if (type === 'log' && text.includes('benchmark')) {
+                        console.log(chalk.cyan(`Browser (parallel): ${text}`));
+                    } else if (type === 'error') {
+                        console.log(chalk.red(`Browser ERROR (parallel): ${text}`));
+                    } else if (type === 'warning') {
+                        console.log(chalk.yellow(`Browser WARNING (parallel): ${text}`));
+                    }
+                } else {
+                    // In headless mode, only show errors and warnings
+                    if (type === 'error' || type === 'warning') {
+                        console.log(chalk.gray(`Browser ${type} (parallel): ${text}`));
+                    }
                 }
             });
 
             // Handle page errors for new page
             page.on('pageerror', error => {
-                console.error(chalk.red('Page error:'), error.message);
+                console.error(chalk.red('Page error (parallel):'), error.message);
             });
 
             return page;
@@ -335,6 +404,16 @@ export class BrowserService extends IBrowserService {
      */
     async cleanup() {
         try {
+            // In headed mode, don't close browser to allow user to inspect results
+            if (!this.isHeadless) {
+                console.log(chalk.green('🌐 HEADED MODE: Browser window left open for inspection'));
+                console.log(chalk.yellow('💡 You can manually close the browser window when done'));
+                
+                // Don't clear references in headed mode to prevent accidental closure
+                return { keptOpen: true };
+            }
+            
+            // In headless mode, close everything normally
             if (this.page) {
                 await this.page.close();
                 this.page = null;
@@ -344,21 +423,28 @@ export class BrowserService extends IBrowserService {
                 await this.browser.close();
                 this.browser = null;
             }
+            
+            return { keptOpen: false };
         } catch (error) {
             console.warn(chalk.yellow('Browser cleanup warning:'), error.message);
 
-            // Force kill if close fails
-            if (this.browser && this.browser.process()) {
+            // Force kill if close fails (only in headless mode)
+            if (this.isHeadless && this.browser && this.browser.process()) {
                 try {
                     this.browser.process().kill('SIGKILL');
                 } catch (killError) {
                     console.warn(chalk.yellow('Failed to force kill browser process:'), killError.message);
                 }
             }
+            
+            return { keptOpen: !this.isHeadless };
         } finally {
-            this.browser = null;
-            this.page = null;
-            this.puppeteer = null;
+            // In headless mode, reset everything
+            if (this.isHeadless) {
+                this.browser = null;
+                this.page = null;
+                this.puppeteer = null;
+            }
         }
     }
 

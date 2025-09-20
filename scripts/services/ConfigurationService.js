@@ -178,11 +178,19 @@ export class ConfigurationService extends IConfigurationService {
     }
 
     /**
-     * Get browser configuration
+     * Get browser configuration with runtime options
+     * @param {Object} runtimeOptions - Runtime options to merge (e.g., headless, devtools)
      * @returns {Object} Browser configuration
      */
-    getBrowserConfig() {
-        return this.config?.browser || {};
+    getBrowserConfig(runtimeOptions = {}) {
+        const baseConfig = this.config?.browser || {};
+
+        // Merge runtime options with base config
+        // Runtime options have higher priority
+        return {
+            ...baseConfig,
+            ...runtimeOptions
+        };
     }
 
     /**
