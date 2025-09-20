@@ -8,21 +8,29 @@ for engineering-grade statistical comparison between Rust and TinyGo implementat
 import math
 from typing import Dict, List, Tuple
 
-from scipy.stats import t as t_dist
+try:
+    from scipy.stats import t as t_dist
+except ImportError as e:
+    raise ImportError(
+        "scipy is required for statistical analysis. Install with: pip install scipy"
+    ) from e
 
-from .data_models import (
-    CleanedDataset,
-    ComparisonResult,
-    EffectSize,
-    EffectSizeResult,
-    StatisticalResult,
-    StatisticsConfiguration,
-    TaskResult,
-    TTestResult,
-)
+from .data_models import (CleanedDataset, ComparisonResult, EffectSize,
+                          EffectSizeResult, StatisticalResult,
+                          StatisticsConfiguration, TaskResult, TTestResult)
+
+# Statistical constants
+MINIMUM_SAMPLES_FOR_TEST = 2
+COEFFICIENT_VARIATION_THRESHOLD = 1e-9
+DEFAULT_POOLED_STD = 1.0
+FALLBACK_DEGREES_FREEDOM = 1.0
+
+# Quartile percentiles
+FIRST_QUARTILE = 0.25
+THIRD_QUARTILE = 0.75
 
 
-class Statistics:
+class StatisticalAnalysis:
     """Statistical analysis engine for benchmark performance comparison"""
 
     def __init__(
@@ -56,12 +64,17 @@ class Statistics:
 
         Returns:
             TTestResult: Complete t-test results with significance assessment
+
+        Raises:
+            TypeError: If inputs are not lists
+            ValueError: If data contains invalid values
         """
+        self._validate_groups(group1, group2, "welch_t_test")
         # Calculate sample statistics for both groups
         n1, mean1, var1 = self._calculate_sample_stats(group1)
         n2, mean2, var2 = self._calculate_sample_stats(group2)
 
-        if n1 < 2 or n2 < 2:
+        if n1 < MINIMUM_SAMPLES_FOR_TEST or n2 < MINIMUM_SAMPLES_FOR_TEST:
             # Insufficient data for meaningful t-test
             return TTestResult(
                 t_statistic=0.0,
@@ -75,7 +88,7 @@ class Statistics:
             )
 
         # Calculate Welch's t-statistic
-        t_statistic = self._calculate_welch_t_statistic(
+        t_statistic = self._calculate_welch_t_stats(
             mean1, mean2, var1, var2, n1, n2
         )
 
@@ -101,7 +114,7 @@ class Statistics:
             is_significant=is_significant,
             alpha=self.alpha,
         )
-
+    
     def cohens_d(self, group1: List[float], group2: List[float]) -> EffectSizeResult:
         """
         Calculate Cohen's d effect size for quantifying practical significance.
@@ -121,12 +134,17 @@ class Statistics:
         Returns:
             EffectSizeResult: Complete effect size analysis with classification,
             including assessment against minimum detectable effect threshold
+
+        Raises:
+            TypeError: If inputs are not lists
+            ValueError: If data contains invalid values
         """
+        self._validate_groups(group1, group2, "cohens_d")
         # Calculate sample statistics for both groups
         n1, mean1, var1 = self._calculate_sample_stats(group1)
         n2, mean2, var2 = self._calculate_sample_stats(group2)
 
-        if n1 < 2 or n2 < 2:
+        if n1 < MINIMUM_SAMPLES_FOR_TEST or n2 < MINIMUM_SAMPLES_FOR_TEST:
             # Insufficient data for meaningful effect size calculation
             return EffectSizeResult(
                 cohens_d=0.0,
@@ -150,41 +168,10 @@ class Statistics:
         # Classify effect size magnitude
         effect_size = self._classify_effect_size(cohens_d_value)
 
-        # Generate interpretation text with minimum detectable effect assessment
+        # Generate interpretation with MDE assessment
         abs_d = abs(cohens_d_value)
-
-        # Assess practical significance relative to minimum detectable effect
         meets_mde = abs_d >= self.minimum_detectable_effect
-        mde_status = "exceeds" if meets_mde else "below"
-
-        # Generate detailed interpretation combining effect size and MDE assessment
-        if abs_d >= self.effect_thresholds["large"]:
-            base_interpretation = f"Large effect (d={cohens_d_value:.3f}): Substantial practical difference"
-        elif abs_d >= self.effect_thresholds["medium"]:
-            base_interpretation = (
-                f"Medium effect (d={cohens_d_value:.3f}): Moderate practical difference"
-            )
-        elif abs_d >= self.effect_thresholds["small"]:
-            base_interpretation = f"Small effect (d={cohens_d_value:.3f}): Minor but detectable difference"
-        else:
-            base_interpretation = (
-                f"Negligible effect (d={cohens_d_value:.3f}): No practical difference"
-            )
-
-        # Add minimum detectable effect context
-        mde_interpretation = f" Effect size {mde_status} minimum detectable threshold (MDE={self.minimum_detectable_effect:.3f})"
-
-        # Combine interpretations with practical significance assessment
-        if meets_mde:
-            practical_assessment = (
-                " - Practically significant for engineering decisions"
-            )
-        else:
-            practical_assessment = (
-                " - May lack practical significance for engineering decisions"
-            )
-
-        interpretation = base_interpretation + mde_interpretation + practical_assessment
+        interpretation = self._generate_effect_size_interpretation(cohens_d_value, abs_d, meets_mde)
 
         return EffectSizeResult(
             cohens_d=cohens_d_value,
@@ -195,7 +182,38 @@ class Statistics:
             meets_minimum_detectable_effect=meets_mde,
         )
 
-    def _calculate_complete_statistics(self, data: List[float]) -> StatisticalResult:
+    def _validate_groups(self, group1: List[float], group2: List[float], method_name: str) -> None:
+        """Validate input groups for statistical analysis.
+
+        Args:
+            group1: First data group
+            group2: Second data group
+            method_name: Name of calling method for error context
+
+        Raises:
+            TypeError: If inputs are not lists
+            ValueError: If data contains non-numeric values or insufficient samples
+        """
+        if not isinstance(group1, list) or not isinstance(group2, list):
+            raise TypeError(f"{method_name}: Input groups must be lists")
+
+        if not group1 and not group2:
+            raise ValueError(f"{method_name}: Both groups cannot be empty")
+
+        # Check for numeric values
+        for i, value in enumerate(group1):
+            if not isinstance(value, (int, float)) or math.isnan(value) or math.isinf(value):
+                raise ValueError(f"{method_name}: group1[{i}] contains invalid numeric value: {value}")
+
+        for i, value in enumerate(group2):
+            if not isinstance(value, (int, float)) or math.isnan(value) or math.isinf(value):
+                raise ValueError(f"{method_name}: group2[{i}] contains invalid numeric value: {value}")
+
+        # Check for negative values (performance times should be positive)
+        if any(x < 0 for x in group1) or any(x < 0 for x in group2):
+            raise ValueError(f"{method_name}: Performance data should not contain negative values")
+
+    def _calculate_complete_stats(self, data: List[float]) -> StatisticalResult:
         """
         Calculate complete descriptive statistics for a dataset.
 
@@ -236,7 +254,7 @@ class Statistics:
         else:
             variance = sum((x - mean) ** 2 for x in data) / (n - 1)
             std = math.sqrt(variance)
-            coefficient_variation = std / mean if abs(mean) > 1e-9 else 0.0
+            coefficient_variation = std / mean if abs(mean) > COEFFICIENT_VARIATION_THRESHOLD else 0.0
 
         # Median (50th percentile)
         if n % 2 == 0:
@@ -244,29 +262,8 @@ class Statistics:
         else:
             median = sorted_data[n // 2]
 
-        # First quartile (25th percentile)
-        q1_index = 0.25 * (n - 1)
-        q1_lower = int(q1_index)
-        q1_frac = q1_index - q1_lower
-
-        if q1_lower + 1 < n:
-            q1 = sorted_data[q1_lower] + q1_frac * (
-                sorted_data[q1_lower + 1] - sorted_data[q1_lower]
-            )
-        else:
-            q1 = sorted_data[q1_lower]
-
-        # Third quartile (75th percentile)
-        q3_index = 0.75 * (n - 1)
-        q3_lower = int(q3_index)
-        q3_frac = q3_index - q3_lower
-
-        if q3_lower + 1 < n:
-            q3 = sorted_data[q3_lower] + q3_frac * (
-                sorted_data[q3_lower + 1] - sorted_data[q3_lower]
-            )
-        else:
-            q3 = sorted_data[q3_lower]
+        # Calculate quartiles using optimized approach
+        q1, q3 = self._calculate_quartiles(sorted_data)
 
         # Interquartile range
         iqr = q3 - q1
@@ -303,7 +300,7 @@ class Statistics:
             key = f"{task_result.task}_{task_result.language}_{task_result.scale}"
 
             # Calculate complete statistics
-            results[key] = self._calculate_complete_statistics(execution_times)
+            results[key] = self._calculate_complete_stats(execution_times)
 
         return results
 
@@ -332,7 +329,7 @@ class Statistics:
 
         return n, mean, variance
 
-    def _calculate_welch_t_statistic(
+    def _calculate_welch_t_stats(
         self, mean1: float, mean2: float, var1: float, var2: float, n1: int, n2: int
     ) -> float:
         """
@@ -365,7 +362,7 @@ class Statistics:
             float: Degrees of freedom
         """
         if n1 <= 1 or n2 <= 1:
-            return 1.0
+            return FALLBACK_DEGREES_FREEDOM
 
         s1_squared_over_n1 = var1 / n1
         s2_squared_over_n2 = var2 / n2
@@ -376,9 +373,84 @@ class Statistics:
         ) / (n2 - 1)
 
         if denominator == 0:
-            return 1.0
+            return FALLBACK_DEGREES_FREEDOM
 
         return numerator / denominator
+
+    def _calculate_quartiles(self, sorted_data: List[float]) -> Tuple[float, float]:
+        """
+        Calculate first and third quartiles efficiently.
+
+        Args:
+            sorted_data: Sorted performance data
+
+        Returns:
+            Tuple[float, float]: (Q1, Q3) values
+        """
+        n = len(sorted_data)
+
+        if n < 4:
+            # For small datasets, use median as approximation
+            median_val = sorted_data[n // 2] if n % 2 == 1 else (sorted_data[n // 2 - 1] + sorted_data[n // 2]) / 2
+            return median_val, median_val
+
+        # Calculate quartile positions using linear interpolation
+        q1_pos = FIRST_QUARTILE * (n - 1)
+        q3_pos = THIRD_QUARTILE * (n - 1)
+
+        # Q1 calculation
+        q1_lower = int(q1_pos)
+        q1_frac = q1_pos - q1_lower
+
+        if q1_lower + 1 < n:
+            q1 = sorted_data[q1_lower] + q1_frac * (sorted_data[q1_lower + 1] - sorted_data[q1_lower])
+        else:
+            q1 = sorted_data[q1_lower]
+
+        # Q3 calculation
+        q3_lower = int(q3_pos)
+        q3_frac = q3_pos - q3_lower
+
+        if q3_lower + 1 < n:
+            q3 = sorted_data[q3_lower] + q3_frac * (sorted_data[q3_lower + 1] - sorted_data[q3_lower])
+        else:
+            q3 = sorted_data[q3_lower]
+
+        return q1, q3
+
+    def _generate_effect_size_interpretation(self, cohens_d_value: float, abs_d: float, meets_mde: bool) -> str:
+        """
+        Generate comprehensive interpretation of effect size with practical significance assessment.
+
+        Args:
+            cohens_d_value: Raw Cohen's d value
+            abs_d: Absolute value of Cohen's d
+            meets_mde: Whether effect meets minimum detectable effect threshold
+
+        Returns:
+            str: Detailed interpretation combining effect size and practical significance
+        """
+        # Base effect size interpretation
+        if abs_d >= self.effect_thresholds["large"]:
+            base_interpretation = f"Large effect (d={cohens_d_value:.3f}): Substantial practical difference"
+        elif abs_d >= self.effect_thresholds["medium"]:
+            base_interpretation = f"Medium effect (d={cohens_d_value:.3f}): Moderate practical difference"
+        elif abs_d >= self.effect_thresholds["small"]:
+            base_interpretation = f"Small effect (d={cohens_d_value:.3f}): Minor but detectable difference"
+        else:
+            base_interpretation = f"Negligible effect (d={cohens_d_value:.3f}): No practical difference"
+
+        # Minimum detectable effect context
+        mde_status = "exceeds" if meets_mde else "below"
+        mde_interpretation = f" Effect size {mde_status} minimum detectable threshold (MDE={self.minimum_detectable_effect:.3f})"
+
+        # Practical significance assessment
+        if meets_mde:
+            practical_assessment = " - Practically significant for engineering decisions"
+        else:
+            practical_assessment = " - May lack practical significance for engineering decisions"
+
+        return base_interpretation + mde_interpretation + practical_assessment
 
     def _calculate_p_value(self, t_stat: float, df: float) -> float:
         """
@@ -411,7 +483,7 @@ class Statistics:
             float: Pooled standard deviation
         """
         if n1 <= 1 and n2 <= 1:
-            return 1.0
+            return DEFAULT_POOLED_STD
 
         var1 = std1**2
         var2 = std2**2
@@ -474,7 +546,7 @@ class Statistics:
         n1, mean1, var1 = self._calculate_sample_stats(group1)
         n2, mean2, var2 = self._calculate_sample_stats(group2)
 
-        if n1 < 2 or n2 < 2:
+        if n1 < MINIMUM_SAMPLES_FOR_TEST or n2 < MINIMUM_SAMPLES_FOR_TEST:
             # Insufficient data for confidence interval
             mean_diff = mean1 - mean2
             return (mean_diff, mean_diff)
@@ -511,7 +583,20 @@ class Statistics:
 
         Returns:
             ComparisonResult: Comprehensive statistical comparison
+
+        Raises:
+            TypeError: If inputs are not TaskResult objects
+            ValueError: If task results are incompatible for comparison
         """
+        if not isinstance(rust_result, TaskResult) or not isinstance(tinygo_result, TaskResult):
+            raise TypeError("Both arguments must be TaskResult objects")
+
+        if rust_result.task != tinygo_result.task or rust_result.scale != tinygo_result.scale:
+            raise ValueError(
+                f"Task results are incompatible for comparison: "
+                f"rust({rust_result.task}, {rust_result.scale}) vs "
+                f"tinygo({tinygo_result.task}, {tinygo_result.scale})"
+            )
         # Extract execution times from successful samples only
         rust_times = [
             sample.executionTime for sample in rust_result.samples if sample.success
@@ -521,8 +606,8 @@ class Statistics:
         ]
 
         # Calculate descriptive statistics for both languages
-        rust_stats = self._calculate_complete_statistics(rust_times)
-        tinygo_stats = self._calculate_complete_statistics(tinygo_times)
+        rust_stats = self._calculate_complete_stats(rust_times)
+        tinygo_stats = self._calculate_complete_stats(tinygo_times)
 
         # Execute Welch's t-test for significance testing
         t_test_result = self.welch_t_test(rust_times, tinygo_times)
