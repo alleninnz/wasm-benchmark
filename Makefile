@@ -3,7 +3,7 @@
 
 # Declare all phony targets (targets that don't create files)
 .PHONY: help init build build-rust build-tinygo build-all run run-headed run-quick \
-        qc analyze all all-quick clean clean-results clean-all \
+        qc analyze all all-quick clean clean-results clean-all clean-cache cache-file-discovery \
         lint lint-python lint-rust lint-go lint-js format format-python format-rust format-go \
         test validate status info check-deps
 
@@ -12,6 +12,22 @@
 # Configuration
 PROJECT_ROOT := $(shell pwd)
 NODE_MODULES := node_modules
+
+# Directory paths (centralized configuration)
+BUILDS_DIR := builds
+BUILDS_RUST_DIR := $(BUILDS_DIR)/rust
+BUILDS_TINYGO_DIR := $(BUILDS_DIR)/tinygo
+TASKS_DIR := tasks
+SCRIPTS_DIR := scripts
+ANALYSIS_DIR := analysis
+RESULTS_DIR := results
+CONFIGS_DIR := configs
+HARNESS_DIR := harness
+TESTS_DIR := tests
+
+# Common exclusion patterns
+COMMON_EXCLUDES := -not -path "./$(NODE_MODULES)/*" -not -path "./__pycache__/*"
+BUILD_EXCLUDES := $(COMMON_EXCLUDES) -not -path "./$(BUILDS_DIR)/*" -not -path "./$(RESULTS_DIR)/*" -not -path "./$(TASKS_DIR)/*" -not -path "./$(CONFIGS_DIR)/*"
 
 # Terminal color support detection
 SHELL := /bin/bash
@@ -55,6 +71,42 @@ define log_step
 	@echo -e "$(CYAN)$(BOLD)[STEP]$(NC) $(1)"
 endef
 
+# File discovery functions (DRY improvement)
+define find_python_files
+$(shell find . -name "*.py" $(COMMON_EXCLUDES) 2>/dev/null)
+endef
+
+define find_rust_projects
+$(shell find $(TASKS_DIR) -name 'Cargo.toml' -exec dirname {} \; 2>/dev/null)
+endef
+
+define find_go_modules
+$(shell find $(TASKS_DIR) -name '*.go' -exec dirname {} \; 2>/dev/null | sort -u)
+endef
+
+define find_js_files
+$(shell find . -name "*.js" $(BUILD_EXCLUDES) 2>/dev/null)
+endef
+
+# Error handling function (consistency improvement)
+define handle_command_error
+	@if ! $(1); then \
+		$(call log_error,$(2)); \
+		exit 1; \
+	fi
+endef
+
+# Performance optimization: file discovery caching
+.PHONY: cache-file-discovery clean-cache
+cache-file-discovery: ## Cache file discovery results for performance
+	@echo "$(call find_python_files)" > .cache.python_files 2>/dev/null || true
+	@echo "$(call find_rust_projects)" > .cache.rust_projects 2>/dev/null || true
+	@echo "$(call find_go_modules)" > .cache.go_modules 2>/dev/null || true
+	@echo "$(call find_js_files)" > .cache.js_files 2>/dev/null || true
+
+clean-cache: ## Clean discovery cache files
+	@rm -f .cache.* 2>/dev/null || true
+
 # Common script validation pattern
 define check_script_exists
 	@if [ ! -f $(1) ]; then \
@@ -85,7 +137,7 @@ endef
 
 # Utility function to find latest result directory
 define find_latest_result
-$(shell ls -td results/20* 2>/dev/null | head -n1)
+$(shell ls -td $(RESULTS_DIR)/20* 2>/dev/null | head -n1)
 endef
 
 # Utility function to check if command exists
@@ -285,12 +337,13 @@ all-quick: init build run-quick qc analyze ## Run quick experiment for developme
 
 clean: ## Clean build artifacts and temporary files
 	$(call log_step,Cleaning build artifacts...)
-	find builds/rust -type f ! -name '.gitkeep' -delete 2>/dev/null || true
-	find builds/tinygo -type f ! -name '.gitkeep' -delete 2>/dev/null || true
-	rm -f builds/checksums.txt builds/sizes.csv 2>/dev/null || true
+	find $(BUILDS_RUST_DIR) -type f ! -name '.gitkeep' -delete 2>/dev/null || true
+	find $(BUILDS_TINYGO_DIR) -type f ! -name '.gitkeep' -delete 2>/dev/null || true
+	rm -f $(BUILDS_DIR)/checksums.txt $(BUILDS_DIR)/sizes.csv 2>/dev/null || true
 	find . -name "*.tmp" -delete 2>/dev/null || true
 	find . -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -name "*.pyc" -delete 2>/dev/null || true
+	@$(MAKE) clean-cache
 	$(call log_success,🧹 Build artifacts cleaned)
 
 clean-results: ## Clean all benchmark results
@@ -298,7 +351,7 @@ clean-results: ## Clean all benchmark results
 	@read -p "Are you sure? This will delete all results [y/N]: " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		rm -rf results/* 2>/dev/null || true; \
+		rm -rf $(RESULTS_DIR)/* 2>/dev/null || true; \
 		$(call log_success,🗑️ Results cleaned); \
 	else \
 		$(call log_info,Operation cancelled); \
@@ -315,8 +368,8 @@ clean-all: clean clean-results ## Clean everything including dependencies and ca
 		rm -f *.log 2>/dev/null || true; \
 		rm -f test-results.json 2>/dev/null || true; \
 		rm -f dev-server.log 2>/dev/null || true; \
-		find tasks/ -name 'target' -type d -exec rm -rf {} + 2>/dev/null || true; \
-		find tasks/ -name 'Cargo.lock' -delete 2>/dev/null || true; \
+		find $(TASKS_DIR) -name 'target' -type d -exec rm -rf {} + 2>/dev/null || true; \
+		find $(TASKS_DIR) -name 'Cargo.lock' -delete 2>/dev/null || true; \
 		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 🧹 Complete cleanup finished"; \
 		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Run 'make init' to reinitialize"; \
 	else \
@@ -332,10 +385,10 @@ lint: lint-python lint-rust lint-go lint-js ## Run all code quality checks
 
 lint-python: ## Run Python code quality checks with ruff
 	$(call log_step,Running Python code quality checks with ruff...)
-	@python_files=$$(find . -name "*.py" -not -path "./node_modules/*" -not -path "./__pycache__/*" 2>/dev/null | head -1); \
+	@python_files="$(call find_python_files)"; \
 	if [ -n "$$python_files" ]; then \
 		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Using ruff for Python linting..."; \
-		if ruff check . --exclude="node_modules,__pycache__"; then \
+		if ruff check . --exclude="$(NODE_MODULES),__pycache__"; then \
 			echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 🐍 Python linting completed - no issues found"; \
 		else \
 			echo -e "$(RED)$(BOLD)[ERROR]$(NC) Python linting failed - issues found"; \
@@ -351,12 +404,12 @@ lint-python: ## Run Python code quality checks with ruff
 
 lint-rust: ## Run Rust code quality checks
 	$(call log_step,Running Rust code quality checks...)
-	@rust_projects=$$(find tasks/ -name 'Cargo.toml' -exec dirname {} \; 2>/dev/null); \
+	@rust_projects="$(call find_rust_projects)"; \
 	if [ -n "$$rust_projects" ]; then \
 		for rust_project in $$rust_projects; do \
 			if [ -d "$$rust_project" ]; then \
 				echo "Linting Rust project: $$rust_project"; \
-				(cd "$$rust_project" && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings) || exit 1; \
+				$(call handle_command_error,(cd "$$rust_project" && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings),Rust linting failed for $$rust_project); \
 			fi; \
 		done; \
 		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 🦀 Rust linting completed"; \
@@ -366,17 +419,16 @@ lint-rust: ## Run Rust code quality checks
 
 lint-go: ## Run Go code quality checks
 	$(call log_step,Running Go code quality checks...)
-	@go_modules=$$(find tasks/ -name '*.go' -exec dirname {} \; 2>/dev/null | sort -u); \
+	@go_modules="$(call find_go_modules)"; \
 	if [ -n "$$go_modules" ]; then \
 		for go_dir in $$go_modules; do \
 			if [ -d "$$go_dir" ] && [ -n "$$(find "$$go_dir" -maxdepth 1 -name '*.go')" ]; then \
 				echo "Linting Go module: $$go_dir"; \
 				if echo "$$go_dir" | grep -q "tinygo"; then \
 					echo "  → Skipping unsafe pointer checks for TinyGo WASM module"; \
-					(cd "$$go_dir" && go vet -unsafeptr=false . 2>/dev/null || go vet -vettool= . 2>/dev/null || echo "Using relaxed vet for WASM module") && \
-					(cd "$$go_dir" && gofmt -l . | (grep . && exit 1 || true)) || exit 1; \
+					$(call handle_command_error,(cd "$$go_dir" && go vet -unsafeptr=false . 2>/dev/null || go vet -vettool= . 2>/dev/null || echo "Using relaxed vet for WASM module") && (cd "$$go_dir" && gofmt -l . | (grep . && exit 1 || true)),Go linting failed for $$go_dir); \
 				else \
-					(cd "$$go_dir" && go vet . && gofmt -l . | (grep . && exit 1 || true)) || exit 1; \
+					$(call handle_command_error,(cd "$$go_dir" && go vet . && gofmt -l . | (grep . && exit 1 || true)),Go linting failed for $$go_dir); \
 				fi; \
 			fi; \
 		done; \
@@ -387,32 +439,25 @@ lint-go: ## Run Go code quality checks
 
 lint-js: ## Run JavaScript code quality checks
 	$(call log_step,Running JavaScript code quality checks...)
-	@JS_FILES=$$(find . -name "*.js" \
-		-not -path "./node_modules/*" \
-		-not -path "./__pycache__/*" \
-		-not -path "./builds/*" \
-		-not -path "./results/*" \
-		-not -path "./tasks/*" \
-		-not -path "./configs/*" \
-		2>/dev/null); \
-	JS_COUNT=$$(echo "$$JS_FILES" | grep -c . 2>/dev/null || echo "0"); \
-	if [ "$$JS_COUNT" -gt 0 ]; then \
-		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Found $$JS_COUNT JavaScript files to lint"; \
+	@js_files="$(call find_js_files)"; \
+	js_count=$$(echo "$$js_files" | grep -c . 2>/dev/null || echo "0"); \
+	if [ "$$js_count" -gt 0 ]; then \
+		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Found $$js_count JavaScript files to lint"; \
 		if [ -x "$(NODE_MODULES)/.bin/eslint" ]; then \
 			echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Using local ESLint installation"; \
 			if $(NODE_MODULES)/.bin/eslint \
-				scripts/ harness/ tests/ \
-				--ignore-pattern "node_modules/**" \
+				$(SCRIPTS_DIR)/ $(HARNESS_DIR)/ $(TESTS_DIR)/ \
+				--ignore-pattern "$(NODE_MODULES)/**" \
 				--ignore-pattern "__pycache__/**" \
-				--ignore-pattern "builds/**" \
-				--ignore-pattern "results/**" \
-				--ignore-pattern "tasks/**" \
-				--ignore-pattern "configs/**" \
+				--ignore-pattern "$(BUILDS_DIR)/**" \
+				--ignore-pattern "$(RESULTS_DIR)/**" \
+				--ignore-pattern "$(TASKS_DIR)/**" \
+				--ignore-pattern "$(CONFIGS_DIR)/**" \
 				--no-error-on-unmatched-pattern; then \
 				echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 📜 JavaScript linting completed successfully"; \
 			else \
 				echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) ESLint found issues in JavaScript code"; \
-				echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Fix with: $(NODE_MODULES)/.bin/eslint --fix scripts/ harness/ tests/"; \
+				echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Fix with: $(NODE_MODULES)/.bin/eslint --fix $(SCRIPTS_DIR)/ $(HARNESS_DIR)/ $(TESTS_DIR)/"; \
 			fi; \
 		else \
 			echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) Local ESLint not found"; \
@@ -421,7 +466,7 @@ lint-js: ## Run JavaScript code quality checks
 		fi; \
 	else \
 		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No JavaScript files found to lint"; \
-		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Searched in: scripts/, harness/, tests/"; \
+		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Searched in: $(SCRIPTS_DIR)/, $(HARNESS_DIR)/, $(TESTS_DIR)/"; \
 	fi
 
 format: format-python format-rust format-go ## Format all code
@@ -429,10 +474,10 @@ format: format-python format-rust format-go ## Format all code
 
 format-python: ## Format Python code with black
 	$(call log_step,Formatting Python code with black...)
-	@python_files=$$(find . -name "*.py" -not -path "./node_modules/*" -not -path "./__pycache__/*" 2>/dev/null | head -1); \
+	@python_files="$(call find_python_files)"; \
 	if [ -n "$$python_files" ]; then \
 		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Using black for Python formatting..."; \
-		python3 -m black . --exclude="node_modules|__pycache__"; \
+		python3 -m black . --exclude="$(NODE_MODULES)|__pycache__"; \
 		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 🐍 Python code formatted with black"; \
 	else \
 		echo -e "$(YELLOW)$(BOLD)[WARNING]$(NC) No Python files found, skipping Python format"; \
@@ -440,7 +485,7 @@ format-python: ## Format Python code with black
 
 format-rust: ## Format Rust code
 	$(call log_step,Formatting Rust code...)
-	@rust_projects=$$(find tasks/ -name 'Cargo.toml' -exec dirname {} \; 2>/dev/null); \
+	@rust_projects="$(call find_rust_projects)"; \
 	if [ -n "$$rust_projects" ]; then \
 		for rust_project in $$rust_projects; do \
 			if [ -d "$$rust_project" ]; then \
@@ -455,7 +500,7 @@ format-rust: ## Format Rust code
 
 format-go: ## Format Go code
 	$(call log_step,Formatting Go code...)
-	@go_modules=$$(find tasks/ -name '*.go' -exec dirname {} \; 2>/dev/null | sort -u); \
+	@go_modules="$(call find_go_modules)"; \
 	if [ -n "$$go_modules" ]; then \
 		for go_dir in $$go_modules; do \
 			if [ -d "$$go_dir" ] && [ -n "$$(find "$$go_dir" -maxdepth 1 -name '*.go')" ]; then \
@@ -523,13 +568,13 @@ status: ## Show current project status
 	fi
 	@echo ""
 	@echo -e "$(BOLD)📦 Build Artifacts:$(NC)"
-	@RUST_COUNT=$$(find builds/rust -name "*.wasm" 2>/dev/null | wc -l | tr -d ' '); \
+	@RUST_COUNT=$$(find $(BUILDS_RUST_DIR) -name "*.wasm" 2>/dev/null | wc -l | tr -d ' '); \
 	echo "  🦀 Rust modules: $$RUST_COUNT"
-	@TINYGO_COUNT=$$(find builds/tinygo -name "*.wasm" 2>/dev/null | wc -l | tr -d ' '); \
+	@TINYGO_COUNT=$$(find $(BUILDS_TINYGO_DIR) -name "*.wasm" 2>/dev/null | wc -l | tr -d ' '); \
 	echo "  🐹 TinyGo modules: $$TINYGO_COUNT"
 	@echo ""
 	@echo -e "$(BOLD)📈 Results:$(NC)"
-	@RESULT_COUNT=$$(ls -d results/20* 2>/dev/null | wc -l | tr -d ' '); \
+	@RESULT_COUNT=$$(ls -d $(RESULTS_DIR)/20* 2>/dev/null | wc -l | tr -d ' '); \
 	echo "  Experiment runs: $$RESULT_COUNT"; \
 	if [ "$$RESULT_COUNT" -gt 0 ] 2>/dev/null; then \
 		LATEST=$(call find_latest_result); \
