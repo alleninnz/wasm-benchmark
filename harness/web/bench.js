@@ -399,9 +399,7 @@ export class BenchmarkRunner {
      */
     _generateInputData(taskName, scale, config) {
         // Debug: Check what we actually received
-        console.log(`DEBUG _generateInputData: taskName=${taskName}, scale=${scale}`);
-        console.log(`DEBUG config.taskConfigs:`, config.taskConfigs);
-        console.log(`DEBUG config.taskConfigs[${taskName}]:`, config.taskConfigs[taskName]);
+        // DEBUG _generateInputData: taskName, scale, config.taskConfigs removed for clean test output
 
         const taskConfig = config.taskConfigs[taskName];
         if (!taskConfig || !taskConfig.scales) {

@@ -236,7 +236,7 @@
                 window.benchmarkState.uiUpdateInterval = setInterval(() => {
                     updateUI();
                 }, 200); // Update every 200ms for smooth updates
-                console.log('UI update timer started');
+                // UI update timer started
             }
         }
 
@@ -245,7 +245,7 @@
             if (window.benchmarkState.uiUpdateInterval) {
                 clearInterval(window.benchmarkState.uiUpdateInterval);
                 window.benchmarkState.uiUpdateInterval = null;
-                console.log('UI update timer stopped');
+                // UI update timer stopped
             }
         }
         
@@ -515,7 +515,7 @@
 
         // Start UI updates immediately when page loads
         function initializePage() {
-            console.log('Page initializing...');
+            // Page initializing...
             
             // Reset any existing state to defaults
             window.benchmarkState.status = 'initializing';
@@ -524,7 +524,7 @@
             startUIUpdates();
             updateUI();
             
-            console.log('Page initialization complete, UI updates started');
+            // Page initialization complete, UI updates started
         }
 
         // Start updates when DOM is ready
