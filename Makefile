@@ -2,10 +2,10 @@
 # Automation targets for the complete experiment pipeline
 
 # Declare all phony targets (targets that don't create files)
-.PHONY: help init build build-rust build-tinygo build-all run run-headed run-quick \
+.PHONY: help help-setup init build build-rust build-tinygo build-all run run-headed run-quick \
         qc analyze all all-quick clean clean-results clean-all clean-cache cache-file-discovery \
         lint lint-python lint-rust lint-go lint-js format format-python format-rust format-go \
-        test validate status info check-deps
+        test validate status info check-deps build-config build-config-quick
 
 .DEFAULT_GOAL := help
 
@@ -158,25 +158,88 @@ define start_dev_server
 	fi
 endef
 
-help: ## Show this help message
-	@echo -e "$(BOLD)🚀 WebAssembly Benchmark Automation 🚀$(NC)"
-	@echo "================================="
+
+help: ## Show complete list of all available targets
+	@echo -e "$(BOLD)📋 Complete Command Reference$(NC)"
+	@echo "============================"
 	@echo ""
-	@echo -e "$(BOLD)⚡ Core Workflow:$(NC)"
-	@echo -e "  $(CYAN)make init$(NC)          🔧 Initialize environment and dependencies"
-	@echo -e "  $(CYAN)make build$(NC)         📦 Build all WebAssembly modules" 
-	@echo -e "  $(CYAN)make run$(NC)           🏃 Run browser benchmark suite"
-	@echo -e "  $(CYAN)make analyze$(NC)       📊 Run statistical analysis and generate plots"
-	@echo -e "  $(CYAN)make all$(NC)           🎯 Run complete experiment pipeline"
+	@echo -e "$(BOLD)🏗️  Setup & Build Targets:$(NC)"
+	@echo -e "  $(CYAN)init$(NC)                   🔧 Initialize environment and install dependencies"
+	@echo -e "  $(CYAN)build$(NC)                  📦 Build all WebAssembly modules"
+	@echo -e "  $(CYAN)build-rust$(NC)             🦀 Build Rust WebAssembly modules"
+	@echo -e "  $(CYAN)build-tinygo$(NC)           🐹 Build TinyGo WebAssembly modules"
+	@echo -e "  $(CYAN)build-all$(NC)              🚀 Build all modules with optimization and size reporting"
+	@echo -e "  $(CYAN)build-config$(NC)           ⚙️  Build configuration file (bench.json)"
+	@echo -e "  $(CYAN)build-config-quick$(NC)     ⚡ Build quick configuration file (bench-quick.json)"
 	@echo ""
-	@echo -e "$(BOLD)📋 Available Targets:$(NC)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[0;36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo -e "$(BOLD)🚀 Execution Targets:$(NC)"
+	@echo -e "  $(CYAN)run$(NC)                    🏃 Run browser benchmark suite"
+	@echo -e "  $(CYAN)run-headed$(NC)             👁️  Run benchmarks with visible browser"
+	@echo -e "  $(CYAN)run-quick$(NC)              ⚡ Run quick benchmarks for development (~2-3 min)"
+	@echo -e "  $(CYAN)qc$(NC)                     🔍 Run quality control on benchmark data"
+	@echo -e "  $(CYAN)analyze$(NC)                📊 Run statistical analysis and generate plots"
+	@echo -e "  $(CYAN)all$(NC)                    🎯 Run complete experiment pipeline"
+	@echo -e "  $(CYAN)all-quick$(NC)              ⚡ Run quick experiment for development/testing"
 	@echo ""
-	@echo -e "$(BOLD)💡 Quick Examples:$(NC)"
-	@echo -e "  $(GREEN)make check-deps$(NC)    ✅ Check if all required tools are installed"
-	@echo -e "  $(GREEN)make status$(NC)        📈 Show current project status"
-	@echo -e "  $(GREEN)make all-quick$(NC)     ⚡ Run quick experiment for testing"
-	@echo -e "  $(GREEN)make clean-all$(NC)     🧹 Clean everything and start fresh"
+	@echo -e "$(BOLD)🧹 Cleanup Targets:$(NC)"
+	@echo -e "  $(CYAN)clean$(NC)                  🧹 Clean build artifacts and temporary files"
+	@echo -e "  $(CYAN)clean-results$(NC)          🗑️  Clean all benchmark results (with confirmation)"
+	@echo -e "  $(CYAN)clean-all$(NC)              💥 Clean everything including dependencies and caches"
+	@echo -e "  $(CYAN)clean-cache$(NC)            🗄️  Clean discovery cache files"
+	@echo ""
+	@echo -e "$(BOLD)🛠️  Development Targets:$(NC)"
+	@echo -e "  $(CYAN)lint$(NC)                   ✨ Run all code quality checks"
+	@echo -e "  $(CYAN)lint-python$(NC)            🐍 Run Python code quality checks with ruff"
+	@echo -e "  $(CYAN)lint-rust$(NC)              🦀 Run Rust code quality checks"
+	@echo -e "  $(CYAN)lint-go$(NC)                🐹 Run Go code quality checks"
+	@echo -e "  $(CYAN)lint-js$(NC)                📜 Run JavaScript code quality checks"
+	@echo -e "  $(CYAN)format$(NC)                 💄 Format all code"
+	@echo -e "  $(CYAN)format-python$(NC)          🐍 Format Python code with black"
+	@echo -e "  $(CYAN)format-rust$(NC)            🦀 Format Rust code"
+	@echo -e "  $(CYAN)format-go$(NC)              🐹 Format Go code"
+	@echo -e "  $(CYAN)test$(NC)                   🧪 Run tests (JavaScript and Python)"
+	@echo -e "  $(CYAN)validate$(NC)               ✅ Run WASM task validation suite"
+	@echo ""
+	@echo -e "$(BOLD)ℹ️  Information Targets:$(NC)"
+	@echo -e "  $(CYAN)help$(NC)                   📋 Show complete list of all available targets"
+	@echo -e "  $(CYAN)help-setup$(NC)             🔧 Show setup and installation help"
+	@echo -e "  $(CYAN)status$(NC)                 📈 Show current project status"
+	@echo -e "  $(CYAN)info$(NC)                   💻 Show system information"
+	@echo -e "  $(CYAN)check-deps$(NC)             🔍 Check if all required dependencies are available"
+	@echo ""
+	@echo -e "$(BOLD)⚡ Performance Targets:$(NC)"
+	@echo -e "  $(CYAN)cache-file-discovery$(NC)   🗄️  Cache file discovery results for performance"
+
+help-setup: ## Show setup and installation help
+	@echo -e "$(BOLD)🔧 Setup & Installation Guide$(NC)"
+	@echo "============================="
+	@echo ""
+	@echo -e "$(BOLD)📋 Prerequisites:$(NC)"
+	@echo -e "  🦀 Rust + Cargo (for WebAssembly modules)"
+	@echo -e "  🐹 Go + TinyGo (for WebAssembly modules)"
+	@echo -e "  📜 Node.js + npm (for test runner and build tools)"
+	@echo -e "  🐍 Python 3.8+ (for analysis and plotting)"
+	@echo ""
+	@echo -e "$(BOLD)🍺 Quick Install (macOS with Homebrew):$(NC)"
+	@echo -e "  $(CYAN)brew install rust go tinygo node python$(NC)"
+	@echo ""
+	@echo -e "$(BOLD)🐧 Ubuntu/Debian Install:$(NC)"
+	@echo -e "  $(CYAN)curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh$(NC)"
+	@echo -e "  $(CYAN)sudo apt update && sudo apt install golang-go nodejs npm python3 python3-pip$(NC)"
+	@echo -e "  $(CYAN)wget https://github.com/tinygo-org/tinygo/releases/download/v0.30.0/tinygo_0.30.0_amd64.deb$(NC)"
+	@echo -e "  $(CYAN)sudo dpkg -i tinygo_0.30.0_amd64.deb$(NC)"
+	@echo ""
+	@echo -e "$(BOLD)🏁 After Installing Tools:$(NC)"
+	@echo -e "  1️⃣  $(GREEN)make check-deps$(NC)   - Verify all tools are installed"
+	@echo -e "  2️⃣  $(GREEN)make init$(NC)         - Initialize environment and dependencies"
+	@echo -e "  3️⃣  $(GREEN)make status$(NC)       - Check project status"
+	@echo -e "  4️⃣  $(GREEN)make all-quick$(NC)    - Run a quick test to verify everything works"
+	@echo ""
+	@echo -e "$(BOLD)🔍 Troubleshooting:$(NC)"
+	@echo -e "  🚨 $(RED)Permission denied$(NC):     Add $(CYAN)source ~/.bashrc$(NC) or restart terminal"
+	@echo -e "  🚨 $(RED)Command not found$(NC):     Check $(CYAN)echo \$$PATH$(NC) includes tool binaries"
+	@echo -e "  🚨 $(RED)TinyGo build fails$(NC):    Update to TinyGo 0.30.0+ for WASM target support"
+	@echo -e "  🚨 $(RED)Python module missing$(NC): Run $(CYAN)python3 -m pip install --user -r requirements.txt$(NC)"
 
 # ============================================================================
 # Environment Setup Targets
