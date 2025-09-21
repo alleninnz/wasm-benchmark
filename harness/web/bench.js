@@ -581,7 +581,7 @@ export class BenchmarkRunner {
         // Extract and validate task parameters from config
         const {
             task, language, scale, taskConfig, scaleConfig: _scaleConfig,
-            warmupRuns, measureRuns, timeout
+            warmupRuns, measureRuns, repetitions, timeout
         } = config;
 
         if (!task || typeof task !== 'string') {
@@ -598,6 +598,9 @@ export class BenchmarkRunner {
         }
         if (measureRuns && (typeof measureRuns !== 'number' || measureRuns <= 0 || measureRuns > this.MAX_RUNS)) {
             throw new Error(`runTaskBenchmark: measureRuns must be between 1 and ${this.MAX_RUNS}`);
+        }
+        if (repetitions && (typeof repetitions !== 'number' || repetitions <= 0 || repetitions > 10)) {
+            throw new Error('runTaskBenchmark: repetitions must be between 1 and 10');
         }
         if (timeout && (typeof timeout !== 'number' || timeout <= 0 || timeout > this.MAX_CONFIG_TIMEOUT)) {
             throw new Error(`runTaskBenchmark: timeout must be between 1 and ${this.MAX_CONFIG_TIMEOUT}ms`);
@@ -618,10 +621,12 @@ export class BenchmarkRunner {
                 },
                 warmupRuns: warmupRuns || 3,
                 measureRuns: measureRuns || 10,
+                repetitions: repetitions || 1,
                 timeout: timeout || 60000,
                 environment: {
                     warmupRuns: warmupRuns || 3,
                     measureRuns: measureRuns || 10,
+                    repetitions: repetitions || 1,
                     timeout: timeout || 60000
                 }
             };
