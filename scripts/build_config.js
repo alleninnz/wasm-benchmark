@@ -13,12 +13,12 @@ import { fileURLToPath } from 'url';
 import yaml from 'yaml';
 
 // Configuration constants
-const DEFAULT_TIMEOUT_MS = 90000;
+const DEFAULT_TIMEOUT_MS = 300000;
 const DEFAULT_REPETITIONS = 3;
 
 // Environment detection
 const EXCLUDED_ENV_KEYS = [
-    'warmup_runs', 'measure_runs', 'repetitions', 'timeout_ms'
+    'warmup_runs', 'measure_runs', 'repetitions', 'timeout'
 ];
 
 const __filename = fileURLToPath(import.meta.url);
@@ -106,7 +106,8 @@ function createOptimizedEnvironment(config) {
         warmupRuns: env.warmup_runs !== undefined ? env.warmup_runs : env.warmupRuns || 20,
         measureRuns: env.measure_runs !== undefined ? env.measure_runs : env.measureRuns || 100,
         repetitions: env.repetitions !== undefined ? env.repetitions : DEFAULT_REPETITIONS,
-        timeout: env.timeout_ms !== undefined ? env.timeout_ms : DEFAULT_TIMEOUT_MS
+        timeout: env.timeout !== undefined ? 
+            (env.timeout > 1000 ? env.timeout : env.timeout * 1000) : DEFAULT_TIMEOUT_MS
     };
 
     // Convert additional environment settings to camelCase

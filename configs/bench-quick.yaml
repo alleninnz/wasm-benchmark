@@ -13,7 +13,7 @@ environment:
   repetitions: 1               # Single run for maximum speed
 
   # Quick timeout for fast feedback
-  timeout_ms: 20000           # 20s max per task
+  timeout: 20
 
 # Micro-scale tasks for development speed
 tasks:
