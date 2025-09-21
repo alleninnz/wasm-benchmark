@@ -16,17 +16,9 @@ from scipy.stats import t as t_dist
 
 from analysis.config_parser import ConfigParser
 
-from .data_models import (
-    BenchmarkSample,
-    CleanedDataset,
-    ComparisonResult,
-    EffectSize,
-    EffectSizeResult,
-    StatisticalResult,
-    StatisticsConfiguration,
-    TaskResult,
-    TTestResult,
-)
+from .data_models import (BenchmarkSample, CleanedDataset, ComparisonResult,
+                          EffectSize, EffectSizeResult, StatisticalResult,
+                          StatisticsConfiguration, TaskResult, TTestResult)
 
 # Statistical constants
 MINIMUM_SAMPLES_FOR_TEST = 2
@@ -685,13 +677,9 @@ class StatisticalAnalysis:
                 f"rust({rust_result.task}, {rust_result.scale}) vs "
                 f"tinygo({tinygo_result.task}, {tinygo_result.scale})"
             )
-        # Extract execution times from successful samples only
-        rust_times = [
-            sample.executionTime for sample in rust_result.samples if sample.success
-        ]
-        tinygo_times = [
-            sample.executionTime for sample in tinygo_result.samples if sample.success
-        ]
+        # Extract execution times from clean samples
+        rust_times = [sample.executionTime for sample in rust_result.samples]
+        tinygo_times = [sample.executionTime for sample in tinygo_result.samples]
 
         # Calculate descriptive statistics for both languages
         rust_stats = self._calculate_complete_stats(rust_times)
@@ -1023,6 +1011,7 @@ def _convert_raw_samples(raw_samples: List[Dict[str, Any]]) -> List[BenchmarkSam
             language=raw_sample.get("language", ""),
             scale=raw_sample.get("scale", ""),
             run=raw_sample.get("run", 0),
+            repetition=raw_sample.get("repetition", 1),  # Extract repetition field, default to 1
             moduleId=raw_sample.get("moduleId", ""),
             inputDataHash=raw_sample.get("inputDataHash", 0),
             executionTime=raw_sample.get("executionTime", 0.0),

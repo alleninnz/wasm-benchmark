@@ -79,6 +79,7 @@ class BenchmarkSample:
     language: str
     scale: str
     run: int
+    repetition: int  # Add repetition field for tracking experimental replicates
     moduleId: str
     inputDataHash: int
     executionTime: float

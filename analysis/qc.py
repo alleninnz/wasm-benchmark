@@ -13,16 +13,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from analysis.config_parser import ConfigParser
-from analysis.data_models import (
-    BenchmarkResult,
-    BenchmarkSample,
-    CleanedDataset,
-    DataQuality,
-    QCConfiguration,
-    QualityAssessment,
-    QualityMetrics,
-    TaskResult,
-)
+from analysis.data_models import (BenchmarkResult, BenchmarkSample,
+                                  CleanedDataset, DataQuality, QCConfiguration,
+                                  QualityAssessment, QualityMetrics,
+                                  TaskResult)
 
 
 class QCConstants:
@@ -178,19 +172,19 @@ class QualityController:
                     f"({len(outliers) / len(successful_samples) * 100:.1f}% of successful samples)"
                 )
 
-            # Create final sample list (keep failed runs, use cleaned successful runs)
-            final_samples = cleaned_samples + failed_samples
+            # Calculate total attempts for success rate
+            total_attempts = len(cleaned_samples) + failed_runs
 
-            # Create TaskResult
+            # Create TaskResult with only clean samples
             task_result = TaskResult(
                 task=task,
                 language=language,
                 scale=scale,
-                samples=final_samples,
+                samples=cleaned_samples,  # Only include clean, usable data
                 successful_runs=len(cleaned_samples),
                 failed_runs=failed_runs,
                 success_rate=(
-                    len(cleaned_samples) / len(final_samples) if final_samples else 0.0
+                    len(cleaned_samples) / total_attempts if total_attempts > 0 else 0.0
                 ),
             )
 
@@ -327,15 +321,13 @@ class QualityController:
             QualityMetrics: Detailed quality assessment with validation status
         """
 
-        # Extract execution times from successful samples only
-        successful_samples = [
-            sample for sample in task_result.samples if sample.success
-        ]
-        execution_times = [sample.executionTime for sample in successful_samples]
+        # Extract execution times from clean samples
+        execution_times = [sample.executionTime for sample in task_result.samples]
 
-        sample_count = len(successful_samples)
-        total_samples = len(task_result.samples)
-        failed_samples = total_samples - sample_count
+        sample_count = len(task_result.samples)
+        # Use TaskResult's tracked metrics for failed samples
+        failed_samples = task_result.failed_runs
+        total_samples = sample_count + failed_samples
 
         # Calculate basic statistics from execution times
         if sample_count == 0:
@@ -658,6 +650,7 @@ def _convert_raw_samples_to_benchmark_samples(
             language=sample_data.get("language", ""),
             scale=sample_data.get("scale", ""),
             run=sample_data.get("run", 0),
+            repetition=sample_data.get("repetition", 1),  # Extract repetition field, default to 1
             moduleId=sample_data.get("moduleId", ""),
             inputDataHash=sample_data.get("inputDataHash", 0),
             executionTime=sample_data.get("executionTime", 0.0),
@@ -762,6 +755,7 @@ def _sample_to_dict(sample: BenchmarkSample) -> Dict[str, Any]:
         "language": sample.language,
         "scale": sample.scale,
         "run": sample.run,
+        "repetition": sample.repetition,  # Include repetition field in output
         "executionTime": sample.executionTime,
         "memoryUsageMb": sample.memoryUsageMb,
         "wasmMemoryBytes": sample.wasmMemoryBytes,
