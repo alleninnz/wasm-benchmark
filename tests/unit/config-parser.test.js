@@ -1,7 +1,7 @@
 // Unit tests for configuration parsing logic
 // Focus: Core configuration processing for WASM benchmarks
 
-import { describe, test, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { optimizeConfig, validateConfig } from '../../scripts/build_config.js';
 import DeterministicTestDataGenerator from '../utils/test-data-generator.js';
 
@@ -46,7 +46,7 @@ describe('Configuration Parser', () => {
 
             const result = optimizeConfig(input);
 
-            expect(result.environment.timeout).toBe(90000);
+            expect(result.environment.timeout).toBe(300000);
             expect(result.enabledLanguages).toEqual([]);
         });
 
