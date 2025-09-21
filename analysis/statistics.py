@@ -16,9 +16,17 @@ from scipy.stats import t as t_dist
 
 from analysis.config_parser import ConfigParser
 
-from .data_models import (BenchmarkSample, CleanedDataset, ComparisonResult,
-                          EffectSize, EffectSizeResult, StatisticalResult,
-                          StatisticsConfiguration, TaskResult, TTestResult)
+from .data_models import (
+    BenchmarkSample,
+    CleanedDataset,
+    ComparisonResult,
+    EffectSize,
+    EffectSizeResult,
+    StatisticalResult,
+    StatisticsConfiguration,
+    TaskResult,
+    TTestResult,
+)
 
 # Statistical constants
 MINIMUM_SAMPLES_FOR_TEST = 2
@@ -34,9 +42,7 @@ THIRD_QUARTILE = 0.75
 class StatisticalAnalysis:
     """Statistical analysis engine for benchmark performance comparison"""
 
-    def __init__(
-        self, stats_config: StatisticsConfiguration
-    ):
+    def __init__(self, stats_config: StatisticsConfiguration):
         """
         Initialize statistical analysis with configuration.
 
@@ -841,7 +847,7 @@ def _load_cleaned_dataset(input_path: Path) -> CleanedDataset:
         return CleanedDataset(
             task_results=task_results,
             removed_outliers=removed_outliers,
-            cleaning_log=cleaning_log
+            cleaning_log=cleaning_log,
         )
 
     except FileNotFoundError:
@@ -894,17 +900,23 @@ def _perform_comparisons(
             tinygo_result = language_results.get("tinygo")
 
             if rust_result is None or tinygo_result is None:
-                print(f"⚠️ Skipping {task}_{scale}: Missing Rust or TinyGo implementation")
+                print(
+                    f"⚠️ Skipping {task}_{scale}: Missing Rust or TinyGo implementation"
+                )
                 continue
 
             # Perform statistical comparison
             print(f"📊 Comparing {task}_{scale}: Rust vs TinyGo...")
-            comparison_result = stats_engine.generate_task_comparison(rust_result, tinygo_result)
+            comparison_result = stats_engine.generate_task_comparison(
+                rust_result, tinygo_result
+            )
             comparison_results.append(comparison_result)
 
             # Log comparison summary
             effect_size = comparison_result.effect_size
-            print(f"  ✓ Effect size: {effect_size.effect_size.value} (d={effect_size.cohens_d:.3f})")
+            print(
+                f"  ✓ Effect size: {effect_size.effect_size.value} (d={effect_size.cohens_d:.3f})"
+            )
 
         except Exception as e:
             print(f"❌ Error comparing {task}_{scale}: {e}")
@@ -915,7 +927,8 @@ def _perform_comparisons(
 
 
 def _save_comparison_results(
-        comparison_results: List[ComparisonResult], output_dir: Path) -> None:
+    comparison_results: List[ComparisonResult], output_dir: Path
+) -> None:
     """
     Save comparison results to JSON files in the specified output directory.
 
@@ -938,7 +951,7 @@ def _save_comparison_results(
             "comparison_results": [
                 _comparison_result_to_dict(result) for result in comparison_results
             ],
-            "summary_statistics": _generate_summary_statistics(comparison_results)
+            "summary_statistics": _generate_summary_statistics(comparison_results),
         }
 
         # Save main statistical report
@@ -949,7 +962,9 @@ def _save_comparison_results(
 
         # Save individual comparison results for detailed analysis
         for result in comparison_results:
-            result_filename = f"comparison_{result.task}_{result.scale}_rust_vs_tinygo.json"
+            result_filename = (
+                f"comparison_{result.task}_{result.scale}_rust_vs_tinygo.json"
+            )
             result_path = output_dir / result_filename
 
             detailed_result = _comparison_result_to_dict(result)
@@ -977,7 +992,9 @@ def _validate_cleaned_dataset_structure(raw_data: Dict[str, Any]) -> None:
         raise ValueError("Field 'task_results' must be a list")
 
 
-def _convert_raw_task_results(raw_task_results: List[Dict[str, Any]]) -> List[TaskResult]:
+def _convert_raw_task_results(
+    raw_task_results: List[Dict[str, Any]],
+) -> List[TaskResult]:
     """Convert raw task result data to TaskResult objects."""
     task_results = []
     for raw_result in raw_task_results:
@@ -990,7 +1007,7 @@ def _convert_raw_task_results(raw_task_results: List[Dict[str, Any]]) -> List[Ta
             samples=samples,
             successful_runs=raw_result.get("successful_runs", 0),
             failed_runs=raw_result.get("failed_runs", 0),
-            success_rate=raw_result.get("success_rate", 0.0)
+            success_rate=raw_result.get("success_rate", 0.0),
         )
         task_results.append(task_result)
 
@@ -1026,7 +1043,9 @@ def _convert_raw_samples(raw_samples: List[Dict[str, Any]]) -> List[BenchmarkSam
     return samples
 
 
-def _group_task_results_for_comparison(task_results: List[TaskResult]) -> Dict[Tuple[str, str], Dict[str, TaskResult]]:
+def _group_task_results_for_comparison(
+    task_results: List[TaskResult],
+) -> Dict[Tuple[str, str], Dict[str, TaskResult]]:
     """Group task results by (task, scale) and then by language for comparison."""
     groups = {}
 
@@ -1072,7 +1091,10 @@ def _comparison_result_to_dict(result: ComparisonResult) -> Dict[str, Any]:
             "p_value": result.t_test.p_value,
             "degrees_freedom": result.t_test.degrees_freedom,
             "is_significant": result.t_test.is_significant,
-            "confidence_interval": [result.t_test.confidence_interval_lower, result.t_test.confidence_interval_upper],
+            "confidence_interval": [
+                result.t_test.confidence_interval_lower,
+                result.t_test.confidence_interval_upper,
+            ],
         },
         "effect_size": {
             "cohens_d": result.effect_size.cohens_d,
@@ -1084,32 +1106,52 @@ def _comparison_result_to_dict(result: ComparisonResult) -> Dict[str, Any]:
     }
 
 
-def _generate_summary_statistics(comparison_results: List[ComparisonResult]) -> Dict[str, Any]:
+def _generate_summary_statistics(
+    comparison_results: List[ComparisonResult],
+) -> Dict[str, Any]:
     """Generate summary statistics across all comparisons."""
     if not comparison_results:
         return {}
 
     significant_results = [r for r in comparison_results if r.t_test.is_significant]
-    large_effects = [r for r in comparison_results if r.effect_size.effect_size.value == "large"]
+    large_effects = [
+        r for r in comparison_results if r.effect_size.effect_size.value == "large"
+    ]
 
-    rust_faster = [r for r in comparison_results if r.rust_stats.mean < r.tinygo_stats.mean]
-    tinygo_faster = [r for r in comparison_results if r.tinygo_stats.mean < r.rust_stats.mean]
+    rust_faster = [
+        r for r in comparison_results if r.rust_stats.mean < r.tinygo_stats.mean
+    ]
+    tinygo_faster = [
+        r for r in comparison_results if r.tinygo_stats.mean < r.rust_stats.mean
+    ]
 
     return {
         "total_comparisons": len(comparison_results),
         "significant_differences": len(significant_results),
         "large_effect_sizes": len(large_effects),
-        "significance_rate": len(significant_results) / len(comparison_results) if comparison_results else 0,
+        "significance_rate": (
+            len(significant_results) / len(comparison_results)
+            if comparison_results
+            else 0
+        ),
         "rust_faster_count": len(rust_faster),
         "tinygo_faster_count": len(tinygo_faster),
         "performance_advantage": {
-            "rust": len(rust_faster) / len(comparison_results) if comparison_results else 0,
-            "tinygo": len(tinygo_faster) / len(comparison_results) if comparison_results else 0,
+            "rust": (
+                len(rust_faster) / len(comparison_results) if comparison_results else 0
+            ),
+            "tinygo": (
+                len(tinygo_faster) / len(comparison_results)
+                if comparison_results
+                else 0
+            ),
         },
     }
 
 
-def _print_analysis_summary(comparison_results: List[ComparisonResult], output_dir: Path) -> None:
+def _print_analysis_summary(
+    comparison_results: List[ComparisonResult], output_dir: Path
+) -> None:
     """Print comprehensive analysis summary."""
     print("\n📈 Statistical Analysis Summary:")
     print(f"   • Total Comparisons: {len(comparison_results)}")
@@ -1119,16 +1161,30 @@ def _print_analysis_summary(comparison_results: List[ComparisonResult], output_d
         return
 
     significant_results = [r for r in comparison_results if r.t_test.is_significant]
-    large_effects = [r for r in comparison_results if r.effect_size.effect_size.value == "large"]
+    large_effects = [
+        r for r in comparison_results if r.effect_size.effect_size.value == "large"
+    ]
 
-    rust_faster = [r for r in comparison_results if r.rust_stats.mean < r.tinygo_stats.mean]
-    tinygo_faster = [r for r in comparison_results if r.tinygo_stats.mean < r.rust_stats.mean]
+    rust_faster = [
+        r for r in comparison_results if r.rust_stats.mean < r.tinygo_stats.mean
+    ]
+    tinygo_faster = [
+        r for r in comparison_results if r.tinygo_stats.mean < r.rust_stats.mean
+    ]
 
-    print(f"   • Significant Differences: {len(significant_results)} ({len(significant_results) / len(comparison_results) * 100:.1f}%)")
-    print(f"   • Large Effect Sizes: {len(large_effects)} ({len(large_effects) / len(comparison_results) * 100:.1f}%)")
+    print(
+        f"   • Significant Differences: {len(significant_results)} ({len(significant_results) / len(comparison_results) * 100:.1f}%)"
+    )
+    print(
+        f"   • Large Effect Sizes: {len(large_effects)} ({len(large_effects) / len(comparison_results) * 100:.1f}%)"
+    )
     print("   • Performance Distribution:")
-    print(f"     - Rust Faster: {len(rust_faster)} tasks ({len(rust_faster) / len(comparison_results) * 100:.1f}%)")
-    print(f"     - TinyGo Faster: {len(tinygo_faster)} tasks ({len(tinygo_faster) / len(comparison_results) * 100:.1f}%)")
+    print(
+        f"     - Rust Faster: {len(rust_faster)} tasks ({len(rust_faster) / len(comparison_results) * 100:.1f}%)"
+    )
+    print(
+        f"     - TinyGo Faster: {len(tinygo_faster)} tasks ({len(tinygo_faster) / len(comparison_results) * 100:.1f}%)"
+    )
 
     print(f"\n📁 Results saved in {output_dir}")
 
@@ -1136,8 +1192,14 @@ def _print_analysis_summary(comparison_results: List[ComparisonResult], output_d
     if significant_results:
         print("\n🔍 Significant Performance Differences Found:")
         for result in significant_results[:5]:  # Show top 5
-            faster_lang = "Rust" if result.rust_stats.mean < result.tinygo_stats.mean else "TinyGo"
-            print(f"   • {result.task}_{result.scale}: {faster_lang} significantly faster (p={result.t_test.p_value:.4f})")
+            faster_lang = (
+                "Rust"
+                if result.rust_stats.mean < result.tinygo_stats.mean
+                else "TinyGo"
+            )
+            print(
+                f"   • {result.task}_{result.scale}: {faster_lang} significantly faster (p={result.t_test.p_value:.4f})"
+            )
 
 
 if __name__ == "__main__":

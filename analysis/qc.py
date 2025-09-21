@@ -13,10 +13,16 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from analysis.config_parser import ConfigParser
-from analysis.data_models import (BenchmarkResult, BenchmarkSample,
-                                  CleanedDataset, DataQuality, QCConfiguration,
-                                  QualityAssessment, QualityMetrics,
-                                  TaskResult)
+from analysis.data_models import (
+    BenchmarkResult,
+    BenchmarkSample,
+    CleanedDataset,
+    DataQuality,
+    QCConfiguration,
+    QualityAssessment,
+    QualityMetrics,
+    TaskResult,
+)
 
 
 class QCConstants:
@@ -92,7 +98,9 @@ class QualityController:
         )
 
         # Process each group: validate counts, detect outliers, assess quality
-        cleaned_task_results, all_removed_outliers = self._process_task_groups(task_groups)
+        cleaned_task_results, all_removed_outliers = self._process_task_groups(
+            task_groups
+        )
 
         # Generate overall quality assessment summary
         total_outliers = len(all_removed_outliers)
@@ -121,12 +129,12 @@ class QualityController:
     def _extract_all_samples(self) -> List[BenchmarkSample]:
         """Extract all samples from benchmark results."""
         return [
-            sample
-            for result in self.benchmark_results
-            for sample in result.samples
+            sample for result in self.benchmark_results for sample in result.samples
         ]
 
-    def _group_samples_by_task(self, all_samples: List[BenchmarkSample]) -> Dict[Tuple[str, str, str], List[BenchmarkSample]]:
+    def _group_samples_by_task(
+        self, all_samples: List[BenchmarkSample]
+    ) -> Dict[Tuple[str, str, str], List[BenchmarkSample]]:
         """Group samples by task, language, and scale combination."""
         task_groups: Dict[Tuple[str, str, str], List[BenchmarkSample]] = {}
         for sample in all_samples:
@@ -136,7 +144,9 @@ class QualityController:
             task_groups[key].append(sample)
         return task_groups
 
-    def _process_task_groups(self, task_groups: Dict[Tuple[str, str, str], List[BenchmarkSample]]) -> Tuple[List[TaskResult], List[BenchmarkSample]]:
+    def _process_task_groups(
+        self, task_groups: Dict[Tuple[str, str, str], List[BenchmarkSample]]
+    ) -> Tuple[List[TaskResult], List[BenchmarkSample]]:
         """Process each task group to detect outliers and create task results."""
         cleaned_task_results = []
         all_removed_outliers = []
@@ -145,7 +155,9 @@ class QualityController:
             group_key = self._generate_group_key(task, language, scale)
 
             # Partition samples into successful and failed
-            successful_samples, failed_samples = self._partition_samples_by_success(samples)
+            successful_samples, failed_samples = self._partition_samples_by_success(
+                samples
+            )
             successful_runs = len(successful_samples)
             failed_runs = len(failed_samples)
 
@@ -186,7 +198,9 @@ class QualityController:
 
         return cleaned_task_results, all_removed_outliers
 
-    def _partition_samples_by_success(self, samples: List[BenchmarkSample]) -> Tuple[List[BenchmarkSample], List[BenchmarkSample]]:
+    def _partition_samples_by_success(
+        self, samples: List[BenchmarkSample]
+    ) -> Tuple[List[BenchmarkSample], List[BenchmarkSample]]:
         """Partition samples into successful and failed lists in a single pass."""
         successful_samples = []
         failed_samples = []
@@ -201,7 +215,11 @@ class QualityController:
         """Generate consistent group key for task-language-scale combinations."""
         return f"{task}_{language}_{scale}"
 
-    def _create_cleaned_dataset(self, cleaned_task_results: List[TaskResult], all_removed_outliers: List[BenchmarkSample]) -> CleanedDataset:
+    def _create_cleaned_dataset(
+        self,
+        cleaned_task_results: List[TaskResult],
+        all_removed_outliers: List[BenchmarkSample],
+    ) -> CleanedDataset:
         """Create the final cleaned dataset with summary statistics."""
         return CleanedDataset(
             task_results=cleaned_task_results,
@@ -362,7 +380,9 @@ class QualityController:
             )
             data_quality = DataQuality.INVALID
 
-        extreme_cv_threshold = self.config.max_coefficient_variation * QCConstants.EXTREME_CV_MULTIPLIER
+        extreme_cv_threshold = (
+            self.config.max_coefficient_variation * QCConstants.EXTREME_CV_MULTIPLIER
+        )
         if coefficient_variation > extreme_cv_threshold:
             quality_issues.append(
                 f"Extremely high variability: CV={coefficient_variation:.3f} > {extreme_cv_threshold:.3f} (2x threshold)"
@@ -408,7 +428,9 @@ class QualityController:
         # Calculate quality metrics for each task-language-scale group
         quality_summary = {}
         for task_result in task_results:
-            group_key = self._generate_group_key(task_result.task, task_result.language, task_result.scale)
+            group_key = self._generate_group_key(
+                task_result.task, task_result.language, task_result.scale
+            )
             quality_metrics = self.calculate_quality_metrics(task_result)
             quality_summary[group_key] = quality_metrics
 
@@ -523,7 +545,9 @@ def _execute_quality_control_pipeline() -> None:
     cleaned_dataset, quality_assessment = _execute_quality_analysis(quality_controller)
 
     # Generate quality control report
-    qc_report = _generate_qc_report(latest_file, qc_config, cleaned_dataset, quality_assessment)
+    qc_report = _generate_qc_report(
+        latest_file, qc_config, cleaned_dataset, quality_assessment
+    )
 
     # Save reports with proper error handling
     _save_qc_report(output_dir, qc_report)
@@ -543,7 +567,9 @@ def _load_latest_benchmark_data(input_dir: Path) -> Tuple[Path, Dict[str, Any]]:
             sys.exit(1)
 
         # Use the latest non-meta JSON file
-        non_meta_files = [f for f in json_files if QCConstants.META_FILE_PATTERN not in f.name]
+        non_meta_files = [
+            f for f in json_files if QCConstants.META_FILE_PATTERN not in f.name
+        ]
         if not non_meta_files:
             print(f"❌ Error: No non-meta JSON files found in {input_dir}")
             sys.exit(1)
@@ -584,7 +610,9 @@ def _load_qc_configuration() -> QCConfiguration:
         sys.exit(1)
 
 
-def _convert_raw_data_to_benchmark_results(raw_data: Dict[str, Any]) -> List[BenchmarkResult]:
+def _convert_raw_data_to_benchmark_results(
+    raw_data: Dict[str, Any],
+) -> List[BenchmarkResult]:
     """Convert raw JSON data to structured BenchmarkResult objects."""
     benchmark_results = []
     raw_results = raw_data.get("results", [])
@@ -606,7 +634,9 @@ def _convert_raw_data_to_benchmark_results(raw_data: Dict[str, Any]) -> List[Ben
     return benchmark_results
 
 
-def _convert_raw_samples_to_benchmark_samples(result_data: Dict[str, Any]) -> List[BenchmarkSample]:
+def _convert_raw_samples_to_benchmark_samples(
+    result_data: Dict[str, Any],
+) -> List[BenchmarkSample]:
     """Convert raw sample data to BenchmarkSample objects."""
     samples = []
     results_data = result_data.get("results", [])
@@ -648,7 +678,9 @@ def _convert_raw_samples_to_benchmark_samples(result_data: Dict[str, Any]) -> Li
     return samples
 
 
-def _execute_quality_analysis(quality_controller: QualityController) -> Tuple[CleanedDataset, QualityAssessment]:
+def _execute_quality_analysis(
+    quality_controller: QualityController,
+) -> Tuple[CleanedDataset, QualityAssessment]:
     """Execute quality control analysis with proper error handling."""
     print("🔄 Executing quality control pipeline...")
     try:
@@ -672,7 +704,7 @@ def _generate_qc_report(
     latest_file: Path,
     qc_config: QCConfiguration,
     cleaned_dataset: CleanedDataset,
-    quality_assessment: QualityAssessment
+    quality_assessment: QualityAssessment,
 ) -> Dict[str, Any]:
     """Generate comprehensive quality control report."""
     return {
@@ -700,7 +732,9 @@ def _generate_qc_report(
     }
 
 
-def _convert_quality_metrics_to_dict(quality_assessment: QualityAssessment) -> Dict[str, Any]:
+def _convert_quality_metrics_to_dict(
+    quality_assessment: QualityAssessment,
+) -> Dict[str, Any]:
     """Convert quality metrics to dictionary format for JSON serialization."""
     if not quality_assessment.quality_summary:
         return {}
@@ -754,7 +788,11 @@ def _save_qc_report(output_dir: Path, qc_report: Dict[str, Any]) -> None:
         sys.exit(1)
 
 
-def _save_cleaned_dataset(output_dir: Path, cleaned_dataset: CleanedDataset, quality_assessment: QualityAssessment) -> None:
+def _save_cleaned_dataset(
+    output_dir: Path,
+    cleaned_dataset: CleanedDataset,
+    quality_assessment: QualityAssessment,
+) -> None:
     """Save cleaned dataset for downstream analysis with proper error handling."""
     try:
         cleaned_dataset_path = output_dir / QCConstants.CLEANED_DATASET_FILENAME
@@ -764,14 +802,18 @@ def _save_cleaned_dataset(output_dir: Path, cleaned_dataset: CleanedDataset, qua
                     "task": task_result.task,
                     "language": task_result.language,
                     "scale": task_result.scale,
-                    "samples": [_sample_to_dict(sample) for sample in task_result.samples],
+                    "samples": [
+                        _sample_to_dict(sample) for sample in task_result.samples
+                    ],
                     "successful_runs": task_result.successful_runs,
                     "failed_runs": task_result.failed_runs,
                     "success_rate": task_result.success_rate,
                 }
                 for task_result in cleaned_dataset.task_results
             ],
-            "removed_outliers": [_sample_to_dict(sample) for sample in cleaned_dataset.removed_outliers],
+            "removed_outliers": [
+                _sample_to_dict(sample) for sample in cleaned_dataset.removed_outliers
+            ],
             "quality_summary": _convert_quality_metrics_to_dict(quality_assessment),
             "overall_quality": quality_assessment.overall_quality.value,
             "cleaning_log": cleaned_dataset.cleaning_log,
@@ -785,7 +827,11 @@ def _save_cleaned_dataset(output_dir: Path, cleaned_dataset: CleanedDataset, qua
         sys.exit(1)
 
 
-def _print_quality_summary(quality_assessment: QualityAssessment, cleaned_dataset: CleanedDataset, output_dir: Path) -> None:
+def _print_quality_summary(
+    quality_assessment: QualityAssessment,
+    cleaned_dataset: CleanedDataset,
+    output_dir: Path,
+) -> None:
     """Print comprehensive quality control summary."""
     print()
     print("📊 Quality Control Summary:")
