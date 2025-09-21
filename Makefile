@@ -409,7 +409,10 @@ lint-rust: ## Run Rust code quality checks
 		for rust_project in $$rust_projects; do \
 			if [ -d "$$rust_project" ]; then \
 				echo "Linting Rust project: $$rust_project"; \
-				$(call handle_command_error,(cd "$$rust_project" && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings),Rust linting failed for $$rust_project); \
+				if ! (cd "$$rust_project" && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings); then \
+					echo -e "$(RED)$(BOLD)[ERROR]$(NC) Rust linting failed for $$rust_project"; \
+					exit 1; \
+				fi; \
 			fi; \
 		done; \
 		echo -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) 🦀 Rust linting completed"; \
@@ -426,9 +429,15 @@ lint-go: ## Run Go code quality checks
 				echo "Linting Go module: $$go_dir"; \
 				if echo "$$go_dir" | grep -q "tinygo"; then \
 					echo "  → Skipping unsafe pointer checks for TinyGo WASM module"; \
-					$(call handle_command_error,(cd "$$go_dir" && go vet -unsafeptr=false . 2>/dev/null || go vet -vettool= . 2>/dev/null || echo "Using relaxed vet for WASM module") && (cd "$$go_dir" && gofmt -l . | (grep . && exit 1 || true)),Go linting failed for $$go_dir); \
+					if ! (cd "$$go_dir" && go vet -unsafeptr=false . 2>/dev/null || go vet -vettool= . 2>/dev/null || echo "Using relaxed vet for WASM module") && (cd "$$go_dir" && gofmt -l . | (grep . && exit 1 || true)); then \
+						echo -e "$(RED)$(BOLD)[ERROR]$(NC) Go linting failed for $$go_dir"; \
+						exit 1; \
+					fi; \
 				else \
-					$(call handle_command_error,(cd "$$go_dir" && go vet . && gofmt -l . | (grep . && exit 1 || true)),Go linting failed for $$go_dir); \
+					if ! (cd "$$go_dir" && go vet . && gofmt -l . | (grep . && exit 1 || true)); then \
+						echo -e "$(RED)$(BOLD)[ERROR]$(NC) Go linting failed for $$go_dir"; \
+						exit 1; \
+					fi; \
 				fi; \
 			fi; \
 		done; \
