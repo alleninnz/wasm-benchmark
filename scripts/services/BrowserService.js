@@ -15,14 +15,17 @@ export class BrowserService extends IBrowserService {
         this.puppeteer = null;
         this.isHeadless = true; // Default to headless
         this.logger = loggingService || new LoggingService({ prefix: 'Browser' });
+        this.configService = null; // Will be injected during initialization
     }
 
     /**
      * Initialize browser with configuration
      * @param {Object} browserConfig - Browser configuration options
+     * @param {Object} configService - Configuration service for timeout management
      * @returns {Promise<void>}
      */
-    async initialize(browserConfig = {}) {
+    async initialize(browserConfig = {}, configService = null) {
+        this.configService = configService;
         this.puppeteer = (await import('puppeteer')).default;
 
         // Base args for all modes
@@ -74,8 +77,10 @@ export class BrowserService extends IBrowserService {
             this.browser = await this.puppeteer.launch(config);
             this.page = await this.browser.newPage();
 
-            // Set default timeout
-            this.page.setDefaultTimeout(30000);
+            // Set browser protocol timeout from configuration
+            const browserTimeout = this.configService ? this.configService.getBrowserTimeout() : 600000;
+            this.page.setDefaultTimeout(browserTimeout);
+            this.logger.info(`Browser timeout set to ${browserTimeout}ms (${Math.floor(browserTimeout / 60000)}min)`);
 
             // In headed mode, bring window to front and set viewport
             if (isHeaded) {
@@ -127,7 +132,8 @@ export class BrowserService extends IBrowserService {
 
         try {
             const page = await this.browser.newPage();
-            page.setDefaultTimeout(30000);
+            const browserTimeout = this.configService ? this.configService.getBrowserTimeout() : 600000;
+            page.setDefaultTimeout(browserTimeout);
 
             // Check if browser is in headed mode by checking the first page
             const isHeaded = this.page && (await this.page.browser().isConnected()) &&
@@ -177,9 +183,10 @@ export class BrowserService extends IBrowserService {
             throw new Error('Browser not initialized. Call initialize() first.');
         }
 
+        const defaultTimeout = this.configService ? this.configService.getNavigationTimeout() : 300000;
         const navigationOptions = {
             waitUntil: 'networkidle0',
-            timeout: 30000,
+            timeout: defaultTimeout,
             ...options
         };
 
@@ -223,8 +230,9 @@ export class BrowserService extends IBrowserService {
             throw new Error('Browser not initialized. Call initialize() first.');
         }
 
+        const defaultTimeout = this.configService ? this.configService.getElementTimeout() : 60000;
         const waitOptions = {
-            timeout: 30000,
+            timeout: defaultTimeout,
             ...options
         };
 

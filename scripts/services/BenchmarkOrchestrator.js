@@ -29,9 +29,9 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             // Load configuration
             await this.configService.loadConfig(configPath);
 
-            // Initialize browser with runtime options
+            // Initialize browser with runtime options and config service for timeout management
             const browserConfig = this.configService.getBrowserConfig(runtimeOptions);
-            await this.browserService.initialize(browserConfig);
+            await this.browserService.initialize(browserConfig, this.configService);
 
             // Initialize results
             this.resultsService.initialize({
@@ -71,7 +71,7 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                     const benchmarkUrl = this.configService.getBenchmarkUrl();
                     this.logger.info(`Navigating to benchmark page: ${benchmarkUrl}`);
                     await this.browserService.navigateTo(benchmarkUrl);
-                    await this.browserService.waitForElement('#status', { timeout: 10000 });
+                    await this.browserService.waitForElement('#status'); // Uses configured element timeout
                     this.logger.success('Benchmark page loaded successfully');
                 } catch (error) {
                     throw new Error(`Failed to load benchmark page: ${error.message}`);
@@ -261,7 +261,7 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
      */
     async executeSingleBenchmark(benchmark, options = {}) {
         const startTime = Date.now();
-        const timeout = this.configService.getTimeout();
+        const timeout = this.configService.getTaskTimeout(); // Use task-specific timeout
 
         try {
             // Check if aborted
@@ -279,11 +279,15 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             const result = await Promise.race([benchmarkPromise, timeoutPromise]);
 
             const duration = Date.now() - startTime;
+
+            // Determine actual success based on result content
+            const isActuallySuccessful = this._validateBenchmarkSuccess(result);
+
             const benchmarkResult = {
                 ...result,
                 benchmark: benchmark.name,
                 duration,
-                success: true,
+                success: isActuallySuccessful,
                 timestamp: new Date().toISOString()
             };
 
@@ -328,21 +332,21 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             const benchmarkUrl = this.configService.getBenchmarkUrl();
             const navigationOptions = {
                 waitUntil: 'networkidle0',
-                timeout: 30000
+                timeout: this.configService.getNavigationTimeout()
             };
 
             // Only navigate if we're not already on the benchmark page (for main page reuse)
             if (shouldUseDedicatedPage) {
                 await page.goto(benchmarkUrl, navigationOptions);
-                await page.waitForSelector('body', { timeout: 10000 });
-                await page.waitForSelector('#status', { timeout: 10000 });
+                await page.waitForSelector('body', { timeout: this.configService.getElementTimeout() });
+                await page.waitForSelector('#status', { timeout: this.configService.getElementTimeout() });
             } else {
                 // Check if we need to navigate to benchmark page
                 const currentUrl = await page.url();
                 if (!currentUrl.includes('bench.html') && !currentUrl.includes('localhost')) {
                     await page.goto(benchmarkUrl, navigationOptions);
-                    await page.waitForSelector('body', { timeout: 10000 });
-                    await page.waitForSelector('#status', { timeout: 10000 });
+                    await page.waitForSelector('body', { timeout: this.configService.getElementTimeout() });
+                    await page.waitForSelector('#status', { timeout: this.configService.getElementTimeout() });
                 }
             }
 
@@ -372,9 +376,11 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                     taskConfig: taskConfiguration, // Pass the full task configuration with scales
                     warmupRuns: this.configService.getConfig().environment?.warmupRuns || 3,
                     measureRuns: this.configService.getConfig().environment?.measureRuns || 10,
-                    timeout: 30000 // 30 second timeout for individual tasks
+                    repetitions: this.configService.getConfig().environment?.repetitions || 1,
+                    timeout: this.configService.getWasmTimeout() // WASM-optimized timeout from configuration
                 };
 
+                let progressInterval;
                 try {
                     // Notify frontend about task start (in headed mode)
                     if (!this.browserService.isHeadless) {
@@ -389,15 +395,45 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                         }
                     }
 
-                    // Execute benchmark script on appropriate page
-                    const result = await page.evaluate(async (config) => {
-                    // This will be executed in browser context
-                        if (window.benchmarkRunner && typeof window.benchmarkRunner.runTaskBenchmark === 'function') {
-                            return await window.benchmarkRunner.runTaskBenchmark(config);
+                    // Add progress monitoring for long-running WASM tasks
+                    this.logger.info(`🚀 Starting WASM benchmark: ${taskName} (${language}) - this may take several minutes...`);
+                    const taskStartTime = Date.now();
+
+                    // Set up progress heartbeat for long tasks
+                    progressInterval = setInterval(() => {
+                        const elapsed = Math.floor((Date.now() - taskStartTime) / 1000);
+                        this.logger.info(`⏳ Still running ${taskName} (${language}) - ${elapsed}s elapsed...`);
+                    }, 30000); // Log every 30 seconds
+
+                    // Execute benchmark script on appropriate page with enhanced error handling
+                    let result;
+                    try {
+                        result = await page.evaluate(async (config) => {
+                        // This will be executed in browser context
+                            if (window.benchmarkRunner && typeof window.benchmarkRunner.runTaskBenchmark === 'function') {
+                                return await window.benchmarkRunner.runTaskBenchmark(config);
+                            } else {
+                                throw new Error('benchmarkRunner.runTaskBenchmark function not found in page');
+                            }
+                        }, taskConfig);
+                    } catch (puppeteerError) {
+                        // Enhanced error handling for Puppeteer/CDP timeouts
+                        const errorMsg = puppeteerError.message || 'Unknown Puppeteer error';
+
+                        if (errorMsg.includes('Runtime.callFunctionOn timed out') ||
+                            errorMsg.includes('Navigation timeout') ||
+                            errorMsg.includes('waiting for function failed: timeout')) {
+                            throw new Error(`Browser timeout during benchmark execution: ${errorMsg}`);
+                        } else if (errorMsg.includes('Protocol error') || errorMsg.includes('Target closed')) {
+                            throw new Error(`Browser protocol error: ${errorMsg}`);
                         } else {
-                            throw new Error('benchmarkRunner.runTaskBenchmark function not found in page');
+                            throw new Error(`Browser execution failed: ${errorMsg}`);
                         }
-                    }, taskConfig);
+                    }
+
+                    clearInterval(progressInterval);
+                    const taskDuration = Math.floor((Date.now() - taskStartTime) / 1000);
+                    this.logger.success(`✅ Completed ${taskName} (${language}) in ${taskDuration}s`);
 
                     results.push({
                         ...result,
@@ -421,6 +457,11 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
 
                     this.logger.success(`Completed ${taskName} for ${language}`);
                 } catch (error) {
+                    // Clear progress interval on error
+                    if (progressInterval) {
+                        clearInterval(progressInterval);
+                    }
+
                     results.push({
                         success: false,
                         error: error.message,
@@ -446,10 +487,17 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                 }
             }
 
-            // Return combined results
+            // Return combined results with accurate success determination
+            const successfulResults = results.filter(r => r.success !== false);
+            const totalResults = results.length;
+            const successRate = totalResults > 0 ? (successfulResults.length / totalResults) : 0;
+
             return {
                 benchmark: benchmark.name,
-                success: results.some(r => r.success),
+                success: successfulResults.length > 0, // At least one implementation succeeded
+                successRate: successRate,
+                successCount: successfulResults.length,
+                totalCount: totalResults,
                 results: results,
                 timestamp: new Date().toISOString()
             };
@@ -618,5 +666,90 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                 }
             }
         }
+    }
+
+    /**
+     * Validate if benchmark result indicates actual success or failure
+     * @param {Object} result - Result object from runBenchmarkTask
+     * @returns {boolean} True if benchmark was actually successful
+     * @private
+     */
+    _validateBenchmarkSuccess(result) {
+        // If result is null, undefined, or empty, it's a failure
+        if (!result) {
+            this.logger.warn('Benchmark result is null/undefined - marking as failure');
+            return false;
+        }
+
+        // If result is an array (taskResults), check if it has valid entries
+        if (Array.isArray(result)) {
+            if (result.length === 0) {
+                this.logger.warn('Benchmark result array is empty - marking as failure');
+                return false;
+            }
+
+            // Check each result in the array for validity
+            for (let i = 0; i < result.length; i++) {
+                const taskResult = result[i];
+                if (!this._validateSingleTaskResult(taskResult)) {
+                    this.logger.warn(`Task result ${i} invalid - marking benchmark as failure`);
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // For single result objects, validate the content
+        return this._validateSingleTaskResult(result);
+    }
+
+    /**
+     * Validate a single task result object
+     * @param {Object} taskResult - Individual task result
+     * @returns {boolean} True if the task result is valid
+     * @private
+     */
+    _validateSingleTaskResult(taskResult) {
+        if (!taskResult || typeof taskResult !== 'object') {
+            return false;
+        }
+
+        // Check for explicit error indicators
+        if (taskResult.error || taskResult.failed === true) {
+            this.logger.warn(`Task result contains error: ${taskResult.error || 'failed=true'}`);
+            return false;
+        }
+
+        // Check for timeout indicators in error messages
+        if (taskResult.errorMessage && taskResult.errorMessage.includes('timeout')) {
+            this.logger.warn(`Task result contains timeout error: ${taskResult.errorMessage}`);
+            return false;
+        }
+
+        // Check if result has required performance data
+        if (!taskResult.executionTimes || !Array.isArray(taskResult.executionTimes)) {
+            this.logger.warn('Task result missing executionTimes array');
+            return false;
+        }
+
+        if (taskResult.executionTimes.length === 0) {
+            this.logger.warn('Task result has empty executionTimes array');
+            return false;
+        }
+
+        // Check if execution times are reasonable (not all zero or negative)
+        const validTimes = taskResult.executionTimes.filter(time => time > 0);
+        if (validTimes.length === 0) {
+            this.logger.warn('Task result has no valid execution times');
+            return false;
+        }
+
+        // Check for hash verification if present
+        if (taskResult.hashVerification !== undefined && !taskResult.hashVerification) {
+            this.logger.warn('Task result failed hash verification');
+            return false;
+        }
+
+        return true;
     }
 }

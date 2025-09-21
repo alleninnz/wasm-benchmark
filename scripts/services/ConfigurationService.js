@@ -194,11 +194,69 @@ export class ConfigurationService extends IConfigurationService {
     }
 
     /**
-     * Get timeout configuration
-     * @returns {number} Timeout in milliseconds
+     * Get base timeout configuration
+     * @returns {number} Base timeout in milliseconds
      */
     getTimeout() {
-        return this.config?.timeout || 300000;
+        // Get timeout in seconds from environment.timeout, convert to milliseconds
+        const timeoutSeconds = this.config?.environment?.timeout || 240; // Default 4 minutes
+        return timeoutSeconds * 1000;
+    }
+
+    /**
+     * Get specific timeout with fixed multipliers
+     * @param {number} multiplier - Multiplier for base timeout
+     * @returns {number} Timeout in milliseconds
+     */
+    getTimeoutWithMultiplier(multiplier) {
+        const baseTimeout = this.getTimeout();
+
+        // Apply quick mode reduction (0.1x) if in quick mode
+        if (this.isQuickMode) {
+            return Math.floor(baseTimeout * multiplier * 0.1);
+        }
+
+        return Math.floor(baseTimeout * multiplier);
+    }
+
+    /**
+     * Get browser protocol timeout (2x base = 600s)
+     * @returns {number} Browser protocol timeout in milliseconds
+     */
+    getBrowserTimeout() {
+        return this.getTimeoutWithMultiplier(2);
+    }
+
+    /**
+     * Get navigation timeout (1x base = 300s)
+     * @returns {number} Navigation timeout in milliseconds
+     */
+    getNavigationTimeout() {
+        return this.getTimeoutWithMultiplier(1);
+    }
+
+    /**
+     * Get task execution timeout (2.5x base = 600s)
+     * @returns {number} Task execution timeout in milliseconds
+     */
+    getTaskTimeout() {
+        return this.getTimeoutWithMultiplier(2.5);
+    }
+
+    /**
+     * Get element wait timeout (0.25x base = 60s)
+     * @returns {number} Element wait timeout in milliseconds
+     */
+    getElementTimeout() {
+        return this.getTimeoutWithMultiplier(0.25);
+    }
+
+    /**
+     * Get WASM intensive task timeout (3x base = 720s)
+     * @returns {number} WASM intensive timeout in milliseconds
+     */
+    getWasmTimeout() {
+        return this.getTimeoutWithMultiplier(3);
     }
 
     /**
