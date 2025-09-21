@@ -3,8 +3,8 @@
  * Core benchmarking logic with timing and memory measurement
  */
 
-import { WasmLoader } from './wasm_loader.js';
 import { ConfigLoader } from './config_loader.js';
+import { WasmLoader } from './wasm_loader.js';
 
 export class BenchmarkRunner {
     constructor(config = null) {
@@ -17,7 +17,7 @@ export class BenchmarkRunner {
 
         // Constants
         this.DEFAULT_RANDOM_SEED = 12345;
-        this.MAX_CONFIG_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+        this.MAX_CONFIG_TIMEOUT = 15 * 60 * 1000; // 15 minutes for WASM tasks
 
         // FNV-1a constants for input data hashing
         this.FNV_OFFSET_BASIS = 2166136261;
@@ -62,7 +62,13 @@ export class BenchmarkRunner {
         // Load configuration if not provided
         if (!config) {
             if (!this.currentConfig) {
-                this.currentConfig = await this.configLoader.loadConfig();
+                try {
+                    this.currentConfig = await this.configLoader.loadConfig();
+                } catch (error) {
+                    // If config loading fails (e.g., in test environment), create minimal config
+                    window.logResult(`Configuration loading failed: ${error.message}. Creating minimal config for tests.`, 'warning');
+                    this.currentConfig = this._createMinimalConfig();
+                }
             }
             config = this.currentConfig;
         } else {
@@ -78,6 +84,29 @@ export class BenchmarkRunner {
         // Update global state
         window.benchmarkState.status = 'initialized';
         window.benchmarkState.totalRuns = this._calculateTotalRuns(config);
+    }
+
+    /**
+     * Create minimal configuration for test environments
+     * @private
+     */
+    _createMinimalConfig() {
+        return {
+            experiment: { name: 'Test Environment' },
+            environment: { warmupRuns: 0, measureRuns: 1 },
+            tasks: ['mandelbrot', 'json_parse', 'matrix_mul'],
+            languages: ['rust', 'tinygo'],
+            scales: ['micro', 'small'],
+            taskConfigs: {
+                mandelbrot: { scales: { micro: { width: 64, height: 64, maxIter: 100 } } },
+                json_parse: { scales: { micro: { recordCount: 10 } } },
+                matrix_mul: { scales: { micro: { dimension: 32 } } }
+            },
+            warmupRuns: 0,
+            measureRuns: 1,
+            repetitions: 1,
+            timeout: 30000
+        };
     }
 
     /**
@@ -661,7 +690,46 @@ export class BenchmarkRunner {
             this.isRunning = false;
         }
 
-        return taskResults;
+        // Aggregate results into expected structure with executionTimes array
+        if (taskResults.length === 0) {
+            return {
+                success: false,
+                error: 'No results generated',
+                executionTimes: [],
+                timestamp: Date.now()
+            };
+        }
+
+        // Filter successful results
+        const successfulResults = taskResults.filter(r => r.success !== false && !r.error);
+
+        if (successfulResults.length === 0) {
+            return {
+                success: false,
+                error: 'All runs failed',
+                executionTimes: [],
+                timestamp: Date.now()
+            };
+        }
+
+        // Create aggregated result with executionTimes array
+        const firstResult = successfulResults[0];
+        return {
+            task: firstResult.task,
+            language: firstResult.language,
+            scale: firstResult.scale,
+            executionTimes: successfulResults.map(r => r.executionTime),
+            resultHashes: successfulResults.map(r => r.resultHash),
+            memoryUsages: successfulResults.map(r => r.memoryUsed),
+            averageExecutionTime: successfulResults.reduce((sum, r) => sum + r.executionTime, 0) 
+                / successfulResults.length,
+            averageMemoryUsage: successfulResults.reduce((sum, r) => sum + r.memoryUsed, 0) 
+                / successfulResults.length,
+            totalRuns: taskResults.length,
+            successfulRuns: successfulResults.length,
+            success: true,
+            timestamp: Date.now()
+        };
     }
 
     /**

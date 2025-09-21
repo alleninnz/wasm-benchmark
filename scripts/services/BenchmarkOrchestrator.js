@@ -681,6 +681,24 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             return false;
         }
 
+        // Handle wrapper structure from runBenchmarkTask (has .results array)
+        if (result.results && Array.isArray(result.results)) {
+            if (result.results.length === 0) {
+                this.logger.warn('Benchmark result.results array is empty - marking as failure');
+                return false;
+            }
+
+            // Check each result in the nested results array for validity
+            for (let i = 0; i < result.results.length; i++) {
+                const taskResult = result.results[i];
+                if (!this._validateSingleTaskResult(taskResult)) {
+                    this.logger.warn(`Task result ${i} invalid - marking benchmark as failure`);
+                    return false;
+                }
+            }
+            return true;
+        }
+
         // If result is an array (taskResults), check if it has valid entries
         if (Array.isArray(result)) {
             if (result.length === 0) {

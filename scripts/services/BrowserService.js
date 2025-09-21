@@ -58,11 +58,15 @@ export class BrowserService extends IBrowserService {
         const isHeaded = browserConfig.headless === false;
         this.isHeadless = !isHeaded; // Store the headless state
 
+        // Get browser protocol timeout from configuration
+        const browserTimeout = this.configService ? this.configService.getBrowserTimeout() : 600000;
+
         const config = {
             headless: true, // default
             args: isHeaded
                 ? [...baseArgs, ...headedArgs]
                 : [...baseArgs, ...headlessArgs],
+            protocolTimeout: browserTimeout, // Set protocol timeout for intensive tasks
             ...browserConfig
         };
 
@@ -77,10 +81,10 @@ export class BrowserService extends IBrowserService {
             this.browser = await this.puppeteer.launch(config);
             this.page = await this.browser.newPage();
 
-            // Set browser protocol timeout from configuration
-            const browserTimeout = this.configService ? this.configService.getBrowserTimeout() : 600000;
+            // Set browser protocol timeout from configuration (already set in launch config)
             this.page.setDefaultTimeout(browserTimeout);
             this.logger.info(`Browser timeout set to ${browserTimeout}ms (${Math.floor(browserTimeout / 60000)}min)`);
+            this.logger.info(`Protocol timeout set to ${browserTimeout}ms for intensive WASM tasks`);
 
             // In headed mode, bring window to front and set viewport
             if (isHeaded) {
