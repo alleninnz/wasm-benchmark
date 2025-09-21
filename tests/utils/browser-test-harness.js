@@ -43,8 +43,8 @@ export class BrowserTestHarness {
             this.browser = await puppeteer.launch(this.config);
             this.page = await this.browser.newPage();
 
-            // Setup simple console and error logging
-            if (this.config.logConsole !== false) {
+            // Setup simple console and error logging (disabled for clean test output)
+            if (this.config.logConsole === true) {
                 this.page.on('console', msg => {
                     console.log('PAGE:', `[${msg.type().toUpperCase()}] ${msg.text()}`);
                 });

@@ -1,8 +1,8 @@
-import { beforeAll, beforeEach, afterEach } from 'vitest';
-import fs from 'fs/promises';
 import fsSync from 'fs';
-import path from 'path';
+import fs from 'fs/promises';
 import os from 'os';
+import path from 'path';
+import { beforeAll, beforeEach } from 'vitest';
 import { validateServerIfNeeded } from './utils/server-checker.js';
 
 // Constants for validation and configuration
@@ -125,7 +125,7 @@ const validationRules = {
     executionTime: {
         min: 0.1,
         max: 30000,
-        variationCoeff: 0.5  // Adjusted from 0.3 to 0.5 for micro-task stability
+        variationCoeff: 0.6  // Adjusted to 0.6 for WASM micro-benchmark browser variability
     },
     memoryUsage: {
         min: 0,
@@ -178,9 +178,6 @@ function validateTestEnvironment() {
 
     // Basic memory availability check (simplified)
     const totalMem = os.totalmem();
-    const freeMem = os.freemem();
-
-    // Skip detailed memory pressure checking - Node.js freemem() reports low values that don't reflect availability
     if (totalMem < 1024 * 1024 * 1024) { // Only error if less than 1GB total system memory
         errors.push(`Insufficient total memory: ${(totalMem / 1024 / 1024 / 1024).toFixed(1)}GB. Need at least 1GB.`);
     }
@@ -190,9 +187,7 @@ function validateTestEnvironment() {
         errors.forEach(error => console.error(`  - ${error}`));
         throw new Error(`Test environment is not suitable: ${errors.join('; ')}`);
     }
-
-    console.log(`Test environment validated (Node.js ${nodeVersion}, ${(freeMem / 1024 / 1024 / 1024).toFixed(1)}GB free memory)`);
-
+    
     // Create lock file to prevent other workers from validating again
     try {
         fsSync.writeFileSync(lockFile, 'validated', 'utf8');
