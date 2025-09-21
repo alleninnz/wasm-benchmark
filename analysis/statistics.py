@@ -5,18 +5,19 @@ Implements Welch's t-test, Cohen's d effect size calculation, and confidence int
 for engineering-grade statistical comparison between Rust and TinyGo implementations.
 """
 
+import json
 import math
-from typing import Dict, List, Tuple
+import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
-try:
-    from scipy.stats import t as t_dist
-except ImportError as e:
-    raise ImportError(
-        "scipy is required for statistical analysis. Install with: pip install scipy"
-    ) from e
+from scipy.stats import t as t_dist
 
-from .data_models import (CleanedDataset, ComparisonResult, EffectSize,
-                          EffectSizeResult, StatisticalResult,
+from analysis.config_parser import ConfigParser
+
+from .data_models import (BenchmarkSample, CleanedDataset, ComparisonResult,
+                          EffectSize, EffectSizeResult, StatisticalResult,
                           StatisticsConfiguration, TaskResult, TTestResult)
 
 # Statistical constants
@@ -34,16 +35,14 @@ class StatisticalAnalysis:
     """Statistical analysis engine for benchmark performance comparison"""
 
     def __init__(
-        self, cleaned_dataset: CleanedDataset, stats_config: StatisticsConfiguration
+        self, stats_config: StatisticsConfiguration
     ):
         """
-        Initialize statistical analysis with cleaned data and configuration.
+        Initialize statistical analysis with configuration.
 
         Args:
-            cleaned_dataset: Quality-controlled benchmark data
             stats_config: Statistical analysis configuration parameters
         """
-        self.dataset = cleaned_dataset
         self.config = stats_config
         self.alpha = self.config.significance_alpha
         self.confidence_level = self.config.confidence_level
@@ -309,34 +308,6 @@ class StatisticalAnalysis:
             return (sorted_data[n // 2 - 1] + sorted_data[n // 2]) / 2
         else:
             return sorted_data[n // 2]
-
-    def _calculate_descriptive_stats(self) -> Dict[str, StatisticalResult]:
-        """
-        Calculate descriptive statistics with memory-optimized processing.
-
-        Memory optimizations:
-        - Generator expressions to reduce intermediate allocations
-        - Efficient key generation
-        - Batch processing where possible
-
-        Returns:
-            Dict[str, StatisticalResult]: Statistical results by task-language combination
-        """
-        results = {}
-
-        for task_result in self.dataset.task_results:
-            # Generator expression instead of list comprehension for memory efficiency
-            execution_times = [
-                sample.executionTime for sample in task_result.samples if sample.success
-            ]
-
-            # Generate unique key for this task-language-scale combination
-            key = f"{task_result.task}_{task_result.language}_{task_result.scale}"
-
-            # Calculate complete statistics with optimized algorithm
-            results[key] = self._calculate_complete_stats(execution_times)
-
-        return results
 
     def _calculate_basic_stats_welford(
         self, data: List[float]
@@ -677,7 +648,7 @@ class StatisticalAnalysis:
 
         return (lower_bound, upper_bound)
 
-    def calculate_task_comparison(
+    def generate_task_comparison(
         self, rust_result: TaskResult, tinygo_result: TaskResult
     ) -> ComparisonResult:
         """
@@ -769,14 +740,404 @@ class StatisticalAnalysis:
 
 
 def main():
-    """Command-line interface for statistical analysis"""
-    # TODO: Parse command-line arguments for input files and configuration
-    # TODO: Load and validate benchmark data
-    # TODO: Initialize statistical analysis engine
-    # TODO: Perform analysis and generate results
-    # TODO: Output analysis results and recommendations
+    """Main function for standalone execution of statistical analysis."""
+    try:
+        _execute_statistical_analysis_pipeline()
+    except Exception as e:
+        print(f"❌ Critical error in statistical analysis pipeline: {e}")
+        sys.exit(1)
 
-    pass
+
+def _execute_statistical_analysis_pipeline() -> None:
+    """Execute the complete statistical analysis pipeline with proper error handling."""
+    # Standard input/output paths
+    input_path = Path("reports/qc/cleaned_dataset.json")
+    output_dir = Path("reports/statistics")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print("📊 WebAssembly Benchmark Statistical Analysis")
+    print("=" * 60)
+
+    # Step 1: Load configuration
+    print("🔧 Loading statistical analysis configuration...")
+    stats_config = _load_statistics_config()
+
+    # Step 2: Load cleaned dataset
+    print(f"📂 Loading cleaned dataset from {input_path}...")
+    dataset = _load_cleaned_dataset(input_path)
+
+    # Step 3: Initialize statistical analysis engine
+    print("⚙️ Initializing statistical analysis engine...")
+    stats_engine = StatisticalAnalysis(stats_config)
+
+    # Step 4: Perform statistical comparisons
+    print("🔬 Performing statistical comparisons...")
+    comparison_results = _perform_comparisons(dataset, stats_engine)
+
+    # Step 5: Save results
+    print(f"💾 Saving comparison results to {output_dir}...")
+    _save_comparison_results(comparison_results, output_dir)
+
+    # Step 6: Print summary
+    _print_analysis_summary(comparison_results, output_dir)
+
+    print("\n✅ Statistical analysis pipeline completed successfully!")
+
+
+def _load_statistics_config() -> StatisticsConfiguration:
+    """
+    Load statistical analysis configuration.
+
+    Returns:
+        StatisticsConfiguration object with loaded parameters
+    """
+    try:
+        config_parser = ConfigParser().load()
+        stats_config = config_parser.get_stats_config()
+        print("✅ Loaded statistical analysis configuration")
+        return stats_config
+    except FileNotFoundError:
+        print("❌ Configuration file not found")
+        sys.exit(1)
+    except (ValueError, KeyError) as e:
+        print(f"❌ Invalid configuration format: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Error loading configuration: {e}")
+        sys.exit(1)
+
+
+def _load_cleaned_dataset(input_path: Path) -> CleanedDataset:
+    """
+    Load cleaned dataset from JSON file.
+
+    Args:
+        input_path: Path to cleaned dataset JSON file
+
+    Returns:
+        CleanedDataset object containing the loaded data
+
+    Raises:
+        FileNotFoundError: If the input file does not exist
+        ValueError: If the file content is not valid JSON or has incorrect format
+    """
+    try:
+        if not input_path.exists():
+            raise FileNotFoundError(f"Cleaned dataset file not found: {input_path}")
+
+        with open(input_path, "r") as f:
+            raw_data = json.load(f)
+
+        # Validate required fields
+        _validate_cleaned_dataset_structure(raw_data)
+
+        # Convert raw data to structured objects
+        task_results = _convert_raw_task_results(raw_data.get("task_results", []))
+        removed_outliers = _convert_raw_samples(raw_data.get("removed_outliers", []))
+        cleaning_log = raw_data.get("cleaning_log", [])
+
+        print(f"✅ Loaded {len(task_results)} task results from cleaned dataset")
+
+        return CleanedDataset(
+            task_results=task_results,
+            removed_outliers=removed_outliers,
+            cleaning_log=cleaning_log
+        )
+
+    except FileNotFoundError:
+        print(f"❌ Cleaned dataset file not found: {input_path}")
+        print("💡 Run quality control analysis first to generate cleaned dataset")
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON format in {input_path}: {e}")
+        sys.exit(1)
+    except (ValueError, KeyError) as e:
+        print(f"❌ Invalid cleaned dataset format: {e}")
+        sys.exit(1)
+    except IOError as e:
+        print(f"❌ Error reading {input_path}: {e}")
+        sys.exit(1)
+
+
+def _perform_comparisons(
+    dataset: CleanedDataset, stats_engine: StatisticalAnalysis
+) -> List[ComparisonResult]:
+    """
+    Perform statistical comparisons for all tasks in the cleaned dataset.
+
+    Args:
+        dataset: CleanedDataset object with benchmark results
+        stats_engine: Initialized StatisticalAnalysis engine
+
+    Returns:
+        List of ComparisonResult objects for each task comparison
+
+    Raises:
+        ValueError: If insufficient data for comparison
+        RuntimeError: If statistical calculations fail
+    """
+    comparison_results = []
+
+    # Group task results by (task, scale) for comparison
+    task_groups = _group_task_results_for_comparison(dataset.task_results)
+
+    if not task_groups:
+        print("⚠️ Warning: No task groups found for comparison")
+        return comparison_results
+
+    print(f"🔍 Found {len(task_groups)} task-scale combinations for comparison")
+
+    for (task, scale), language_results in task_groups.items():
+        try:
+            # Look for Rust and TinyGo implementations
+            rust_result = language_results.get("rust")
+            tinygo_result = language_results.get("tinygo")
+
+            if rust_result is None or tinygo_result is None:
+                print(f"⚠️ Skipping {task}_{scale}: Missing Rust or TinyGo implementation")
+                continue
+
+            # Perform statistical comparison
+            print(f"📊 Comparing {task}_{scale}: Rust vs TinyGo...")
+            comparison_result = stats_engine.generate_task_comparison(rust_result, tinygo_result)
+            comparison_results.append(comparison_result)
+
+            # Log comparison summary
+            effect_size = comparison_result.effect_size
+            print(f"  ✓ Effect size: {effect_size.effect_size.value} (d={effect_size.cohens_d:.3f})")
+
+        except Exception as e:
+            print(f"❌ Error comparing {task}_{scale}: {e}")
+            continue
+
+    print(f"✅ Completed {len(comparison_results)} statistical comparisons")
+    return comparison_results
+
+
+def _save_comparison_results(
+        comparison_results: List[ComparisonResult], output_dir: Path) -> None:
+    """
+    Save comparison results to JSON files in the specified output directory.
+
+    Args:
+        comparison_results: List of ComparisonResult objects to save
+        output_dir: Directory where results will be saved
+
+    Raises:
+        IOError: If there is an error writing to the output files
+    """
+    if not comparison_results:
+        print("⚠️ No comparison results to save")
+        return
+
+    try:
+        # Generate comprehensive statistical report
+        statistical_report = {
+            "timestamp": datetime.now().isoformat(),
+            "total_comparisons": len(comparison_results),
+            "comparison_results": [
+                _comparison_result_to_dict(result) for result in comparison_results
+            ],
+            "summary_statistics": _generate_summary_statistics(comparison_results)
+        }
+
+        # Save main statistical report
+        report_path = output_dir / "statistical_analysis_report.json"
+        with open(report_path, "w") as f:
+            json.dump(statistical_report, f, indent=2)
+        print(f"✅ Statistical analysis report saved to {report_path}")
+
+        # Save individual comparison results for detailed analysis
+        for result in comparison_results:
+            result_filename = f"comparison_{result.task}_{result.scale}_rust_vs_tinygo.json"
+            result_path = output_dir / result_filename
+
+            detailed_result = _comparison_result_to_dict(result)
+            with open(result_path, "w") as f:
+                json.dump(detailed_result, f, indent=2)
+
+        print(f"✅ Saved {len(comparison_results)} individual comparison files")
+
+    except IOError as e:
+        print(f"❌ Error saving comparison results: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Unexpected error during save operation: {e}")
+        sys.exit(1)
+
+
+def _validate_cleaned_dataset_structure(raw_data: Dict[str, Any]) -> None:
+    """Validate that the loaded JSON has the expected structure."""
+    required_fields = ["task_results", "cleaning_log"]
+    for field in required_fields:
+        if field not in raw_data:
+            raise ValueError(f"Missing required field '{field}' in cleaned dataset")
+
+    if not isinstance(raw_data["task_results"], list):
+        raise ValueError("Field 'task_results' must be a list")
+
+
+def _convert_raw_task_results(raw_task_results: List[Dict[str, Any]]) -> List[TaskResult]:
+    """Convert raw task result data to TaskResult objects."""
+    task_results = []
+    for raw_result in raw_task_results:
+        samples = _convert_raw_samples(raw_result.get("samples", []))
+
+        task_result = TaskResult(
+            task=raw_result.get("task", ""),
+            language=raw_result.get("language", ""),
+            scale=raw_result.get("scale", ""),
+            samples=samples,
+            successful_runs=raw_result.get("successful_runs", 0),
+            failed_runs=raw_result.get("failed_runs", 0),
+            success_rate=raw_result.get("success_rate", 0.0)
+        )
+        task_results.append(task_result)
+
+    return task_results
+
+
+def _convert_raw_samples(raw_samples: List[Dict[str, Any]]) -> List[BenchmarkSample]:
+    """Convert raw sample data to BenchmarkSample objects."""
+    samples = []
+    for raw_sample in raw_samples:
+        sample = BenchmarkSample(
+            task=raw_sample.get("task", ""),
+            language=raw_sample.get("language", ""),
+            scale=raw_sample.get("scale", ""),
+            run=raw_sample.get("run", 0),
+            moduleId=raw_sample.get("moduleId", ""),
+            inputDataHash=raw_sample.get("inputDataHash", 0),
+            executionTime=raw_sample.get("executionTime", 0.0),
+            memoryUsageMb=raw_sample.get("memoryUsageMb", 0.0),
+            memoryUsed=raw_sample.get("memoryUsed", 0),
+            wasmMemoryBytes=raw_sample.get("wasmMemoryBytes", 0),
+            resultHash=raw_sample.get("resultHash", 0),
+            timestamp=raw_sample.get("timestamp", 0),
+            jsHeapBefore=raw_sample.get("jsHeapBefore", 0),
+            jsHeapAfter=raw_sample.get("jsHeapAfter", 0),
+            success=raw_sample.get("success", False),
+            implementation=raw_sample.get("implementation", ""),
+            resultDimensions=raw_sample.get("resultDimensions"),
+            recordsProcessed=raw_sample.get("recordsProcessed"),
+        )
+        samples.append(sample)
+
+    return samples
+
+
+def _group_task_results_for_comparison(task_results: List[TaskResult]) -> Dict[Tuple[str, str], Dict[str, TaskResult]]:
+    """Group task results by (task, scale) and then by language for comparison."""
+    groups = {}
+
+    for task_result in task_results:
+        group_key = (task_result.task, task_result.scale)
+        if group_key not in groups:
+            groups[group_key] = {}
+
+        groups[group_key][task_result.language.lower()] = task_result
+
+    return groups
+
+
+def _comparison_result_to_dict(result: ComparisonResult) -> Dict[str, Any]:
+    """Convert ComparisonResult object to dictionary for JSON serialization."""
+    return {
+        "task": result.task,
+        "scale": result.scale,
+        "rust_stats": {
+            "sample_count": result.rust_stats.count,
+            "mean_execution_time": result.rust_stats.mean,
+            "std_execution_time": result.rust_stats.std,
+            "coefficient_variation": result.rust_stats.coefficient_variation,
+            "median_execution_time": result.rust_stats.median,
+            "q1_execution_time": result.rust_stats.q1,
+            "q3_execution_time": result.rust_stats.q3,
+            "min_execution_time": result.rust_stats.min,
+            "max_execution_time": result.rust_stats.max,
+        },
+        "tinygo_stats": {
+            "sample_count": result.tinygo_stats.count,
+            "mean_execution_time": result.tinygo_stats.mean,
+            "std_execution_time": result.tinygo_stats.std,
+            "coefficient_variation": result.tinygo_stats.coefficient_variation,
+            "median_execution_time": result.tinygo_stats.median,
+            "q1_execution_time": result.tinygo_stats.q1,
+            "q3_execution_time": result.tinygo_stats.q3,
+            "min_execution_time": result.tinygo_stats.min,
+            "max_execution_time": result.tinygo_stats.max,
+        },
+        "t_test": {
+            "t_statistic": result.t_test.t_statistic,
+            "p_value": result.t_test.p_value,
+            "degrees_freedom": result.t_test.degrees_freedom,
+            "is_significant": result.t_test.is_significant,
+            "confidence_interval": [result.t_test.confidence_interval_lower, result.t_test.confidence_interval_upper],
+        },
+        "effect_size": {
+            "cohens_d": result.effect_size.cohens_d,
+            "magnitude": result.effect_size.effect_size.value,
+            "interpretation": result.effect_size.interpretation,
+            "meets_minimum_detectable_effect": result.effect_size.meets_minimum_detectable_effect,
+        },
+        "confidence_level": result.confidence_level,
+    }
+
+
+def _generate_summary_statistics(comparison_results: List[ComparisonResult]) -> Dict[str, Any]:
+    """Generate summary statistics across all comparisons."""
+    if not comparison_results:
+        return {}
+
+    significant_results = [r for r in comparison_results if r.t_test.is_significant]
+    large_effects = [r for r in comparison_results if r.effect_size.effect_size.value == "large"]
+
+    rust_faster = [r for r in comparison_results if r.rust_stats.mean < r.tinygo_stats.mean]
+    tinygo_faster = [r for r in comparison_results if r.tinygo_stats.mean < r.rust_stats.mean]
+
+    return {
+        "total_comparisons": len(comparison_results),
+        "significant_differences": len(significant_results),
+        "large_effect_sizes": len(large_effects),
+        "significance_rate": len(significant_results) / len(comparison_results) if comparison_results else 0,
+        "rust_faster_count": len(rust_faster),
+        "tinygo_faster_count": len(tinygo_faster),
+        "performance_advantage": {
+            "rust": len(rust_faster) / len(comparison_results) if comparison_results else 0,
+            "tinygo": len(tinygo_faster) / len(comparison_results) if comparison_results else 0,
+        },
+    }
+
+
+def _print_analysis_summary(comparison_results: List[ComparisonResult], output_dir: Path) -> None:
+    """Print comprehensive analysis summary."""
+    print("\n📈 Statistical Analysis Summary:")
+    print(f"   • Total Comparisons: {len(comparison_results)}")
+
+    if not comparison_results:
+        print("   • No statistical comparisons completed")
+        return
+
+    significant_results = [r for r in comparison_results if r.t_test.is_significant]
+    large_effects = [r for r in comparison_results if r.effect_size.effect_size.value == "large"]
+
+    rust_faster = [r for r in comparison_results if r.rust_stats.mean < r.tinygo_stats.mean]
+    tinygo_faster = [r for r in comparison_results if r.tinygo_stats.mean < r.rust_stats.mean]
+
+    print(f"   • Significant Differences: {len(significant_results)} ({len(significant_results) / len(comparison_results) * 100:.1f}%)")
+    print(f"   • Large Effect Sizes: {len(large_effects)} ({len(large_effects) / len(comparison_results) * 100:.1f}%)")
+    print("   • Performance Distribution:")
+    print(f"     - Rust Faster: {len(rust_faster)} tasks ({len(rust_faster) / len(comparison_results) * 100:.1f}%)")
+    print(f"     - TinyGo Faster: {len(tinygo_faster)} tasks ({len(tinygo_faster) / len(comparison_results) * 100:.1f}%)")
+
+    print(f"\n📁 Results saved in {output_dir}")
+
+    # Highlight significant findings
+    if significant_results:
+        print("\n🔍 Significant Performance Differences Found:")
+        for result in significant_results[:5]:  # Show top 5
+            faster_lang = "Rust" if result.rust_stats.mean < result.tinygo_stats.mean else "TinyGo"
+            print(f"   • {result.task}_{result.scale}: {faster_lang} significantly faster (p={result.t_test.p_value:.4f})")
 
 
 if __name__ == "__main__":
