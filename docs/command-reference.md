@@ -118,7 +118,7 @@ Comprehensive validation before deployment
 #### Validation Flow
 
 ```bash
-make clean-all → make build → npm run test:full → make all-quick
+make clean-all → make build → npm run test → make all-quick
 ```
 
 #### Validation Timeline
@@ -201,7 +201,7 @@ Detailed analysis of single benchmark task
 
 #### **make check-deps**
 
-**Purpose**: Verify all required tools and dependencies are installed
+**Purpose**: Verify all required tools and dependencies are available
 **When to Use**: Before any other operations, especially in new environments
 **Prerequisites**: None
 **Common Issues**: Missing Rust/TinyGo toolchain, Node.js version incompatibility
@@ -234,6 +234,27 @@ Detailed analysis of single benchmark task
 **Prerequisites**: TinyGo toolchain available
 **Common Issues**: TinyGo compilation errors, WASM target issues
 
+#### **make build-all**
+
+**Purpose**: Build all modules with optimization and size reporting
+**When to Use**: Production builds with detailed optimization analysis
+**Prerequisites**: init completed
+**Common Issues**: Compilation errors, optimization tool availability
+
+#### **make build-config**
+
+**Purpose**: Build configuration file (bench.json) from YAML
+**When to Use**: After modifying bench.yaml configuration
+**Prerequisites**: bench.yaml exists
+**Common Issues**: YAML syntax errors, missing configuration fields
+
+#### **make build-config-quick**
+
+**Purpose**: Build quick configuration file (bench-quick.json) from YAML
+**When to Use**: After modifying bench-quick.yaml for development testing
+**Prerequisites**: bench-quick.yaml exists
+**Common Issues**: YAML syntax errors, missing configuration fields
+
 #### **make run**
 
 **Purpose**: Execute benchmark suite with default configuration
@@ -250,14 +271,21 @@ Detailed analysis of single benchmark task
 
 #### **make run-quick**
 
-**Purpose**: Quick development validation workflow (build + validate, no benchmarking)
-**When to Use**: Development validation, verifying builds work correctly without full benchmarking
+**Purpose**: Run quick benchmarks for development (~2-3 min vs 30+ min full suite)
+**When to Use**: Development validation, verifying builds work correctly
 **Prerequisites**: build completed
 **Common Issues**: Build failures, validation script errors
 
+#### **make qc**
+
+**Purpose**: Run quality control on benchmark data
+**When to Use**: After benchmark execution to validate data quality
+**Prerequisites**: benchmark results available
+**Common Issues**: Missing Python dependencies, no results data
+
 #### **make analyze**
 
-**Purpose**: Run statistical analysis on latest benchmark results
+**Purpose**: Run statistical analysis and generate plots
 **When to Use**: After benchmark execution
 **Prerequisites**: benchmark results available
 **Common Issues**: Missing Python dependencies, no results data
@@ -271,7 +299,7 @@ Detailed analysis of single benchmark task
 
 #### **make all-quick**
 
-**Purpose**: Complete pipeline with quick settings for development
+**Purpose**: Complete pipeline with quick settings for development/testing
 **When to Use**: Development verification, quick experimentation
 **Prerequisites**: init completed
 **Common Issues**: No benchmark data generated, analysis step should be omitted
@@ -283,6 +311,13 @@ Detailed analysis of single benchmark task
 **Prerequisites**: None
 **Common Issues**: Permission issues on protected files
 
+#### **make clean-results**
+
+**Purpose**: Clean all benchmark results (with confirmation)
+**When to Use**: Disk space cleanup, removing old experiment data
+**Prerequisites**: None
+**Common Issues**: Accidental data loss, permission issues
+
 #### **make clean-all**
 
 **Purpose**: Complete cleanup including dependencies
@@ -290,12 +325,40 @@ Detailed analysis of single benchmark task
 **Prerequisites**: None
 **Common Issues**: Requires re-running init afterward
 
+#### **make clean-cache**
+
+**Purpose**: Clean discovery cache files
+**When to Use**: Cache corruption, performance issues
+**Prerequisites**: None
+**Common Issues**: None (informational only)
+
+#### **make cache-file-discovery**
+
+**Purpose**: Cache file discovery results for performance
+**When to Use**: Performance optimization for large codebases
+**Prerequisites**: None
+**Common Issues**: None (informational only)
+
 #### **make status**
 
 **Purpose**: Display current project state and environment info
 **When to Use**: Debugging, status verification
 **Prerequisites**: None
 **Common Issues**: None (informational only)
+
+#### **make info**
+
+**Purpose**: Show system information
+**When to Use**: Debugging environment issues
+**Prerequisites**: None
+**Common Issues**: None (informational only)
+
+#### **make validate**
+
+**Purpose**: Run WASM task validation suite
+**When to Use**: Verifying implementation correctness
+**Prerequisites**: build completed
+**Common Issues**: WASM module loading failures
 
 ### NPM Script Commands
 
@@ -306,19 +369,19 @@ Detailed analysis of single benchmark task
 **Prerequisites**: Dependencies installed
 **Common Issues**: Port conflicts, browser opening failures
 
-#### **npm run serve**
+#### **npm run serve:port**
 
-**Purpose**: Start development server without browser
-**When to Use**: Server-only or headless environments
+**Purpose**: Start development server on specified port (uses PORT environment variable)
+**When to Use**: Server-only mode with custom port configuration
 **Prerequisites**: Dependencies installed
-**Common Issues**: Port already in use
+**Common Issues**: Port already in use, environment variable issues
 
-#### **npm run build**
+#### **npm run test**
 
-**Purpose**: Build configuration and WebAssembly modules
-**When to Use**: Alternative to make build
-**Prerequisites**: Dependencies installed
-**Common Issues**: Build script execution failures
+**Purpose**: Run full test suite (JavaScript and Python) with verbose output
+**When to Use**: Comprehensive testing and validation
+**Prerequisites**: Dependencies installed, build completed
+**Common Issues**: Long execution time, environment dependencies
 
 #### **npm run test:smoke**
 
@@ -341,12 +404,12 @@ Detailed analysis of single benchmark task
 **Prerequisites**: Build completed, server running
 **Common Issues**: Browser compatibility, timing issues
 
-#### **npm run test:full**
+#### **npm run build**
 
-**Purpose**: Complete test suite including e2e tests
-**When to Use**: Comprehensive validation
-**Prerequisites**: Full environment setup
-**Common Issues**: Long execution time, environment dependencies
+**Purpose**: Build configuration and WebAssembly modules
+**When to Use**: Alternative to make build
+**Prerequisites**: Dependencies installed
+**Common Issues**: Build script execution failures
 
 #### **npm run bench**
 
@@ -362,7 +425,52 @@ Detailed analysis of single benchmark task
 **Prerequisites**: Build completed
 **Common Issues**: WASM module loading failures
 
----
+### Run Bench Script Options
+
+#### **node scripts/run_bench.js**
+
+**Purpose**: Execute benchmark suite with various configuration options
+**When to Use**: Performance testing and data collection with custom settings
+**Prerequisites**: build completed, configuration files exist
+
+**Available Options:**
+
+- `--headed`: Run in headed mode (show browser)
+- `--devtools`: Open browser DevTools
+- `--verbose`: Enable verbose logging
+- `--parallel`: Enable parallel benchmark execution
+- `--quick`: Use quick configuration for fast development testing
+- `--timeout=<ms>`: Set timeout in milliseconds (default: 300000, quick: 30000)
+- `--max-concurrent=<n>`: Max concurrent benchmarks in parallel mode (default: 4, max: 20)
+- `--failure-threshold=<rate>`: Failure threshold rate 0-1 (default: 0.3)
+- `--help, -h`: Show help message
+
+**Common Usage Examples:**
+
+```bash
+# Basic headless run
+node scripts/run_bench.js
+
+# Development with visible browser
+node scripts/run_bench.js --headed
+
+# Quick development testing
+node scripts/run_bench.js --quick
+
+# Verbose output for debugging
+node scripts/run_bench.js --verbose
+
+# Parallel execution
+node scripts/run_bench.js --parallel --max-concurrent=5
+
+# Custom timeout for slow systems
+node scripts/run_bench.js --timeout=600000
+
+# Conservative failure handling
+node scripts/run_bench.js --failure-threshold=0.1
+```
+
+**Common Issues**: Browser automation failures, timeout issues, configuration file missing
 
 ## Troubleshooting Guide
 
@@ -564,7 +672,7 @@ flowchart TD
 
 - Always run `make check-deps` in new environments
 - Use `make status` to verify project state
-- Run smoke tests after significant changes
+- Run smoke tests after significant changes: `npm run test:smoke`
 - Keep builds clean with regular `make clean`
 
 ### Research Practices
@@ -583,9 +691,69 @@ flowchart TD
 
 ---
 
+## Timeout Configuration Strategy
+
+The project implements a comprehensive timeout strategy designed to handle intensive WebAssembly tasks while preventing resource waste and providing fast feedback during development.
+
+### 🎯 **Timeout Strategy Overview**
+
+| 模式 | 基础超时 | 浏览器协议 | 任务执行 | WASM密集任务 |
+|------|---------|-----------|---------|-------------|
+| **正常模式** | 600s | 1200s (20min) | 1500s (25min) | 1800s (30min) |
+| **快速模式** | 60s | 120s (2min) | 150s (2.5min) | 180s (3min) |
+
+### **Configuration Hierarchy**
+
+1. **Base Timeout**: Configured in `configs/bench.yaml` and `configs/bench-quick.yaml`
+
+   ```yaml
+   environment:
+     timeout: 600  # Normal mode: 10 minutes
+     timeout: 20   # Quick mode: 20 seconds
+   ```
+
+2. **Timeout Multipliers** (defined in `ConfigurationService.js`):
+   - **Browser Protocol**: 2x base (for Puppeteer automation)
+   - **Navigation**: 1x base (for page loading)
+   - **Task Execution**: 2.5x base (for individual benchmark tasks)
+   - **Element Wait**: 0.25x base (for DOM element waiting)
+   - **WASM Intensive**: 3x base (for CPU-intensive WASM tasks)
+   - **Quick Mode Factor**: 0.1x (reduction for development mode)
+
+### **Implementation Details**
+
+- **Protocol Timeout**: Set in `BrowserService.js` via `protocolTimeout` parameter
+- **Page Timeout**: Set via `page.setDefaultTimeout()` for browser operations
+- **Task Timeout**: Applied at benchmark execution level
+- **Quick Mode**: Automatically reduces all timeouts by 90% for fast feedback
+
+### **Troubleshooting Timeout Issues**
+
+Common timeout errors and solutions:
+
+1. **`Runtime.callFunctionOn timed out`**:
+   - Increase base timeout in config files
+   - Check if task complexity requires more time
+   - Verify browser protocol timeout is sufficient
+
+2. **Navigation timeout**:
+   - Check network connectivity
+   - Increase navigation timeout multiplier
+   - Verify development server is running
+
+3. **Element wait timeout**:
+   - Check DOM element selectors
+   - Increase element wait timeout
+   - Verify page loading completion
+
+For detailed timeout configuration, see `docs/run-quick-flow.md`.
+
+---
+
 ## Additional Resources
 
 - **Project Repository**: <https://github.com/alleninnz/wasm-benchmark>
 - **Testing Strategy**: `docs/testing-strategy-guide.md`
 - **Development Plan**: `docs/development-plan.md`
 - **Experiment Plans**: `docs/experiment-plan_en.md`
+- **Timeout Configuration**: `docs/run-quick-flow.md` (详细超时配置)

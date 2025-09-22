@@ -95,7 +95,7 @@ loadYamlConfig()              // 加载并解析 YAML 配置文件
 
 createOptimizedEnvironment()  // 创建优化的环境配置
 ├── 处理 warmup_runs、measure_runs 等核心参数
-├── 设置超时配置 (timeout_ms、task_timeouts)
+├── 设置超时配置 (timeout)
 ├── 配置监控选项 (memory_monitoring、gc_monitoring)
 └── 过滤和转换配置格式
 
@@ -130,7 +130,7 @@ environment:
   warmup_runs: 3 # 最小预热 - 仅足够基本 JIT
   measure_runs: 15 # 基础统计采样 - 足够趋势检测
   repetitions: 1 # 单次运行实现最大速度
-  timeout_ms: 30000 # 30秒最大任务时间
+  timeout: 30 # 30秒最大任务时间
   memory_monitoring: false # 禁用以提升速度
   gc_monitoring: false # 禁用以提升速度
 ```
@@ -1232,6 +1232,140 @@ class PerformanceCollector {
     };
   }
 }
+```
+
+### **6.4 超时配置策略**
+
+#### **🎯 新超时策略总览**
+
+针对密集型 WebAssembly 任务优化的超时配置，解决了 `Runtime.callFunctionOn timed out` 等协议超时问题。
+
+| 模式 | 基础超时 | 浏览器协议 | 任务执行 | WASM密集任务 | 元素等待 |
+|------|---------|-----------|---------|-------------|---------|
+| **正常模式** | 600s (10min) | 1200s (20min) | 1500s (25min) | 1800s (30min) | 150s (2.5min) |
+| **快速模式** | 60s (1min) | 120s (2min) | 150s (2.5min) | 180s (3min) | 15s (15s) |
+
+#### **超时层级架构**
+
+```javascript
+// 配置层级：configs/bench.yaml & configs/bench-quick.yaml
+environment:
+  timeout: 600  // 基础超时（秒）- 正常模式
+  timeout: 20   // 基础超时（秒）- 快速模式
+
+// 倍数配置：scripts/services/ConfigurationService.js
+class ConfigurationService {
+  getTimeoutWithMultiplier(multiplier) {
+    const baseTimeout = this.getTimeout(); // 基础超时转换为毫秒
+    
+    // 快速模式减少 90%
+    if (this.isQuickMode) {
+      return Math.floor(baseTimeout * multiplier * 0.1);
+    }
+    
+    return Math.floor(baseTimeout * multiplier);
+  }
+  
+  // 具体超时方法
+  getBrowserTimeout()    // 2x 基础 - Puppeteer 协议超时
+  getNavigationTimeout() // 1x 基础 - 页面导航超时  
+  getTaskTimeout()       // 2.5x 基础 - 基准任务超时
+  getElementTimeout()    // 0.25x 基础 - DOM 元素等待
+  getWasmTimeout()       // 3x 基础 - WASM 密集任务
+}
+```
+
+#### **协议超时配置**
+
+```javascript
+// scripts/services/BrowserService.js
+async initialize(browserConfig = {}, configService = null) {
+  // 获取协议超时配置
+  const browserTimeout = this.configService ? 
+    this.configService.getBrowserTimeout() : 600000;
+  
+  const config = {
+    headless: true,
+    args: [...],
+    protocolTimeout: browserTimeout, // 关键：设置协议超时
+    ...browserConfig
+  };
+  
+  this.browser = await this.puppeteer.launch(config);
+  this.page = await this.browser.newPage();
+  
+  // 页面级超时
+  this.page.setDefaultTimeout(browserTimeout);
+}
+```
+
+#### **超时问题诊断和解决**
+
+```javascript
+// 常见超时错误类型及解决方案
+const timeoutTroubleshooting = {
+  // 1. Puppeteer 协议超时
+  'Runtime.callFunctionOn timed out': {
+    cause: '浏览器协议层超时',
+    solution: '增加 protocolTimeout 配置',
+    config: 'getBrowserTimeout() - 2x base',
+    fixed_in: 'BrowserService.js launch config'
+  },
+  
+  // 2. 页面导航超时
+  'Navigation timeout': {
+    cause: '页面加载或导航超时',
+    solution: '增加 navigation timeout',
+    config: 'getNavigationTimeout() - 1x base',
+    fixed_in: 'BrowserService.navigateTo()'
+  },
+  
+  // 3. 元素等待超时
+  'Element not found': {
+    cause: 'DOM 元素等待超时',
+    solution: '增加 element wait timeout',
+    config: 'getElementTimeout() - 0.25x base',
+    fixed_in: 'BrowserService.waitForElement()'
+  },
+  
+  // 4. 任务执行超时
+  'Benchmark timeout': {
+    cause: 'WASM 任务执行时间过长',
+    solution: '增加任务超时或使用快速模式',
+    config: 'getTaskTimeout() - 2.5x base',
+    recommendation: '使用 --quick 模式开发测试'
+  }
+};
+```
+
+#### **超时配置最佳实践**
+
+```yaml
+# 配置建议
+development:
+  mode: quick
+  timeout: 20  # 20秒基础，快速反馈
+  适用场景: [开发调试, CI冒烟测试, 快速验证]
+
+production:
+  mode: normal  
+  timeout: 600  # 10分钟基础，充分测试
+  适用场景: [正式基准, 性能研究, 发布验证]
+
+troubleshooting:
+  # 如果仍然超时，可以临时增加
+  timeout: 900  # 15分钟基础
+  建议: 检查任务复杂度和系统性能
+```
+
+#### **监控和日志**
+
+```javascript
+// 超时相关日志输出
+[Browser] [INFO] Browser timeout set to 1200000ms (20min)
+[Browser] [INFO] Protocol timeout set to 1200000ms for intensive WASM tasks
+[Orchestrator] [SUCCESS] Completed: mandelbrot_medium_rust (181193ms)
+[Orchestrator] [WARNING] Task result 0 invalid - marking benchmark as failure
 ```
 
 ---

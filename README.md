@@ -19,6 +19,7 @@ This project provides a rigorous performance comparison between:
 | **TinyGo 0.39** | `wasm` | Garbage collected runtime | `-opt=3`, no scheduler |
 
 **Test Environment:**
+
 - **Hardware:** MacBook Pro M4 10-Core CPU, 16GB RAM  
 - **OS:** macOS 15.x (Darwin/amd64)
 - **Runtime:** Headless Chromium v122+ (Puppeteer)
@@ -26,21 +27,13 @@ This project provides a rigorous performance comparison between:
 
 ## 🚀 Quick Start
 
-
 ## 📊 Benchmark Tasks
-
-
 
 ## 📁 Project Structure
 
-
-
 ## ⚙️ Installation
 
-
 ## 🏃 Running Benchmarks
-
-
 
 ## 🔧 Technical Implementation  
 
@@ -61,10 +54,8 @@ uint32_t run_task(uint32_t params_ptr); // Execute & return result hash
 | **Rust** | `wasm32-unknown-unknown` | `-O3`, fat LTO, 1 codegen unit | `wasm-strip`, `wasm-opt -O3` |
 | **TinyGo** | `wasm` | `-opt=3`, panic trap, no debug | `wasm-strip`, `wasm-opt -Oz` |
 
-<details>
-<summary>Detailed Configuration (Click to expand)</summary>
-
 **Rust `Cargo.toml`:**
+
 ```toml
 [profile.release]
 opt-level = 3           # Maximum optimization
@@ -75,6 +66,7 @@ strip = "debuginfo"    # Remove debug symbols
 ```
 
 **TinyGo Command:**
+
 ```bash
 tinygo build -target=wasm \
   -opt=3                    # Maximum optimization
@@ -88,6 +80,7 @@ tinygo build -target=wasm \
 ### Result Verification
 
 **FNV-1a Hash** ensures correctness across languages:
+
 ```c
 hash = 2166136261;               // FNV offset basis
 for each byte:
@@ -95,21 +88,15 @@ for each byte:
     hash *= 16777619;            // FNV prime
 ```
 
-
 ## 📊 Statistical Methodology
-
 
 ## 📈 Results & Analysis
 
-
 ## 🔬 Reproducibility
-
 
 ## ⚠️ Limitations & Considerations
 
-
 ## 📚 Documentation
-
 
 ## 🐛 Troubleshooting
 
@@ -120,6 +107,3 @@ This project is licensed under the **MIT License** - see the [`LICENSE`](LICENSE
 ---
 
 **Keywords:** WebAssembly, WASM, Rust, Go, TinyGo, Performance, Benchmark, Comparison, Statistical Analysis
-
-
-
