@@ -201,13 +201,7 @@ export class ConfigurationService extends IConfigurationService {
         // Get timeout from environment.timeout
         const timeoutValue = this.config?.environment?.timeout || 240;
 
-        // If timeout value is very large (>1000), assume it's already in milliseconds
-        // This handles the case where YAML timeout gets converted to milliseconds by build process
-        if (timeoutValue > 1000) {
-            return timeoutValue; // Already in milliseconds
-        }
-
-        // Normal case: timeout in seconds, convert to milliseconds
+        // Config values are always in seconds, convert to milliseconds for JavaScript setTimeout()
         return timeoutValue * 1000;
     }
 

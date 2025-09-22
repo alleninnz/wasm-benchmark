@@ -106,8 +106,7 @@ function createOptimizedEnvironment(config) {
         warmupRuns: env.warmup_runs !== undefined ? env.warmup_runs : env.warmupRuns || 20,
         measureRuns: env.measure_runs !== undefined ? env.measure_runs : env.measureRuns || 100,
         repetitions: env.repetitions !== undefined ? env.repetitions : DEFAULT_REPETITIONS,
-        timeout: env.timeout !== undefined ? 
-            (env.timeout > 1000 ? env.timeout : env.timeout * 1000) : DEFAULT_TIMEOUT_MS
+        timeout: env.timeout !== undefined ? env.timeout : DEFAULT_TIMEOUT_MS
     };
 
     // Convert additional environment settings to camelCase
