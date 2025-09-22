@@ -156,7 +156,7 @@ build_rust_task() {
         fi
     fi
     
-    # Create gzip version for size comparison
+    # Create gzip version for distribution
     gzip -c "${output_path}" > "${output_path}.gz"
     local gzipped_size=$(wc -c < "${output_path}.gz")
     log_info "Gzipped size: ${gzipped_size} bytes"
@@ -166,58 +166,6 @@ build_rust_task() {
     return 0
 }
 
-# Generate build manifest
-generate_manifest() {
-    local manifest_file="${RUST_OUTPUT_DIR}/manifest.json"
-    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    
-    log_info "Generating build manifest..."
-    
-    cat > "${manifest_file}" << EOF
-{
-    "build_timestamp": "${timestamp}",
-    "language": "rust",
-    "target": "${WASM_TARGET}",
-    "profile": "${PROFILE}",
-    "rust_version": "$(rustc --version)",
-    "cargo_version": "$(cargo --version)",
-    "tasks": [
-EOF
-
-    local first=true
-    for task in mandelbrot json_parse matrix_mul; do
-        local output_name="${task}-rust-o3.wasm"
-        local output_path="${RUST_OUTPUT_DIR}/${output_name}"
-        local gzip_path="${output_path}.gz"
-        
-        if [[ -f "${output_path}" ]]; then
-            [[ "${first}" == "true" ]] || echo "," >> "${manifest_file}"
-            first=false
-            
-            local raw_size=$(wc -c < "${output_path}")
-            local gzip_size=0
-            [[ -f "${gzip_path}" ]] && gzip_size=$(wc -c < "${gzip_path}")
-            local sha256=$(shasum -a 256 "${output_path}" | cut -d' ' -f1)
-            
-            cat >> "${manifest_file}" << EOF
-        {
-            "task": "${task}",
-            "filename": "${output_name}",
-            "raw_size_bytes": ${raw_size},
-            "gzip_size_bytes": ${gzip_size},
-            "sha256": "${sha256}"
-        }
-EOF
-        fi
-    done
-    
-    cat >> "${manifest_file}" << EOF
-    ]
-}
-EOF
-    
-    log_success "Build manifest created: ${manifest_file}"
-}
 
 # Main build function
 main() {
@@ -245,10 +193,7 @@ main() {
         fi
     done
     
-    # Generate manifest for successful builds
-    if [[ ${#successful_tasks[@]} -gt 0 ]]; then
-        generate_manifest
-    fi
+    # Build completed successfully
     
     # Report results
     log_info "Build Summary:"

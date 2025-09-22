@@ -159,7 +159,8 @@ Examples:
             String(now.getMinutes()).padStart(2, '0')}-${
             String(now.getSeconds()).padStart(2, '0')}-${
             String(now.getMilliseconds()).padStart(3, '0')}Z`;
-        const outputPath = path.join(__dirname, '..', 'results', `${timestamp}.json`);
+        const filename = options.quick ? `${timestamp}-quick.json` : `${timestamp}.json`;
+        const outputPath = path.join(__dirname, '..', 'results', filename);
         await orchestrator.saveResults(outputPath, 'json');
 
         logger.section('Benchmark Process Completed Successfully');

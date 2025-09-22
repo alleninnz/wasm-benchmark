@@ -9,19 +9,6 @@ source "${SCRIPT_DIR}/common.sh"
 
 # Configuration (BUILDS_DIR already defined in common.sh)
 
-# Portable size formatting function for cross-platform compatibility
-format_size() {
-    local size=$1
-    if [ "$size" -ge 1073741824 ]; then
-        printf "%.1fGiB" $(echo "scale=1; $size / 1073741824" | bc -l)
-    elif [ "$size" -ge 1048576 ]; then
-        printf "%.1fMiB" $(echo "scale=1; $size / 1048576" | bc -l)
-    elif [ "$size" -ge 1024 ]; then
-        printf "%.1fKiB" $(echo "scale=1; $size / 1024" | bc -l)
-    else
-        printf "%dB" "$size"
-    fi
-}
 
 # Print usage
 usage() {
@@ -125,91 +112,32 @@ generate_checksums() {
     log_success "Checksums generated: ${checksum_file}"
 }
 
-# Generate size comparison CSV
-generate_size_comparison() {
-    log_info "Generating size comparison CSV..."
-    
-    local sizes_file="${BUILDS_DIR}/sizes.csv"
-    
-    {
-        echo "task,language,optimization,raw_bytes,gzip_bytes,compression_ratio"
-        
-        # Process Rust builds
-        if [[ -d "${BUILDS_DIR}/rust" ]]; then
-            for wasm_file in "${BUILDS_DIR}/rust"/*.wasm; do
-                if [[ -f "${wasm_file}" ]]; then
-                    local filename=$(basename "${wasm_file}")
-                    local task=$(echo "${filename}" | cut -d'-' -f1)
-                    local raw_size=$(wc -c < "${wasm_file}")
-                    local gzip_size=0
-                    local compression_ratio=0
-                    
-                    if [[ -f "${wasm_file}.gz" ]]; then
-                        gzip_size=$(wc -c < "${wasm_file}.gz")
-                        compression_ratio=$(echo "scale=3; ${gzip_size} / ${raw_size}" | bc -l 2>/dev/null || echo "0")
-                    fi
-                    
-                    echo "${task},rust,o3,${raw_size},${gzip_size},${compression_ratio}"
-                fi
-            done
-        fi
-        
-        # Process TinyGo builds
-        if [[ -d "${BUILDS_DIR}/tinygo" ]]; then
-            for wasm_file in "${BUILDS_DIR}/tinygo"/*.wasm; do
-                if [[ -f "${wasm_file}" ]]; then
-                    local filename=$(basename "${wasm_file}")
-                    local task=$(echo "${filename}" | cut -d'-' -f1)
-                    local raw_size=$(wc -c < "${wasm_file}")
-                    local gzip_size=0
-                    local compression_ratio=0
-                    
-                    if [[ -f "${wasm_file}.gz" ]]; then
-                        gzip_size=$(wc -c < "${wasm_file}.gz")
-                        compression_ratio=$(echo "scale=3; ${gzip_size} / ${raw_size}" | bc -l 2>/dev/null || echo "0")
-                    fi
-                    
-                    echo "${task},tinygo,oz,${raw_size},${gzip_size},${compression_ratio}"
-                fi
-            done
-        fi
-    } > "${sizes_file}"
-    
-    log_success "Size comparison generated: ${sizes_file}"
-}
 
 # Display build summary
 display_summary() {
     log_section "Build Summary"
-    
+
     local rust_count=0
     local tinygo_count=0
-    local total_rust_size=0
-    local total_tinygo_size=0
-    
+
     # Count Rust builds
     if [[ -d "${BUILDS_DIR}/rust" ]]; then
         rust_count=$(find "${BUILDS_DIR}/rust" -name "*.wasm" | wc -l)
-        total_rust_size=$(find "${BUILDS_DIR}/rust" -name "*.wasm" -exec wc -c {} + | tail -n1 | awk '{print $1}' || echo "0")
     fi
-    
+
     # Count TinyGo builds
     if [[ -d "${BUILDS_DIR}/tinygo" ]]; then
         tinygo_count=$(find "${BUILDS_DIR}/tinygo" -name "*.wasm" | wc -l)
-        total_tinygo_size=$(find "${BUILDS_DIR}/tinygo" -name "*.wasm" -exec wc -c {} + | tail -n1 | awk '{print $1}' || echo "0")
     fi
-    
-    echo "Language    | Tasks | Total Size"
-    echo "------------|-------|------------"
-    printf "%-11s | %5d | %10s\n" "Rust" "${rust_count}" "$(format_size ${total_rust_size})"
-    printf "%-11s | %5d | %10s\n" "TinyGo" "${tinygo_count}" "$(format_size ${total_tinygo_size})"
-    echo "------------|-------|------------"
-    printf "%-11s | %5d | %10s\n" "Total" "$((rust_count + tinygo_count))" "$(format_size $((total_rust_size + total_tinygo_size)))"
+
+    echo "Language    | Tasks"
+    echo "------------|-------"
+    printf "%-11s | %5d\n" "Rust" "${rust_count}"
+    printf "%-11s | %5d\n" "TinyGo" "${tinygo_count}"
+    echo "------------|-------"
+    printf "%-11s | %5d\n" "Total" "$((rust_count + tinygo_count))"
     echo
     
-    if [[ -f "${BUILDS_DIR}/sizes.csv" ]]; then
-        log_info "Detailed size comparison available in: ${BUILDS_DIR}/sizes.csv"
-    fi
     
     if [[ -f "${BUILDS_DIR}/checksums.txt" ]]; then
         log_info "Build checksums available in: ${BUILDS_DIR}/checksums.txt"
@@ -315,7 +243,6 @@ main() {
     # Generate post-build artifacts if any builds succeeded
     if [[ "${build_success}" == "true" ]]; then
         generate_checksums
-        generate_size_comparison
         display_summary
         
         log_section "Build Process Completed Successfully"
