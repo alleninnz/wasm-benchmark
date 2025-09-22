@@ -663,8 +663,22 @@ export class BenchmarkRunner {
             // Store original results to filter later
             const originalResultsLength = this.results.length;
 
-            // Run the specific task benchmark
-            await this._runTaskBenchmark(task, language, scale, this.currentConfig);
+            // Run the specific task benchmark with repetitions
+            const actualRepetitions = repetitions || 1;
+            window.logResult(`DEBUG: repetitions=${repetitions}, actualRepetitions=${actualRepetitions}`, 'info');
+            for (let rep = 0; rep < actualRepetitions; rep++) {
+                if (this.cancelled) break;
+
+                if (actualRepetitions > 1) {
+                    window.logResult(`Repetition ${rep + 1} of ${actualRepetitions} for ${task}-${language}-${scale}`, 'info');
+                }
+
+                await this._runTaskBenchmark(task, language, scale, this.currentConfig, rep + 1);
+
+                if (actualRepetitions > 1 && rep < actualRepetitions - 1) {
+                    window.logResult(`Repetition ${rep + 1} completed. Starting next repetition...`, 'success');
+                }
+            }
 
             // Extract only the results from this specific run
             const newResults = this.results.slice(originalResultsLength);
