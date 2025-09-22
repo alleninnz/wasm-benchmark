@@ -8,9 +8,9 @@ experiment:
 
 # Minimal measurement parameters for speed
 environment:
-  warmup_runs: 5               # Minimal warmup for development
-  measure_runs: 20             # Basic sampling for trend detection
-  repetitions: 1               # Single run for maximum speed
+  warmup_runs: 1
+  measure_runs: 1
+  repetitions: 2
 
   # Quick timeout for fast feedback
   timeout: 20

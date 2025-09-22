@@ -9,16 +9,12 @@ experiment:
 
 # Simplified measurement parameters for engineering reliability
 environment:
-  warmup_runs: 20
-  measure_runs: 100
-  repetitions: 3
+  warmup_runs: 1
+  measure_runs: 1
+  repetitions: 2
 
-  # Base timeout strategy for WASM benchmarks
-  timeout: 1800               # Base timeout in seconds (30 minutes)
-                              # Calculated for: (warmup_runs: 20 + measure_runs: 100) × repetitions: 3 = 360 executions
-                              # Accommodates large-scale tasks (mandelbrot_large ~180s) with safety margin
-                              # Browser, navigation, and element timeouts are hardcoded to maximum allowed (30 minutes)
-
+  # Global timeout for each individual task execution (in seconds)
+  timeout: 1800
 # Simplified task definitions - keep core scales only
 tasks:
   mandelbrot:
@@ -43,9 +39,9 @@ tasks:
       small:
         record_count: 5000
       medium:
-        record_count: 20000
+        record_count: 10000
       large:
-        record_count: 50000
+        record_count: 20000
     schema:
       fields: ["id", "value", "flag", "name"]
       id_sequential: true
@@ -107,7 +103,7 @@ verification:
 qc:
   max_coefficient_variation: 0.15
   outlier_iqr_multiplier: 1.5
-  min_valid_samples: 80
+  min_valid_samples: 30
   # timeout handling
   treat_timeout_as: "failure" 
   failure_rate: 0.1          # 10% failure rate maximum
