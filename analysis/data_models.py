@@ -258,19 +258,8 @@ class DecisionMetrics:
     statistical_significance: bool
     practical_significance: bool
     quality_sufficient: bool
-    decision_confidence: float  # 0.0 to 1.0
-
-    @property
-    def confidence_emoji(self) -> str:
-        """Computed emoji based on confidence and significance"""
-        if not self.quality_sufficient:
-            return "⚠️"
-        elif self.statistical_significance and self.practical_significance:
-            return "🎯" if self.decision_confidence >= 0.8 else "✅"
-        elif self.statistical_significance or self.practical_significance:
-            return "📊" if self.decision_confidence >= 0.7 else "⚖️"
-        else:
-            return "❓"
+    decision_confidence: float
+    confidence_emoji: str
 
 
 @dataclass
@@ -280,7 +269,7 @@ class AnalysisReport:
     experiment_name: str
     analysis_timestamp: str
     configuration: ConfigurationData
-    cleaned_data: CleanedDataset
+    cleaned_data: str  # Path to cleaned dataset file
     comparisons: List[ComparisonResult]
     validations: List[ValidationResult]
     quality_assessment: QualityAssessment
@@ -289,16 +278,4 @@ class AnalysisReport:
     plots_generated: List[str]
 
     def get_task_recommendation(self, task: str) -> Optional[DecisionMetrics]:
-        return self.task_recommendations.get(task)    
-
-    def get_overall_success_rate(self) -> float:
-        return self.summary_statistics.get("overall_success_rate", 0.0)
-
-    def get_significance_rate(self) -> float:
-        return self.summary_statistics.get("significance_rate", 0.0)
-
-    def get_total_comparisons(self) -> int:
-        return self.summary_statistics.get("total_comparisons", 0)
-
-    def get_large_effect_count(self) -> int:
-        return self.summary_statistics.get("large_effect_sizes", 0)
+        return self.task_recommendations.get(task)
