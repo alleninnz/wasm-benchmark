@@ -58,8 +58,8 @@ export class BrowserService extends IBrowserService {
         const isHeaded = browserConfig.headless === false;
         this.isHeadless = !isHeaded; // Store the headless state
 
-        // Get browser protocol timeout from configuration
-        const browserTimeout = this.configService ? this.configService.getBrowserTimeout() : 600000;
+        // Get browser protocol timeout - hardcoded to maximum allowed value
+        const browserTimeout = 30 * 60 * 1000; // 1,800,000ms (30 minutes)
 
         const config = {
             headless: true, // default
@@ -136,7 +136,7 @@ export class BrowserService extends IBrowserService {
 
         try {
             const page = await this.browser.newPage();
-            const browserTimeout = this.configService ? this.configService.getBrowserTimeout() : 600000;
+            const browserTimeout = 30 * 60 * 1000; // 1,800,000ms (30 minutes) - hardcoded maximum
             page.setDefaultTimeout(browserTimeout);
 
             // Check if browser is in headed mode by checking the first page
@@ -187,7 +187,7 @@ export class BrowserService extends IBrowserService {
             throw new Error('Browser not initialized. Call initialize() first.');
         }
 
-        const defaultTimeout = this.configService ? this.configService.getNavigationTimeout() : 300000;
+        const defaultTimeout = 30 * 60 * 1000; // 1,800,000ms (30 minutes) - hardcoded maximum
         const navigationOptions = {
             waitUntil: 'networkidle0',
             timeout: defaultTimeout,
@@ -234,7 +234,7 @@ export class BrowserService extends IBrowserService {
             throw new Error('Browser not initialized. Call initialize() first.');
         }
 
-        const defaultTimeout = this.configService ? this.configService.getElementTimeout() : 60000;
+        const defaultTimeout = 30 * 60 * 1000; // 1,800,000ms (30 minutes) - hardcoded maximum
         const waitOptions = {
             timeout: defaultTimeout,
             ...options

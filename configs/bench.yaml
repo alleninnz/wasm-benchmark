@@ -14,18 +14,10 @@ environment:
   repetitions: 3
 
   # Base timeout strategy for WASM benchmarks
-  timeout: 600                # Base timeout in seconds (10 minutes)
-                              # Increased from 240s due to intensive WASM tasks taking >3 minutes
-                              # Based on observed max execution: ~180s for intensive tasks
-                              # Recommended for measure_runs: 100, repetitions: 3
-                              #
-                              # Timeout multipliers used in code:
-                              # - browser_protocol: 2x (1200s) - Puppeteer automation timeout
-                              # - navigation: 1x (600s) - Page loading and navigation
-                              # - task_execution: 2.5x (1500s) - Individual benchmark execution
-                              # - element_wait: 0.25x (150s) - DOM element waiting
-                              # - wasm_intensive: 3x (1800s) - CPU-intensive WASM tasks
-                              # - quick_mode_factor: 0.1x - Reduced timeouts for development
+  timeout: 1800               # Base timeout in seconds (30 minutes)
+                              # Calculated for: (warmup_runs: 20 + measure_runs: 100) × repetitions: 3 = 360 executions
+                              # Accommodates large-scale tasks (mandelbrot_large ~180s) with safety margin
+                              # Browser, navigation, and element timeouts are hardcoded to maximum allowed (30 minutes)
 
 # Simplified task definitions - keep core scales only
 tasks:

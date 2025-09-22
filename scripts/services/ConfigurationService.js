@@ -194,7 +194,7 @@ export class ConfigurationService extends IConfigurationService {
     }
 
     /**
-     * Get base timeout configuration
+     * Get base timeout configuration from environment.timeout
      * @returns {number} Base timeout in milliseconds
      */
     getTimeout() {
@@ -212,59 +212,30 @@ export class ConfigurationService extends IConfigurationService {
     }
 
     /**
-     * Get specific timeout with fixed multipliers
-     * @param {number} multiplier - Multiplier for base timeout
-     * @returns {number} Timeout in milliseconds
-     */
-    getTimeoutWithMultiplier(multiplier) {
-        const baseTimeout = this.getTimeout();
-
-        // Apply quick mode reduction (0.1x) if in quick mode
-        if (this.isQuickMode) {
-            return Math.floor(baseTimeout * multiplier * 0.1);
-        }
-
-        return Math.floor(baseTimeout * multiplier);
-    }
-
-    /**
-     * Get browser protocol timeout (2x base = 600s)
+     * Get browser protocol timeout - hardcoded to maximum allowed value
      * @returns {number} Browser protocol timeout in milliseconds
      */
     getBrowserTimeout() {
-        return this.getTimeoutWithMultiplier(2);
+        // Hardcoded to maximum allowed value (30 minutes)
+        return 30 * 60 * 1000; // 1,800,000ms
     }
 
     /**
-     * Get navigation timeout (1x base = 300s)
+     * Get navigation timeout - hardcoded to maximum allowed value
      * @returns {number} Navigation timeout in milliseconds
      */
     getNavigationTimeout() {
-        return this.getTimeoutWithMultiplier(1);
+        // Hardcoded to maximum allowed value (30 minutes)
+        return 30 * 60 * 1000; // 1,800,000ms
     }
 
     /**
-     * Get task execution timeout (2.5x base = 600s)
-     * @returns {number} Task execution timeout in milliseconds
-     */
-    getTaskTimeout() {
-        return this.getTimeoutWithMultiplier(2.5);
-    }
-
-    /**
-     * Get element wait timeout (0.25x base = 60s)
+     * Get element wait timeout - hardcoded to maximum allowed value
      * @returns {number} Element wait timeout in milliseconds
      */
     getElementTimeout() {
-        return this.getTimeoutWithMultiplier(0.25);
-    }
-
-    /**
-     * Get WASM intensive task timeout (3x base = 720s)
-     * @returns {number} WASM intensive timeout in milliseconds
-     */
-    getWasmTimeout() {
-        return this.getTimeoutWithMultiplier(3);
+        // Hardcoded to maximum allowed value (30 minutes)
+        return 30 * 60 * 1000; // 1,800,000ms
     }
 
     /**
