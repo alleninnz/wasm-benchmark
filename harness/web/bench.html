@@ -414,15 +414,16 @@
             
             try {
                 const results = await window.benchmarkRunner.runTaskBenchmark(config);
-                if (results && results.executionTimes && results.executionTimes.length > 0) {
-                    // Extract data from aggregated result for test compatibility
+                if (results && results.results && results.results.length > 0) {
+                    // Extract data from structured result format
+                    const firstResult = results.results[0];
                     return {
                         success: true,
                         task: results.task,
                         language: results.language,
-                        executionTime: results.executionTimes[0],
-                        memoryUsed: results.memoryUsages ? results.memoryUsages[0] : 1024,
-                        resultHash: results.resultHashes ? results.resultHashes[0] : 0,
+                        executionTime: firstResult.executionTime,
+                        memoryUsed: firstResult.memoryUsed || 1024,
+                        resultHash: firstResult.resultHash || 0,
                         timestamp: results.timestamp,
                         // Add task-specific fields based on the task type
                         ...(taskName === 'json_parse' && taskData.expectedProperties ? 

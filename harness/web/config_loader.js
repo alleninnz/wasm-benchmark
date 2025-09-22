@@ -76,30 +76,6 @@ export class ConfigLoader {
         }
     }
 
-    /**
-     * Parse primitive values from strings (legacy utility method)
-     * @param {string} value - String value to parse
-     * @returns {any} Parsed value
-     * @private
-     */
-    parseValue(value) {
-        if (value.startsWith('\'') && value.endsWith('\'')) {
-            return value.slice(1, -1);
-        }
-        if (/^\d+$/.test(value)) {
-            return parseInt(value, 10);
-        }
-        if (/^\d+\.\d+$/.test(value)) {
-            return parseFloat(value);
-        }
-        if (value.startsWith('[') && value.endsWith(']')) {
-            // Simple array parsing
-            const items = value.slice(1, -1).split(',').map(item => item.trim());
-            return items.map(item => this.parseValue(item));
-        }
-
-        return value;
-    }
 
     /**
      * Validate configuration structure
@@ -145,7 +121,7 @@ export class ConfigLoader {
      * @private
      */
     processConfig() {
-        // Pre-processed config is already optimized, just add legacy compatibility
+        // Pre-processed config is already optimized
         const { config } = this;
 
         // Validate environment section exists

@@ -261,7 +261,7 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
      */
     async executeSingleBenchmark(benchmark, options = {}) {
         const startTime = Date.now();
-        const timeout = this.configService.getTaskTimeout(); // Use task-specific timeout
+        const timeout = this.configService.getTimeout(); // Use environment.timeout directly
 
         try {
             // Check if aborted
@@ -377,7 +377,7 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                     warmupRuns: this.configService.getConfig().environment?.warmupRuns || 3,
                     measureRuns: this.configService.getConfig().environment?.measureRuns || 10,
                     repetitions: this.configService.getConfig().environment?.repetitions || 1,
-                    timeout: this.configService.getWasmTimeout() // WASM-optimized timeout from configuration
+                    timeout: this.configService.getTimeout() // Use environment.timeout directly
                 };
 
                 let progressInterval;
@@ -435,12 +435,8 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                     const taskDuration = Math.floor((Date.now() - taskStartTime) / 1000);
                     this.logger.success(`✅ Completed ${taskName} (${language}) in ${taskDuration}s`);
 
-                    results.push({
-                        ...result,
-                        task: taskName,
-                        language: language,
-                        implementation: implementation.name
-                    });
+                    // Add the result directly since it's already in the correct format
+                    results.push(result);
 
                     // Notify frontend about task completion (in headed mode)
                     if (!this.browserService.isHeadless) {
@@ -744,19 +740,24 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             return false;
         }
 
-        // Check if result has required performance data
-        if (!taskResult.executionTimes || !Array.isArray(taskResult.executionTimes)) {
-            this.logger.warn('Task result missing executionTimes array');
+        // Check if result has required performance data (new format only)
+        if (!taskResult.results || !Array.isArray(taskResult.results)) {
+            this.logger.warn('Task result missing results array');
             return false;
         }
 
-        if (taskResult.executionTimes.length === 0) {
-            this.logger.warn('Task result has empty executionTimes array');
+        // Extract execution times from new format
+        const executionTimes = taskResult.results
+            .filter(sample => sample && typeof sample.executionTime === 'number')
+            .map(sample => sample.executionTime);
+
+        if (executionTimes.length === 0) {
+            this.logger.warn('Task result has no valid execution times');
             return false;
         }
 
         // Check if execution times are reasonable (not all zero or negative)
-        const validTimes = taskResult.executionTimes.filter(time => time > 0);
+        const validTimes = executionTimes.filter(time => time > 0);
         if (validTimes.length === 0) {
             this.logger.warn('Task result has no valid execution times');
             return false;
@@ -770,4 +771,5 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
 
         return true;
     }
+
 }

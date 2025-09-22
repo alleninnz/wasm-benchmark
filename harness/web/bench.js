@@ -17,7 +17,7 @@ export class BenchmarkRunner {
 
         // Constants
         this.DEFAULT_RANDOM_SEED = 12345;
-        this.MAX_CONFIG_TIMEOUT = 15 * 60 * 1000; // 15 minutes for WASM tasks
+        this.MAX_CONFIG_TIMEOUT = 30 * 60 * 1000; // 30 minutes for WASM tasks
 
         // FNV-1a constants for input data hashing
         this.FNV_OFFSET_BASIS = 2166136261;
@@ -509,10 +509,6 @@ export class BenchmarkRunner {
             // Simple config format - camelCase
             const { recordCount: configRecordCount } = scaleConfig;
             recordCount = configRecordCount;
-        } else if (scaleConfig.record_count) {
-            // Simple config format - snake_case fallback
-            const { record_count } = scaleConfig;
-            recordCount = record_count;
         } else {
             throw new Error('JSON test data requires recordCount or pre-generated data structure');
         }
@@ -690,12 +686,14 @@ export class BenchmarkRunner {
             this.isRunning = false;
         }
 
-        // Aggregate results into expected structure with executionTimes array
+        // Create aggregated result with detailed structure for analysis
         if (taskResults.length === 0) {
             return {
                 success: false,
                 error: 'No results generated',
-                executionTimes: [],
+                task: task,
+                language: language,
+                scale: scale,
                 timestamp: Date.now()
             };
         }
@@ -707,28 +705,52 @@ export class BenchmarkRunner {
             return {
                 success: false,
                 error: 'All runs failed',
-                executionTimes: [],
+                task: task,
+                language: language,
+                scale: scale,
                 timestamp: Date.now()
             };
         }
 
-        // Create aggregated result with executionTimes array
+        // Create structured result object that analysis code expects
         const firstResult = successfulResults[0];
+        
+        // Build the detailed results array with individual run data
+        const detailedResults = successfulResults.map(r => ({
+            task: r.task,
+            language: r.language,
+            scale: r.scale,
+            run: r.run,
+            repetition: r.repetition || 1,
+            moduleId: r.moduleId,
+            inputDataHash: r.inputDataHash,
+            executionTime: r.executionTime,
+            memoryUsageMb: r.memoryUsageMb,
+            memoryUsed: r.memoryUsed,
+            wasmMemoryBytes: r.wasmMemoryBytes,
+            resultHash: r.resultHash,
+            timestamp: r.timestamp,
+            jsHeapBefore: r.jsHeapBefore,
+            jsHeapAfter: r.jsHeapAfter,
+            success: r.success,
+            implementation: `${r.task}_${r.language}`,
+            resultDimensions: r.resultDimensions,
+            recordsProcessed: r.recordsProcessed
+        }));
+
         return {
             task: firstResult.task,
             language: firstResult.language,
             scale: firstResult.scale,
-            executionTimes: successfulResults.map(r => r.executionTime),
-            resultHashes: successfulResults.map(r => r.resultHash),
-            memoryUsages: successfulResults.map(r => r.memoryUsed),
+            success: true,
+            results: detailedResults, // Array of individual run results
+            timestamp: Date.now(),
             averageExecutionTime: successfulResults.reduce((sum, r) => sum + r.executionTime, 0) 
                 / successfulResults.length,
             averageMemoryUsage: successfulResults.reduce((sum, r) => sum + r.memoryUsed, 0) 
                 / successfulResults.length,
             totalRuns: taskResults.length,
-            successfulRuns: successfulResults.length,
-            success: true,
-            timestamp: Date.now()
+            successfulRuns: successfulResults.length
         };
     }
 
