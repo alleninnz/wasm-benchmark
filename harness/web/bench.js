@@ -167,32 +167,9 @@ export class BenchmarkRunner {
             const repetitions = activeConfig.repetitions || 1;
             window.logResult(`Starting benchmark suite execution (${repetitions} repetition${repetitions > 1 ? 's' : ''})`, 'success');
 
-            // Add repetitions loop as outer loop
-            for (let rep = 0; rep < repetitions; rep++) {
-                if (this.cancelled) break;
-
-                if (repetitions > 1) {
-                    window.logResult(`\n=== Repetition ${rep + 1} of ${repetitions} ===`, 'info');
-                }
-
-                for (const taskName of activeConfig.tasks) {
-                    if (this.cancelled) break;
-
-                    for (const language of activeConfig.languages) {
-                        if (this.cancelled) break;
-
-                        for (const scale of activeConfig.scales) {
-                            if (this.cancelled) break;
-
-                            await this._runTaskBenchmark(taskName, language, scale, activeConfig, rep + 1);
-                        }
-                    }
-                }
-
-                if (repetitions > 1 && rep < repetitions - 1) {
-                    window.logResult(`Repetition ${rep + 1} completed. Starting next repetition...`, 'success');
-                }
-            }
+            // Use unified execution engine
+            const taskList = this._generateTaskList(activeConfig);
+            await this._executeTaskList(taskList, repetitions, activeConfig);
 
             window.benchmarkState.status = this.cancelled ? 'cancelled' : 'completed';
             // Ensure progress bar reaches 100% when completed
@@ -211,6 +188,85 @@ export class BenchmarkRunner {
         }
 
         return this.results;
+    }
+
+    /**
+     * Generate a unified task list from configuration
+     * @private
+     * @param {Object} config - Configuration object
+     * @returns {Array} Array of task objects {task, language, scale}
+     */
+    _generateTaskList(config) {
+        const tasks = [];
+
+        // Handle single task configuration (from runTaskBenchmark)
+        if (config.task && config.language && config.scale) {
+            tasks.push({
+                task: config.task,
+                language: config.language,
+                scale: config.scale
+            });
+            return tasks;
+        }
+
+        // Handle suite configuration (from runBenchmarkSuite)
+        const taskNames = config.tasks || [];
+        const languages = config.languages || [];
+        const scales = config.scales || [];
+
+        for (const taskName of taskNames) {
+            for (const language of languages) {
+                for (const scale of scales) {
+                    tasks.push({
+                        task: taskName,
+                        language: language,
+                        scale: scale
+                    });
+                }
+            }
+        }
+
+        return tasks;
+    }
+
+    /**
+     * Execute a list of tasks with repetitions - unified execution engine
+     * @private
+     * @param {Array} taskList - Array of task objects {task, language, scale}
+     * @param {number} repetitions - Number of repetitions to perform
+     * @param {Object} config - Configuration object for task execution
+     * @returns {Promise<void>}
+     */
+    async _executeTaskList(taskList, repetitions = 1, config) {
+        const totalTasks = taskList.length * repetitions;
+        let completedTasks = 0;
+
+        // Execute repetitions loop
+        for (let rep = 0; rep < repetitions; rep++) {
+            if (this.cancelled) break;
+
+            if (repetitions > 1) {
+                window.logResult(`\n=== Repetition ${rep + 1} of ${repetitions} ===`, 'info');
+            }
+
+            // Execute each task in the list
+            for (const { task, language, scale } of taskList) {
+                if (this.cancelled) break;
+
+                await this._runTaskBenchmark(task, language, scale, config, rep + 1);
+
+                completedTasks++;
+                // Update progress if total tasks > 1
+                if (totalTasks > 1) {
+                    const progress = Math.round((completedTasks / totalTasks) * 100);
+                    window.benchmarkState.progress = progress;
+                }
+            }
+
+            if (repetitions > 1 && rep < repetitions - 1) {
+                window.logResult(`Repetition ${rep + 1} completed. Starting next repetition...`, 'success');
+            }
+        }
     }
 
     /**
@@ -663,22 +719,11 @@ export class BenchmarkRunner {
             // Store original results to filter later
             const originalResultsLength = this.results.length;
 
-            // Run the specific task benchmark with repetitions
+            // Run the specific task benchmark with repetitions using unified execution engine
             const actualRepetitions = repetitions || 1;
-            window.logResult(`DEBUG: repetitions=${repetitions}, actualRepetitions=${actualRepetitions}`, 'info');
-            for (let rep = 0; rep < actualRepetitions; rep++) {
-                if (this.cancelled) break;
-
-                if (actualRepetitions > 1) {
-                    window.logResult(`Repetition ${rep + 1} of ${actualRepetitions} for ${task}-${language}-${scale}`, 'info');
-                }
-
-                await this._runTaskBenchmark(task, language, scale, this.currentConfig, rep + 1);
-
-                if (actualRepetitions > 1 && rep < actualRepetitions - 1) {
-                    window.logResult(`Repetition ${rep + 1} completed. Starting next repetition...`, 'success');
-                }
-            }
+            const singleTaskConfig = { task, language, scale };
+            const taskList = this._generateTaskList(singleTaskConfig);
+            await this._executeTaskList(taskList, actualRepetitions, this.currentConfig);
 
             // Extract only the results from this specific run
             const newResults = this.results.slice(originalResultsLength);
