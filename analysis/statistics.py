@@ -16,9 +16,17 @@ from scipy.stats import t as t_dist
 
 from analysis.config_parser import ConfigParser
 
-from .data_models import (BenchmarkSample, CleanedDataset, ComparisonResult,
-                          EffectSize, EffectSizeResult, StatisticalResult,
-                          StatisticsConfiguration, TaskResult, TTestResult)
+from .data_models import (
+    BenchmarkSample,
+    CleanedDataset,
+    ComparisonResult,
+    EffectSize,
+    EffectSizeResult,
+    StatisticalResult,
+    StatisticsConfiguration,
+    TaskResult,
+    TTestResult,
+)
 
 # Statistical constants
 MINIMUM_SAMPLES_FOR_TEST = 2
@@ -1011,7 +1019,9 @@ def _convert_raw_samples(raw_samples: List[Dict[str, Any]]) -> List[BenchmarkSam
             language=raw_sample.get("language", ""),
             scale=raw_sample.get("scale", ""),
             run=raw_sample.get("run", 0),
-            repetition=raw_sample.get("repetition", 1),  # Extract repetition field, default to 1
+            repetition=raw_sample.get(
+                "repetition", 1
+            ),  # Extract repetition field, default to 1
             moduleId=raw_sample.get("moduleId", ""),
             inputDataHash=raw_sample.get("inputDataHash", 0),
             executionTime=raw_sample.get("executionTime", 0.0),

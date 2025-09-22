@@ -42,13 +42,10 @@ class BenchmarkValidator:
             scale="placeholder",
             rust_hash=0,
             tinygo_hash=0,
-            hash_match=False,
             rust_dimensions=None,
             tinygo_dimensions=None,
-            dimensions_match=False,
             rust_records=None,
             tinygo_records=None,
-            records_match=False,
             validation_passed=False,
             validation_issues=[],
         )

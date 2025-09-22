@@ -13,10 +13,16 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from analysis.config_parser import ConfigParser
-from analysis.data_models import (BenchmarkResult, BenchmarkSample,
-                                  CleanedDataset, DataQuality, QCConfiguration,
-                                  QualityAssessment, QualityMetrics,
-                                  TaskResult)
+from analysis.data_models import (
+    BenchmarkResult,
+    BenchmarkSample,
+    CleanedDataset,
+    DataQuality,
+    QCConfiguration,
+    QualityAssessment,
+    QualityMetrics,
+    TaskResult,
+)
 
 
 class QCConstants:
@@ -161,6 +167,7 @@ class QualityController:
                     f"Warning: {group_key} has only {successful_runs} successful samples "
                     f"(minimum: {self.min_samples})"
                 )
+                continue  # Skip groups with insufficient data
 
             # Detect and remove statistical outliers using IQR method
             cleaned_samples, outliers = self.detect_outliers(successful_samples)
@@ -429,7 +436,7 @@ class QualityController:
         if not quality_summary:
             return QualityAssessment(
                 quality_summary=None,
-                overall_quality=DataQuality.VALID,
+                overall_quality=DataQuality.INVALID,
                 quality_reason="No groups to evaluate",
                 quality_stats={},
             )
@@ -650,7 +657,9 @@ def _convert_raw_samples_to_benchmark_samples(
             language=sample_data.get("language", ""),
             scale=sample_data.get("scale", ""),
             run=sample_data.get("run", 0),
-            repetition=sample_data.get("repetition", 1),  # Extract repetition field, default to 1
+            repetition=sample_data.get(
+                "repetition", 1
+            ),  # Extract repetition field, default to 1
             moduleId=sample_data.get("moduleId", ""),
             inputDataHash=sample_data.get("inputDataHash", 0),
             executionTime=sample_data.get("executionTime", 0.0),
