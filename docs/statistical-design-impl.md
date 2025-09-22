@@ -374,8 +374,6 @@ class VisualizationGenerator:
     def create_performance_comparison_chart(self) -> str:
         """生成语言性能对比条形图"""
 
-    def create_binary_size_comparison(self) -> str:
-        """生成二进制大小对比分析"""
 
 ```
 

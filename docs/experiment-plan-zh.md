@@ -163,11 +163,9 @@ wasm-benchmark/
 │   ├── rust/                  # Rust WASM 文件
 │   │   ├── *.wasm            # 编译后的WASM模块
 │   │   ├── *.wasm.gz         # 压缩后的WASM模块
-│   │   └── manifest.json     # 构建清单
 │   └── tinygo/               # TinyGo WASM 文件
 │       ├── *.wasm            # 编译后的WASM模块
 │       ├── *.wasm.gz         # 压缩后的WASM模块
-│       └── manifest.json     # 构建清单
 ├── configs/                    # 配置文件
 │   ├── bench.yaml             # 基准测试配置
 │   ├── bench.json             # JSON格式配置
@@ -497,7 +495,6 @@ builds/
 
 • `results/bench-*.ndjson` 保留每次 100 样本的 ms，以及 hash（来自返回值 u32）
 • 对于失败（解析错误等），`run_task` 可返回固定错误码（如 `0xDEAD_xxxx`），JS 端把这次样本标记为 `ok:false` 并计入异常统计（不纳入均值）
-• 二进制大小来自 `*.manifest.json`（raw/opt/gz）
 
 ---
 
@@ -518,7 +515,6 @@ builds/
 - 每次执行记录以下原始指标：
   - `execution_time_ms`（执行时间，`performance.now()` 记录）
   - `memory_usage_mb`（Chrome 的 `performance.memory` 或等效 Node 监控）
-  - `binary_size_raw_kb` 与 `binary_size_gzip_kb`（从构建输出直接读取）
 - Puppeteer 自动将每次运行的结果输出到 JSON 文件，如：
 
 ```json
@@ -528,8 +524,6 @@ builds/
   "run_type": "cold",
   "execution_time_ms": 123.45,
   "memory_usage_mb": 45.6,
-  "binary_size_raw_kb": 203,
-  "binary_size_gzip_kb": 89
 }
 ```
 

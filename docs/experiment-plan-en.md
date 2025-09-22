@@ -73,10 +73,6 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 }
 ```
 
-**Binary Size:**
-
-1. Raw `.wasm` size
-2. Compressed (gzip) size (simulating network transmission cost)
 
 ## Statistical Analysis
 
@@ -163,11 +159,9 @@ wasm-benchmark/
 │   ├── rust/                  # Rust WASM files
 │   │   ├── *.wasm            # Compiled WASM modules
 │   │   ├── *.wasm.gz         # Compressed WASM modules
-│   │   └── manifest.json     # Build manifest
 │   └── tinygo/               # TinyGo WASM files
 │       ├── *.wasm            # Compiled WASM modules
 │       ├── *.wasm.gz         # Compressed WASM modules
-│       └── manifest.json     # Build manifest
 ├── configs/                    # Configuration files
 │   ├── bench.yaml             # Benchmark configuration
 │   ├── bench.json             # JSON format configuration
@@ -497,7 +491,6 @@ builds/
 
 • `results/bench-*.ndjson` retains each 100-sample ms, plus hash (from return value u32)
 • For failures (parsing errors etc.), `run_task` can return fixed error codes (e.g., `0xDEAD_xxxx`), JS side marks this sample as `ok:false` and includes in exception statistics (not included in mean)
-• Binary sizes from `*.manifest.json` (raw/opt/gz)
 
 ---
 
@@ -518,7 +511,6 @@ builds/
 - Record the following raw metrics for each execution:
   - `execution_time_ms` (execution time, recorded by `performance.now()`)
   - `memory_usage_mb` (Chrome's `performance.memory` or equivalent Node monitoring)
-  - `binary_size_raw_kb` and `binary_size_gzip_kb` (read directly from build output)
 - Puppeteer automatically outputs each run's results to JSON files, such as:
 
 ```json
@@ -528,8 +520,6 @@ builds/
   "run_type": "cold",
   "execution_time_ms": 123.45,
   "memory_usage_mb": 45.6,
-  "binary_size_raw_kb": 203,
-  "binary_size_gzip_kb": 89
 }
 ```
 
@@ -576,7 +566,6 @@ builds/
 - Cross-language performance comparison
 - Statistical significance testing
 - Memory usage pattern analysis
-- Binary size optimization analysis
 
 ---
 
@@ -597,7 +586,6 @@ Calculate for each **task+language** combination:
 
 - Mean, standard deviation, coefficient of variation
 - 95% confidence interval
-- Binary size compression ratio
 
 ### Significance Testing
 
@@ -638,7 +626,7 @@ Calculate for each **task+language** combination:
 
 • Summarize performance comparison results for each task
 • Analyze possible causes of performance differences (GC overhead, memory management, instruction optimization)
-• Combine binary size to provide application scenario recommendations
+• Provide application scenario recommendations based on performance analysis
 
 ## Experimental Limitations
 
