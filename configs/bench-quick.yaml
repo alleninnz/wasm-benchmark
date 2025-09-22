@@ -8,12 +8,12 @@ experiment:
 
 # Minimal measurement parameters for speed
 environment:
-  warmup_runs: 1
-  measure_runs: 1
+  warmup_runs: 5
+  measure_runs: 10
   repetitions: 2
 
   # Quick timeout for fast feedback
-  timeout: 20
+  timeout: 60
 
 # Micro-scale tasks for development speed
 tasks:

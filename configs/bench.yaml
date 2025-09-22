@@ -9,8 +9,8 @@ experiment:
 
 # Simplified measurement parameters for engineering reliability
 environment:
-  warmup_runs: 1
-  measure_runs: 1
+  warmup_runs: 15
+  measure_runs: 50
   repetitions: 2
 
   # Global timeout for each individual task execution (in seconds)
