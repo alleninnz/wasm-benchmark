@@ -185,37 +185,11 @@ export class ResultsService extends IResultsService {
      * @returns {string} Formatted report
      */
     generateReport(format = 'json') {
-        // For JSON format, flatten the nested results structure
+        // For JSON format, preserve the proper result structure
         if (format.toLowerCase() === 'json') {
-            const transformedResults = this.getResults().map(result => {
-                // Flatten the results array to remove numeric key nesting
-                const flattenedResults = [];
-
-                if (result.results && Array.isArray(result.results)) {
-                    result.results.forEach(item => {
-                        if (typeof item === 'object' && !Array.isArray(item)) {
-                            // Extract values from objects with numeric keys like {"0": {...}, "1": {...}}
-                            const values = Object.values(item);
-                            flattenedResults.push(...values);
-                        } else {
-                            flattenedResults.push(item);
-                        }
-                    });
-                }
-
-                return {
-                    benchmark: result.benchmark,
-                    success: result.success,
-                    results: flattenedResults,
-                    timestamp: result.timestamp,
-                    duration: result.duration,
-                    id: result.id
-                };
-            });
-
             const data = {
                 summary: this.getSummary(),
-                results: transformedResults
+                results: this.getResults()
             };
             return JSON.stringify(data, null, 2);
         }
