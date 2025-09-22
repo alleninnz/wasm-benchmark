@@ -226,28 +226,51 @@ class ValidationResult:
     scale: str
     rust_hash: int
     tinygo_hash: int
-    hash_match: bool
     rust_dimensions: Optional[List[int]]
     tinygo_dimensions: Optional[List[int]]
-    dimensions_match: bool
     rust_records: Optional[int]
     tinygo_records: Optional[int]
-    records_match: bool
     validation_passed: bool
     validation_issues: List[str]
+
+    @property
+    def hash_match(self) -> bool:
+        """Computed property for hash comparison"""
+        return self.rust_hash == self.tinygo_hash
+
+    @property
+    def dimensions_match(self) -> bool:
+        """Computed property for dimensions comparison"""
+        return self.rust_dimensions == self.tinygo_dimensions
+
+    @property
+    def records_match(self) -> bool:
+        """Computed property for records comparison"""
+        return self.rust_records == self.tinygo_records
 
 
 @dataclass
 class DecisionMetrics:
     """Decision support metrics for language selection"""
 
-    confidence_emoji: str
     confidence_description: str
     recommendation_text: str
     statistical_significance: bool
     practical_significance: bool
     quality_sufficient: bool
-    decision_confidence: float
+    decision_confidence: float  # 0.0 to 1.0
+
+    @property
+    def confidence_emoji(self) -> str:
+        """Computed emoji based on confidence and significance"""
+        if not self.quality_sufficient:
+            return "⚠️"
+        elif self.statistical_significance and self.practical_significance:
+            return "🎯" if self.decision_confidence >= 0.8 else "✅"
+        elif self.statistical_significance or self.practical_significance:
+            return "📊" if self.decision_confidence >= 0.7 else "⚖️"
+        else:
+            return "❓"
 
 
 @dataclass
@@ -260,7 +283,22 @@ class AnalysisReport:
     cleaned_data: CleanedDataset
     comparisons: List[ComparisonResult]
     validations: List[ValidationResult]
+    quality_assessment: QualityAssessment
     summary_statistics: Dict[str, Any]
-    recommendations: Dict[str, DecisionMetrics]
+    task_recommendations: Dict[str, DecisionMetrics]
     plots_generated: List[str]
-    analysis_quality: DataQuality
+
+    def get_task_recommendation(self, task: str) -> Optional[DecisionMetrics]:
+        return self.task_recommendations.get(task)    
+
+    def get_overall_success_rate(self) -> float:
+        return self.summary_statistics.get("overall_success_rate", 0.0)
+
+    def get_significance_rate(self) -> float:
+        return self.summary_statistics.get("significance_rate", 0.0)
+
+    def get_total_comparisons(self) -> int:
+        return self.summary_statistics.get("total_comparisons", 0)
+
+    def get_large_effect_count(self) -> int:
+        return self.summary_statistics.get("large_effect_sizes", 0)
