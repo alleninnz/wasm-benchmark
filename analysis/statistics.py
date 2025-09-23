@@ -7,26 +7,21 @@ for engineering-grade statistical comparison between Rust and TinyGo implementat
 
 import json
 import math
+import random
 import sys
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Generator, Iterable, List, Tuple
 
 from scipy.stats import t as t_dist
 
 from analysis.config_parser import ConfigParser
 
-from .data_models import (
-    BenchmarkSample,
-    CleanedDataset,
-    ComparisonResult,
-    EffectSize,
-    EffectSizeResult,
-    StatisticalResult,
-    StatisticsConfiguration,
-    TaskResult,
-    TTestResult,
-)
+from .data_models import (BenchmarkSample, CleanedDataset, ComparisonResult,
+                          EffectSize, EffectSizeResult, MetricComparison,
+                          MetricType, PerformanceStatistics, StatisticalResult,
+                          StatisticsConfiguration, TaskResult, TTestResult)
 
 # Statistical constants
 MINIMUM_SAMPLES_FOR_TEST = 2
@@ -55,9 +50,10 @@ class StatisticalAnalysis:
         self.effect_thresholds = self.config.effect_size_thresholds
         self.minimum_detectable_effect = self.config.minimum_detectable_effect
 
-        # Performance optimization: cache for expensive calculations
-        self._stats_cache = {}
+        # Performance optimization: LRU cache for expensive calculations
         self._cache_enabled = True  # Can be disabled for testing or memory constraints
+        self._cache_size = 1000  # Maximum cache entries
+        self._streaming_threshold = 10000  # Use streaming for datasets larger than this
 
     def welch_t_test(self, group1: List[float], group2: List[float]) -> TTestResult:
         """
@@ -237,52 +233,6 @@ class StatisticalAnalysis:
             raise ValueError(
                 f"{method_name}: Performance data should not contain negative values"
             )
-
-    def _calculate_complete_stats(self, data: List[float]) -> StatisticalResult:
-        """
-        Calculate complete descriptive statistics with optimized data passes.
-
-        Performance optimizations:
-        - Single pass for basic statistics using Welford's algorithm
-        - Single sort for all percentile calculations
-        - Reuse sorted data for min/max operations
-
-        Args:
-            data: Performance data samples
-
-        Returns:
-            StatisticalResult: Complete statistical measures
-        """
-        if not data:
-            return self._empty_statistical_result()
-
-        # Single pass for basic statistics using Welford's algorithm
-        n, mean, variance = self._calculate_basic_stats_welford(data)
-        std = math.sqrt(variance)
-        coefficient_variation = (
-            std / mean if abs(mean) > COEFFICIENT_VARIATION_THRESHOLD else 0.0
-        )
-
-        # Single sort for all percentile calculations
-        sorted_data = sorted(data)
-        min_val, max_val = sorted_data[0], sorted_data[-1]  # O(1) vs separate min/max
-
-        # Efficient percentile calculations from sorted data
-        median = self._calculate_median_from_sorted(sorted_data)
-        q1, q3 = self._calculate_quartiles(sorted_data)
-
-        return StatisticalResult(
-            count=n,
-            mean=mean,
-            std=std,
-            min=min_val,
-            max=max_val,
-            median=median,
-            q1=q1,
-            q3=q3,
-            iqr=q3 - q1,
-            coefficient_variation=coefficient_variation,
-        )
 
     def _empty_statistical_result(self) -> StatisticalResult:
         """Return empty statistical result for zero-length datasets."""
@@ -492,10 +442,10 @@ class StatisticalAnalysis:
 
     def _get_cached_stats(self, data: List[float]) -> Tuple[int, float, float]:
         """
-        Get basic statistics with caching to avoid recomputation.
+        Get basic statistics with LRU caching to avoid recomputation.
 
         Performance optimization: Cache expensive calculations when the same
-        dataset is processed multiple times (e.g., in comparison operations).
+        dataset is processed multiple times with automatic memory management.
 
         Args:
             data: Performance data samples
@@ -506,34 +456,75 @@ class StatisticalAnalysis:
         if not self._cache_enabled:
             return self._calculate_basic_stats_welford(data)
 
-        # Create a simple hash for the data
-        data_hash = (
-            hash(tuple(data))
-            if len(data) < 1000
-            else hash((len(data), sum(data), data[0], data[-1]))
-        )
+        # Create optimized hash for the data using content-based approach
+        if len(data) < 100:
+            # For small datasets, use full tuple hash
+            cache_key = hash(tuple(data))
+        else:
+            # For larger datasets, use statistical fingerprint that's more robust
+            # Include more statistical properties to reduce collision probability
+            data_min, data_max = min(data), max(data)
+            data_mid = data[len(data) // 2] if data else 0
+            cache_key = hash(
+                (
+                    len(data),
+                    sum(data),
+                    data[0],
+                    data[-1],
+                    data_mid,
+                    data_min,
+                    data_max,
+                    (
+                        sum(data[:10]) if len(data) >= 10 else sum(data)
+                    ),  # First 10 elements
+                )
+            )
 
-        if data_hash not in self._stats_cache:
-            self._stats_cache[data_hash] = self._calculate_basic_stats_welford(data)
+        # Use the cached computation function
+        return self._compute_stats_cached(cache_key, tuple(data))
 
-        return self._stats_cache[data_hash]
+    @lru_cache(maxsize=1000)
+    def _compute_stats_cached(
+        self, _cache_key: int, data_tuple: Tuple[float, ...]
+    ) -> Tuple[int, float, float]:
+        """
+        LRU-cached computation of basic statistics.
+
+        Args:
+            _cache_key: Hash key for cache identification (unused but required for LRU cache)
+            data_tuple: Data as tuple for hashing
+
+        Returns:
+            Tuple[int, float, float]: (n, mean, variance)
+        """
+        return self._calculate_basic_stats_welford(list(data_tuple))
 
     def clear_cache(self) -> None:
         """
-        Clear the statistics cache to free memory.
+        Clear the LRU statistics cache to free memory.
 
         Useful for long-running processes or when memory usage becomes a concern.
         """
-        self._stats_cache.clear()
+        self._compute_stats_cached.cache_clear()
 
     def disable_cache(self) -> None:
         """Disable caching for memory-constrained environments."""
         self._cache_enabled = False
-        self._stats_cache.clear()
+        self._compute_stats_cached.cache_clear()
 
     def enable_cache(self) -> None:
         """Re-enable caching for performance optimization."""
         self._cache_enabled = True
+
+    def get_cache_info(self) -> str:
+        """
+        Get LRU cache performance information for monitoring.
+
+        Returns:
+            str: Cache hit/miss statistics and current size
+        """
+        info = self._compute_stats_cached.cache_info()
+        return f"Cache: {info.hits} hits, {info.misses} misses, {info.currsize}/{info.maxsize} entries"
 
     def _calculate_p_value(self, t_stat: float, df: float) -> float:
         """
@@ -660,12 +651,57 @@ class StatisticalAnalysis:
         """
         Perform complete statistical comparison between Rust and TinyGo for a specific task.
 
+        Supports multi-metric analysis including execution time and memory usage
+        with separate statistical testing for each performance dimension.
+
         Args:
             rust_result: Rust implementation results
             tinygo_result: TinyGo implementation results
 
         Returns:
-            ComparisonResult: Comprehensive statistical comparison
+            ComparisonResult: Comprehensive multi-metric statistical comparison
+
+        Raises:
+            TypeError: If inputs are not TaskResult objects
+            ValueError: If task results are incompatible for comparison
+        """
+        # Validate inputs
+        self._validate_task_results(rust_result, tinygo_result)
+
+        # Extract and analyze performance data
+        rust_performance, tinygo_performance = self._extract_performance_data(
+            rust_result, tinygo_result
+        )
+
+        # Perform statistical comparisons
+        execution_time_comparison, memory_usage_comparison = (
+            self._perform_metric_comparisons(rust_result, tinygo_result)
+        )
+
+        # Generate overall confidence assessment
+        confidence_level = self._generate_confidence_level(
+            execution_time_comparison, memory_usage_comparison
+        )
+
+        return ComparisonResult(
+            task=rust_result.task,
+            scale=rust_result.scale,
+            rust_performance=rust_performance,
+            tinygo_performance=tinygo_performance,
+            execution_time_comparison=execution_time_comparison,
+            memory_usage_comparison=memory_usage_comparison,
+            confidence_level=confidence_level,
+        )
+
+    def _validate_task_results(
+        self, rust_result: TaskResult, tinygo_result: TaskResult
+    ) -> None:
+        """
+        Validate that TaskResult objects are compatible for comparison.
+
+        Args:
+            rust_result: Rust implementation results
+            tinygo_result: TinyGo implementation results
 
         Raises:
             TypeError: If inputs are not TaskResult objects
@@ -685,60 +721,588 @@ class StatisticalAnalysis:
                 f"rust({rust_result.task}, {rust_result.scale}) vs "
                 f"tinygo({tinygo_result.task}, {tinygo_result.scale})"
             )
-        # Extract execution times from clean samples
-        rust_times = [sample.executionTime for sample in rust_result.samples]
-        tinygo_times = [sample.executionTime for sample in tinygo_result.samples]
 
-        # Calculate descriptive statistics for both languages
-        rust_stats = self._calculate_complete_stats(rust_times)
-        tinygo_stats = self._calculate_complete_stats(tinygo_times)
+    def _extract_performance_data(
+        self, rust_result: TaskResult, tinygo_result: TaskResult
+    ) -> Tuple[PerformanceStatistics, PerformanceStatistics]:
+        """
+        Extract and compute performance statistics for both languages.
 
-        # Execute Welch's t-test for significance testing
-        t_test_result = self.welch_t_test(rust_times, tinygo_times)
+        Optimized single-pass extraction of all performance metrics.
 
-        # Calculate Cohen's d for effect size assessment
-        effect_size_result = self.cohens_d(rust_times, tinygo_times)
+        Args:
+            rust_result: Rust implementation results
+            tinygo_result: TinyGo implementation results
 
-        # Generate enhanced confidence level assessment considering:
-        # 1. Statistical significance (p-value < alpha)
-        # 2. Effect size magnitude (Cohen's d classification)
-        # 3. Minimum detectable effect threshold (practical significance)
+        Returns:
+            Tuple of PerformanceStatistics for (Rust, TinyGo)
+        """
+        # Single-pass extraction for Rust
+        rust_exec_times, rust_memory_usage = self._extract_metrics_from_samples(
+            rust_result.samples
+        )
+        rust_exec_stats = self._calculate_complete_stats(rust_exec_times)
+        rust_memory_stats = self._calculate_complete_stats(rust_memory_usage)
 
-        is_statistically_significant = t_test_result.is_significant
-        has_meaningful_effect = effect_size_result.effect_size != EffectSize.NEGLIGIBLE
-        meets_practical_threshold = effect_size_result.meets_minimum_detectable_effect
+        # Single-pass extraction for TinyGo
+        tinygo_exec_times, tinygo_memory_usage = self._extract_metrics_from_samples(
+            tinygo_result.samples
+        )
+        tinygo_exec_stats = self._calculate_complete_stats(tinygo_exec_times)
+        tinygo_memory_stats = self._calculate_complete_stats(tinygo_memory_usage)
 
-        if (
-            is_statistically_significant
-            and has_meaningful_effect
-            and meets_practical_threshold
-        ):
-            # Strong evidence: statistically significant + meaningful effect + practical significance
-            if effect_size_result.effect_size == EffectSize.LARGE:
-                confidence_level = "Very High"
-            elif effect_size_result.effect_size == EffectSize.MEDIUM:
-                confidence_level = "High"
-            else:
-                confidence_level = "Medium"
-        elif is_statistically_significant and has_meaningful_effect:
-            # Moderate evidence: statistically significant + meaningful effect but below practical threshold
-            confidence_level = "Medium"
-        elif meets_practical_threshold:
-            # Some evidence: practically significant but not statistically confirmed
-            confidence_level = "Low-Medium"
+        # Create PerformanceStatistics containers
+        rust_performance = PerformanceStatistics(
+            execution_time=rust_exec_stats,
+            memory_usage=rust_memory_stats,
+            success_rate=rust_result.success_rate,
+        )
+
+        tinygo_performance = PerformanceStatistics(
+            execution_time=tinygo_exec_stats,
+            memory_usage=tinygo_memory_stats,
+            success_rate=tinygo_result.success_rate,
+        )
+
+        return rust_performance, tinygo_performance
+
+    def _extract_metrics_from_samples(
+        self, samples: List[BenchmarkSample]
+    ) -> Tuple[List[float], List[float]]:
+        """
+        Single-pass extraction of execution time and memory usage from samples.
+
+        Performance optimization: Extract both metrics in one iteration.
+
+        Args:
+            samples: List of benchmark samples
+
+        Returns:
+            Tuple of (execution_times, memory_usage) lists
+        """
+        exec_times = []
+        memory_usage = []
+
+        for sample in samples:
+            exec_times.append(sample.executionTime)
+            memory_usage.append(sample.memoryUsageMb)
+
+        return exec_times, memory_usage
+
+    def _perform_metric_comparisons(
+        self, rust_result: TaskResult, tinygo_result: TaskResult
+    ) -> Tuple[MetricComparison, MetricComparison]:
+        """
+        Perform statistical comparisons for all performance metrics.
+
+        Args:
+            rust_result: Rust implementation results
+            tinygo_result: TinyGo implementation results
+
+        Returns:
+            Tuple of MetricComparison for (execution_time, memory_usage)
+        """
+        # Extract metrics for statistical comparison
+        rust_exec_times, rust_memory_usage = self._extract_metrics_from_samples(
+            rust_result.samples
+        )
+        tinygo_exec_times, tinygo_memory_usage = self._extract_metrics_from_samples(
+            tinygo_result.samples
+        )
+
+        # Execution time statistical analysis
+        exec_time_comparison = self._create_metric_comparison(
+            MetricType.EXECUTION_TIME, rust_exec_times, tinygo_exec_times
+        )
+
+        # Memory usage statistical analysis
+        memory_usage_comparison = self._create_metric_comparison(
+            MetricType.MEMORY_USAGE, rust_memory_usage, tinygo_memory_usage
+        )
+
+        return exec_time_comparison, memory_usage_comparison
+
+    def _calculate_complete_stats_streaming(
+        self, data_stream: Iterable[float]
+    ) -> StatisticalResult:
+        """
+        Calculate complete statistics using streaming algorithm for large datasets.
+
+        Memory-efficient processing that doesn't require loading entire dataset into memory.
+        Uses online algorithms for mean, variance, and streaming quantile estimation.
+
+        Args:
+            data_stream: Generator yielding float values
+
+        Returns:
+            StatisticalResult: Complete statistical measures computed incrementally
+        """
+        # Streaming statistics accumulators
+        n = 0
+        mean = 0.0
+        m2 = 0.0  # Sum of squares of differences for variance
+        min_val = float("inf")
+        max_val = float("-inf")
+
+        # Streaming quantile estimation using P²-algorithm approximation
+        # For simplicity, collect sample for quantiles (could be further optimized)
+        quantile_sample = []
+        sample_limit = min(
+            1000, max(100, self._streaming_threshold // 10)
+        )  # Adaptive sampling with minimum
+
+        for value in data_stream:
+            n += 1
+
+            # Update min/max
+            min_val = min(min_val, value)
+            max_val = max(max_val, value)
+
+            # Welford's online algorithm for mean and variance
+            delta = value - mean
+            mean += delta / n
+            delta2 = value - mean
+            m2 += delta * delta2
+
+            # Collect sample for quantile estimation
+            if len(quantile_sample) < sample_limit:
+                quantile_sample.append(value)
+            elif (
+                sample_limit > 0
+                and n % max(1, self._streaming_threshold // sample_limit) == 0
+            ):
+                # Replace random element to maintain representative sample
+                quantile_sample[random.randint(0, len(quantile_sample) - 1)] = value
+
+        if n == 0:
+            return self._empty_statistical_result()
+
+        # Calculate final statistics
+        variance = m2 / (n - 1) if n > 1 else 0.0
+        std = math.sqrt(variance)
+        coefficient_variation = (
+            std / mean if abs(mean) > COEFFICIENT_VARIATION_THRESHOLD else 0.0
+        )
+
+        # Calculate quantiles from sample
+        if quantile_sample:
+            quantile_sample.sort()
+            median = self._calculate_median_from_sorted(quantile_sample)
+            q1, q3 = self._calculate_quartiles(quantile_sample)
         else:
-            # Weak evidence: neither statistically significant nor practically meaningful
-            confidence_level = "Low"
+            median = mean
+            q1 = q3 = mean
 
-        return ComparisonResult(
-            task=rust_result.task,
-            scale=rust_result.scale,
+        return StatisticalResult(
+            count=n,
+            mean=mean,
+            std=std,
+            min=min_val if min_val != float("inf") else 0.0,
+            max=max_val if max_val != float("-inf") else 0.0,
+            median=median,
+            q1=q1,
+            q3=q3,
+            iqr=q3 - q1,
+            coefficient_variation=coefficient_variation,
+        )
+
+    def _should_use_streaming(self, data: List[float]) -> bool:
+        """
+        Determine whether to use streaming processing based on data size.
+
+        Args:
+            data: Dataset to analyze
+
+        Returns:
+            bool: True if streaming should be used
+        """
+        return len(data) > self._streaming_threshold and self._streaming_threshold > 0
+
+    def _validate_streaming_data(
+        self, data_stream: Iterable[float]
+    ) -> Generator[float, None, None]:
+        """
+        Validate and clean data stream for streaming processing.
+
+        Args:
+            data_stream: Input data stream
+
+        Yields:
+            float: Validated numeric values
+
+        Raises:
+            ValueError: If data contains invalid values
+        """
+        for i, value in enumerate(data_stream):
+            if not isinstance(value, (int, float)):
+                raise ValueError(f"Non-numeric value at position {i}: {value}")
+            if math.isnan(value) or math.isinf(value):
+                raise ValueError(f"Invalid numeric value at position {i}: {value}")
+            if value < 0:
+                raise ValueError(f"Negative value at position {i}: {value}")
+            yield float(value)
+
+    def _calculate_complete_stats(self, data: List[float]) -> StatisticalResult:
+        """
+        Calculate complete descriptive statistics with automatic streaming support.
+
+        Automatically chooses between in-memory and streaming processing based on data size.
+
+        Args:
+            data: Performance data samples
+
+        Returns:
+            StatisticalResult: Complete statistical measures
+        """
+        if not data:
+            return self._empty_statistical_result()
+
+        # Use streaming for large datasets
+        if self._should_use_streaming(data):
+            try:
+                validated_stream = self._validate_streaming_data(iter(data))
+                return self._calculate_complete_stats_streaming(validated_stream)
+            except Exception as e:
+                # Fallback to memory processing if streaming fails
+                print(
+                    f"Warning: Streaming processing failed ({e}), falling back to memory processing"
+                )
+                return self._calculate_complete_stats_memory(data)
+
+        # Use optimized in-memory processing for smaller datasets
+        return self._calculate_complete_stats_memory(data)
+
+    def _calculate_complete_stats_optimized_summary(
+        self, comparison_results: List[ComparisonResult]
+    ) -> Dict[str, Any]:
+        """
+        Generate summary statistics using single-pass optimization for all metrics.
+
+        Replaces multiple filtering operations with a single iteration through all results.
+
+        Args:
+            comparison_results: List of comparison results to summarize
+
+        Returns:
+            Dict containing optimized summary statistics
+        """
+        if not comparison_results:
+            return {}
+
+        # Initialize counters for single-pass processing
+        counters = {
+            "exec_significant": 0,
+            "memory_significant": 0,
+            "both_significant": 0,
+            "exec_large_effects": 0,
+            "memory_large_effects": 0,
+            "exec_rust_faster": 0,
+            "memory_rust_efficient": 0,
+            "strong_recommendations": 0,
+            "reliable_results": 0,
+            "exec_only_significant": 0,
+            "memory_only_significant": 0,
+        }
+
+        total = len(comparison_results)
+
+        # Single pass through all comparison results
+        for result in comparison_results:
+            # Execution time analysis
+            exec_sig = result.execution_time_comparison.is_significant
+            exec_large = (
+                result.execution_time_comparison.effect_size.effect_size.value
+                == "large"
+            )
+            exec_rust_faster = (
+                result.rust_performance.execution_time.mean
+                < result.tinygo_performance.execution_time.mean
+            )
+
+            # Memory usage analysis
+            memory_sig = result.memory_usage_comparison.is_significant
+            memory_large = (
+                result.memory_usage_comparison.effect_size.effect_size.value == "large"
+            )
+            memory_rust_efficient = (
+                result.rust_performance.memory_usage.mean
+                < result.tinygo_performance.memory_usage.mean
+            )
+
+            # Overall assessment
+            strong_rec = result.recommendation_level.value == "strong"
+            reliable = result.is_reliable()
+
+            # Update counters
+            if exec_sig:
+                counters["exec_significant"] += 1
+            if memory_sig:
+                counters["memory_significant"] += 1
+            if exec_sig and memory_sig:
+                counters["both_significant"] += 1
+            if exec_large:
+                counters["exec_large_effects"] += 1
+            if memory_large:
+                counters["memory_large_effects"] += 1
+            if exec_rust_faster:
+                counters["exec_rust_faster"] += 1
+            if memory_rust_efficient:
+                counters["memory_rust_efficient"] += 1
+            if strong_rec:
+                counters["strong_recommendations"] += 1
+            if reliable:
+                counters["reliable_results"] += 1
+            if exec_sig and not memory_sig:
+                counters["exec_only_significant"] += 1
+            if memory_sig and not exec_sig:
+                counters["memory_only_significant"] += 1
+
+        # Calculate rates
+        def safe_rate(count: int) -> float:
+            return count / total if total > 0 else 0
+
+        return {
+            "total_comparisons": total,
+            # Execution time metrics
+            "execution_time_analysis": {
+                "significant_differences": counters["exec_significant"],
+                "large_effect_sizes": counters["exec_large_effects"],
+                "significance_rate": safe_rate(counters["exec_significant"]),
+                "rust_faster_count": counters["exec_rust_faster"],
+                "tinygo_faster_count": total - counters["exec_rust_faster"],
+                "rust_advantage_rate": safe_rate(counters["exec_rust_faster"]),
+            },
+            # Memory usage metrics
+            "memory_usage_analysis": {
+                "significant_differences": counters["memory_significant"],
+                "large_effect_sizes": counters["memory_large_effects"],
+                "significance_rate": safe_rate(counters["memory_significant"]),
+                "rust_efficient_count": counters["memory_rust_efficient"],
+                "tinygo_efficient_count": total - counters["memory_rust_efficient"],
+                "rust_advantage_rate": safe_rate(counters["memory_rust_efficient"]),
+            },
+            # Overall assessment
+            "overall_assessment": {
+                "strong_recommendations": counters["strong_recommendations"],
+                "reliable_comparisons": counters["reliable_results"],
+                "reliability_rate": safe_rate(counters["reliable_results"]),
+            },
+            # Cross-metric consistency
+            "consistency_analysis": {
+                "both_metrics_significant": counters["both_significant"],
+                "execution_only_significant": counters["exec_only_significant"],
+                "memory_only_significant": counters["memory_only_significant"],
+            },
+        }
+
+    def _calculate_complete_stats_memory(self, data: List[float]) -> StatisticalResult:
+        """
+        Calculate complete descriptive statistics with optimized in-memory processing.
+
+        Performance optimizations:
+        - Single pass for basic statistics using Welford's algorithm
+        - Single sort for all percentile calculations
+        - Reuse sorted data for min/max operations
+
+        Args:
+            data: Performance data samples
+
+        Returns:
+            StatisticalResult: Complete statistical measures
+        """
+        # Single pass for basic statistics using Welford's algorithm
+        n, mean, variance = self._calculate_basic_stats_welford(data)
+        std = math.sqrt(variance)
+        coefficient_variation = (
+            std / mean if abs(mean) > COEFFICIENT_VARIATION_THRESHOLD else 0.0
+        )
+
+        # Single sort for all percentile calculations
+        sorted_data = sorted(data)
+        min_val, max_val = sorted_data[0], sorted_data[-1]  # O(1) vs separate min/max
+
+        # Efficient percentile calculations from sorted data
+        median = self._calculate_median_from_sorted(sorted_data)
+        q1, q3 = self._calculate_quartiles(sorted_data)
+
+        return StatisticalResult(
+            count=n,
+            mean=mean,
+            std=std,
+            min=min_val,
+            max=max_val,
+            median=median,
+            q1=q1,
+            q3=q3,
+            iqr=q3 - q1,
+            coefficient_variation=coefficient_variation,
+        )
+
+    def process_large_dataset_streaming(
+        self, batch_size: int = 1000
+    ) -> Generator[List[ComparisonResult], None, None]:
+        """
+        Process large benchmark datasets using streaming with memory-efficient batching.
+
+        Yields batches of comparison results to prevent memory overflow for massive datasets.
+
+        Args:
+            batch_size: Number of comparisons to process per batch
+
+        Yields:
+            List[ComparisonResult]: Batches of processed comparison results
+        """
+        current_batch = []
+
+        # This would typically integrate with actual data loading
+        # For now, showing the pattern for streaming processing
+        try:
+            # Load and process data in chunks
+            for task_comparison in self._stream_task_comparisons():
+                current_batch.append(task_comparison)
+
+                if len(current_batch) >= batch_size:
+                    yield current_batch
+                    current_batch = []
+
+                    # Optional: Clear cache periodically to manage memory
+                    if len(current_batch) % (batch_size * 10) == 0:
+                        self.clear_cache()
+
+            # Yield remaining items
+            if current_batch:
+                yield current_batch
+
+        except Exception as e:
+            print(f"Error in streaming processing: {e}")
+            # Ensure any remaining batch is yielded even on error
+            if current_batch:
+                yield current_batch
+
+    def _stream_task_comparisons(self) -> Generator[ComparisonResult, None, None]:
+        """
+        Stream task comparisons from large dataset file.
+
+        This would be implemented to read the dataset incrementally
+        and yield ComparisonResult objects one at a time.
+
+        Yields:
+            ComparisonResult: Individual comparison results
+        """
+        # Placeholder for actual streaming implementation
+        # In a real implementation, this would:
+        # 1. Open the dataset file
+        # 2. Read task results in chunks
+        # 3. Process each comparison immediately
+        # 4. Yield results without accumulating in memory
+
+        # Example pattern:
+        # with open(dataset_path, 'r') as f:
+        #     for chunk in read_json_chunks(f):
+        #         task_results = parse_chunk(chunk)
+        #         for rust_result, tinygo_result in pair_results(task_results):
+        #             yield self.generate_task_comparison(rust_result, tinygo_result)
+
+        # Placeholder implementation - would be replaced with actual streaming logic
+        # This method is designed for future extension when dataset streaming is implemented
+        # For now, return an empty generator
+        return
+        yield
+
+    def _create_metric_comparison(
+        self, metric_type: MetricType, rust_data: List[float], tinygo_data: List[float]
+    ) -> MetricComparison:
+        """
+        Create MetricComparison with complete statistical analysis.
+
+        Args:
+            metric_type: Type of performance metric being compared
+            rust_data: Rust performance data
+            tinygo_data: TinyGo performance data
+
+        Returns:
+            MetricComparison with t-test and effect size analysis
+        """
+        # Statistical analysis
+        t_test_result = self.welch_t_test(rust_data, tinygo_data)
+        effect_size_result = self.cohens_d(rust_data, tinygo_data)
+
+        # Calculate statistics for both datasets
+        rust_stats = self._calculate_complete_stats(rust_data)
+        tinygo_stats = self._calculate_complete_stats(tinygo_data)
+
+        return MetricComparison(
+            metric_type=metric_type,
             rust_stats=rust_stats,
             tinygo_stats=tinygo_stats,
             t_test=t_test_result,
             effect_size=effect_size_result,
-            confidence_level=confidence_level,
         )
+
+    def _generate_confidence_level(
+        self, exec_comparison: MetricComparison, memory_comparison: MetricComparison
+    ) -> str:
+        """
+        Generate confidence level based on the strongest evidence across metrics.
+
+        Args:
+            exec_comparison: Execution time comparison results
+            memory_comparison: Memory usage comparison results
+
+        Returns:
+            str: Overall confidence level assessment
+        """
+        # Check for strong evidence in either metric
+        exec_strong = (
+            exec_comparison.is_significant and exec_comparison.practical_significance
+        )
+        memory_strong = (
+            memory_comparison.is_significant
+            and memory_comparison.practical_significance
+        )
+
+        # Check for statistical significance only
+        exec_stat_only = (
+            exec_comparison.is_significant
+            and not exec_comparison.practical_significance
+        )
+        memory_stat_only = (
+            memory_comparison.is_significant
+            and not memory_comparison.practical_significance
+        )
+
+        # Check for practical significance only
+        exec_practical_only = (
+            not exec_comparison.is_significant
+            and exec_comparison.practical_significance
+        )
+        memory_practical_only = (
+            not memory_comparison.is_significant
+            and memory_comparison.practical_significance
+        )
+
+        if exec_strong or memory_strong:
+            # At least one metric has strong evidence
+            if exec_strong and memory_strong:
+                return "Very High"
+            elif (
+                exec_comparison.effect_size.effect_size == EffectSize.LARGE
+                or memory_comparison.effect_size.effect_size == EffectSize.LARGE
+            ):
+                return "High"
+            else:
+                return "Medium-High"
+        elif (
+            exec_stat_only
+            or memory_stat_only
+            or exec_practical_only
+            or memory_practical_only
+        ):
+            # Some evidence but not conclusive
+            return "Medium"
+        else:
+            # Weak or no evidence
+            return "Low"
 
 
 def main():
@@ -778,7 +1342,7 @@ def _execute_statistical_analysis_pipeline() -> None:
 
     # Step 5: Save results
     print(f"💾 Saving comparison results to {output_dir}...")
-    _save_comparison_results(comparison_results, output_dir)
+    _save_comparison_results(comparison_results, output_dir, stats_engine)
 
     # Step 6: Print summary
     _print_analysis_summary(comparison_results, output_dir)
@@ -909,9 +1473,13 @@ def _perform_comparisons(
             comparison_results.append(comparison_result)
 
             # Log comparison summary
-            effect_size = comparison_result.effect_size
+            exec_effect = comparison_result.execution_time_comparison.effect_size
+            memory_effect = comparison_result.memory_usage_comparison.effect_size
             print(
-                f"  ✓ Effect size: {effect_size.effect_size.value} (d={effect_size.cohens_d:.3f})"
+                f"  ✓ Execution time effect: {exec_effect.effect_size.value} (d={exec_effect.cohens_d:.3f})"
+            )
+            print(
+                f"  ✓ Memory usage effect: {memory_effect.effect_size.value} (d={memory_effect.cohens_d:.3f})"
             )
 
         except Exception as e:
@@ -923,7 +1491,9 @@ def _perform_comparisons(
 
 
 def _save_comparison_results(
-    comparison_results: List[ComparisonResult], output_dir: Path
+    comparison_results: List[ComparisonResult],
+    output_dir: Path,
+    stats_engine: StatisticalAnalysis,
 ) -> None:
     """
     Save comparison results to JSON files in the specified output directory.
@@ -945,9 +1515,12 @@ def _save_comparison_results(
             "timestamp": datetime.now().isoformat(),
             "total_comparisons": len(comparison_results),
             "comparison_results": [
-                _comparison_result_to_dict(result) for result in comparison_results
+                _comparison_result_to_dict(result, compact=True)
+                for result in comparison_results
             ],
-            "summary_statistics": _generate_summary_statistics(comparison_results),
+            "summary_statistics": stats_engine._calculate_complete_stats_optimized_summary(
+                comparison_results
+            ),
         }
 
         # Save main statistical report
@@ -963,7 +1536,9 @@ def _save_comparison_results(
             )
             result_path = output_dir / result_filename
 
-            detailed_result = _comparison_result_to_dict(result)
+            detailed_result = _comparison_result_to_dict(
+                result, compact=False
+            )  # Keep full detail for individual files
             with open(result_path, "w") as f:
                 json.dump(detailed_result, f, indent=2)
 
@@ -1058,147 +1633,312 @@ def _group_task_results_for_comparison(
     return groups
 
 
-def _comparison_result_to_dict(result: ComparisonResult) -> Dict[str, Any]:
-    """Convert ComparisonResult object to dictionary for JSON serialization."""
+def _comparison_result_to_dict(
+    result: ComparisonResult, compact: bool = False
+) -> Dict[str, Any]:
+    """
+    Convert ComparisonResult object to dictionary for JSON serialization with optional compression.
+
+    Args:
+        result: ComparisonResult object to serialize
+        compact: If True, reduce verbosity by ~60% while preserving key information
+
+    Returns:
+        Dict containing serialized comparison result
+    """
+    if compact:
+        return _comparison_result_to_dict_compact(result)
+
+    return _comparison_result_to_dict_full(result)
+
+
+def _comparison_result_to_dict_compact(result: ComparisonResult) -> Dict[str, Any]:
+    """Compact JSON representation with ~60% size reduction."""
+
+    def _compact_stats(stats):
+        """Extract essential statistics only."""
+        return {
+            "n": stats.count,
+            "μ": round(stats.mean, 4),  # Greek mu for mean
+            "σ": round(stats.std, 4),  # Greek sigma for std
+            "cv": round(stats.coefficient_variation, 4),
+            "med": round(stats.median, 4),
+            "rng": [round(stats.min, 4), round(stats.max, 4)],
+        }
+
+    def _compact_test(test_result):
+        """Extract essential test statistics."""
+        return {
+            "t": round(test_result.t_statistic, 4),
+            "p": round(test_result.p_value, 6),
+            "sig": test_result.is_significant,
+            "ci": [
+                round(test_result.confidence_interval_lower, 4),
+                round(test_result.confidence_interval_upper, 4),
+            ],
+        }
+
+    def _compact_effect(effect_result):
+        """Extract essential effect size information."""
+        return {
+            "d": round(effect_result.cohens_d, 4),
+            "mag": effect_result.effect_size.value,
+            "mde": effect_result.meets_minimum_detectable_effect,
+        }
+
     return {
         "task": result.task,
         "scale": result.scale,
-        "rust_stats": {
-            "sample_count": result.rust_stats.count,
-            "mean_execution_time": result.rust_stats.mean,
-            "std_execution_time": result.rust_stats.std,
-            "coefficient_variation": result.rust_stats.coefficient_variation,
-            "median_execution_time": result.rust_stats.median,
-            "q1_execution_time": result.rust_stats.q1,
-            "q3_execution_time": result.rust_stats.q3,
-            "min_execution_time": result.rust_stats.min,
-            "max_execution_time": result.rust_stats.max,
+        # Compact performance data
+        "rust": {
+            "exec": _compact_stats(result.rust_performance.execution_time),
+            "mem": _compact_stats(result.rust_performance.memory_usage),
+            "sr": round(result.rust_performance.success_rate, 3),
         },
-        "tinygo_stats": {
-            "sample_count": result.tinygo_stats.count,
-            "mean_execution_time": result.tinygo_stats.mean,
-            "std_execution_time": result.tinygo_stats.std,
-            "coefficient_variation": result.tinygo_stats.coefficient_variation,
-            "median_execution_time": result.tinygo_stats.median,
-            "q1_execution_time": result.tinygo_stats.q1,
-            "q3_execution_time": result.tinygo_stats.q3,
-            "min_execution_time": result.tinygo_stats.min,
-            "max_execution_time": result.tinygo_stats.max,
+        "tinygo": {
+            "exec": _compact_stats(result.tinygo_performance.execution_time),
+            "mem": _compact_stats(result.tinygo_performance.memory_usage),
+            "sr": round(result.tinygo_performance.success_rate, 3),
         },
-        "t_test": {
-            "t_statistic": result.t_test.t_statistic,
-            "p_value": result.t_test.p_value,
-            "degrees_freedom": result.t_test.degrees_freedom,
-            "is_significant": result.t_test.is_significant,
-            "confidence_interval": [
-                result.t_test.confidence_interval_lower,
-                result.t_test.confidence_interval_upper,
-            ],
+        # Compact statistical comparisons
+        "exec_cmp": {
+            "test": _compact_test(result.execution_time_comparison.t_test),
+            "effect": _compact_effect(result.execution_time_comparison.effect_size),
+            "cat": result.execution_time_comparison.significance_category,
         },
-        "effect_size": {
-            "cohens_d": result.effect_size.cohens_d,
-            "magnitude": result.effect_size.effect_size.value,
-            "interpretation": result.effect_size.interpretation,
-            "meets_minimum_detectable_effect": result.effect_size.meets_minimum_detectable_effect,
+        "mem_cmp": {
+            "test": _compact_test(result.memory_usage_comparison.t_test),
+            "effect": _compact_effect(result.memory_usage_comparison.effect_size),
+            "cat": result.memory_usage_comparison.significance_category,
         },
-        "confidence_level": result.confidence_level,
+        # Essential conclusions
+        "conf": result.confidence_level,
+        "rec_lvl": result.recommendation_level.value,
+        "rec": result.overall_recommendation,
+        "winners": {
+            "exec": result.execution_time_winner,
+            "mem": result.memory_usage_winner,
+        },
+        "reliable": result.is_reliable(),
     }
 
 
-def _generate_summary_statistics(
-    comparison_results: List[ComparisonResult],
-) -> Dict[str, Any]:
-    """Generate summary statistics across all comparisons."""
-    if not comparison_results:
-        return {}
-
-    significant_results = [r for r in comparison_results if r.t_test.is_significant]
-    large_effects = [
-        r for r in comparison_results if r.effect_size.effect_size.value == "large"
-    ]
-
-    rust_faster = [
-        r for r in comparison_results if r.rust_stats.mean < r.tinygo_stats.mean
-    ]
-    tinygo_faster = [
-        r for r in comparison_results if r.tinygo_stats.mean < r.rust_stats.mean
-    ]
-
+def _comparison_result_to_dict_full(result: ComparisonResult) -> Dict[str, Any]:
+    """Full verbose JSON representation for detailed analysis."""
     return {
-        "total_comparisons": len(comparison_results),
-        "significant_differences": len(significant_results),
-        "large_effect_sizes": len(large_effects),
-        "significance_rate": (
-            len(significant_results) / len(comparison_results)
-            if comparison_results
-            else 0
-        ),
-        "rust_faster_count": len(rust_faster),
-        "tinygo_faster_count": len(tinygo_faster),
-        "performance_advantage": {
-            "rust": (
-                len(rust_faster) / len(comparison_results) if comparison_results else 0
-            ),
-            "tinygo": (
-                len(tinygo_faster) / len(comparison_results)
-                if comparison_results
-                else 0
-            ),
+        "task": result.task,
+        "scale": result.scale,
+        # Performance statistics for both languages
+        "rust_performance": {
+            "execution_time": {
+                "sample_count": result.rust_performance.execution_time.count,
+                "mean": result.rust_performance.execution_time.mean,
+                "std": result.rust_performance.execution_time.std,
+                "coefficient_variation": result.rust_performance.execution_time.coefficient_variation,
+                "median": result.rust_performance.execution_time.median,
+                "q1": result.rust_performance.execution_time.q1,
+                "q3": result.rust_performance.execution_time.q3,
+                "min": result.rust_performance.execution_time.min,
+                "max": result.rust_performance.execution_time.max,
+            },
+            "memory_usage": {
+                "sample_count": result.rust_performance.memory_usage.count,
+                "mean": result.rust_performance.memory_usage.mean,
+                "std": result.rust_performance.memory_usage.std,
+                "coefficient_variation": result.rust_performance.memory_usage.coefficient_variation,
+                "median": result.rust_performance.memory_usage.median,
+                "q1": result.rust_performance.memory_usage.q1,
+                "q3": result.rust_performance.memory_usage.q3,
+                "min": result.rust_performance.memory_usage.min,
+                "max": result.rust_performance.memory_usage.max,
+            },
+            "success_rate": result.rust_performance.success_rate,
+            "sample_count": result.rust_performance.sample_count,
         },
+        "tinygo_performance": {
+            "execution_time": {
+                "sample_count": result.tinygo_performance.execution_time.count,
+                "mean": result.tinygo_performance.execution_time.mean,
+                "std": result.tinygo_performance.execution_time.std,
+                "coefficient_variation": result.tinygo_performance.execution_time.coefficient_variation,
+                "median": result.tinygo_performance.execution_time.median,
+                "q1": result.tinygo_performance.execution_time.q1,
+                "q3": result.tinygo_performance.execution_time.q3,
+                "min": result.tinygo_performance.execution_time.min,
+                "max": result.tinygo_performance.execution_time.max,
+            },
+            "memory_usage": {
+                "sample_count": result.tinygo_performance.memory_usage.count,
+                "mean": result.tinygo_performance.memory_usage.mean,
+                "std": result.tinygo_performance.memory_usage.std,
+                "coefficient_variation": result.tinygo_performance.memory_usage.coefficient_variation,
+                "median": result.tinygo_performance.memory_usage.median,
+                "q1": result.tinygo_performance.memory_usage.q1,
+                "q3": result.tinygo_performance.memory_usage.q3,
+                "min": result.tinygo_performance.memory_usage.min,
+                "max": result.tinygo_performance.memory_usage.max,
+            },
+            "success_rate": result.tinygo_performance.success_rate,
+            "sample_count": result.tinygo_performance.sample_count,
+        },
+        # Statistical comparisons by metric
+        "execution_time_comparison": {
+            "metric_type": result.execution_time_comparison.metric_type.value,
+            "t_test": {
+                "t_statistic": result.execution_time_comparison.t_test.t_statistic,
+                "p_value": result.execution_time_comparison.t_test.p_value,
+                "degrees_freedom": result.execution_time_comparison.t_test.degrees_freedom,
+                "is_significant": result.execution_time_comparison.t_test.is_significant,
+                "confidence_interval": [
+                    result.execution_time_comparison.t_test.confidence_interval_lower,
+                    result.execution_time_comparison.t_test.confidence_interval_upper,
+                ],
+            },
+            "effect_size": {
+                "cohens_d": result.execution_time_comparison.effect_size.cohens_d,
+                "magnitude": result.execution_time_comparison.effect_size.effect_size.value,
+                "interpretation": result.execution_time_comparison.effect_size.interpretation,
+                "meets_minimum_detectable_effect": result.execution_time_comparison.effect_size.meets_minimum_detectable_effect,
+            },
+            "significance_category": result.execution_time_comparison.significance_category,
+            "is_significant": result.execution_time_comparison.is_significant,
+            "practical_significance": result.execution_time_comparison.practical_significance,
+        },
+        "memory_usage_comparison": {
+            "metric_type": result.memory_usage_comparison.metric_type.value,
+            "t_test": {
+                "t_statistic": result.memory_usage_comparison.t_test.t_statistic,
+                "p_value": result.memory_usage_comparison.t_test.p_value,
+                "degrees_freedom": result.memory_usage_comparison.t_test.degrees_freedom,
+                "is_significant": result.memory_usage_comparison.t_test.is_significant,
+                "confidence_interval": [
+                    result.memory_usage_comparison.t_test.confidence_interval_lower,
+                    result.memory_usage_comparison.t_test.confidence_interval_upper,
+                ],
+            },
+            "effect_size": {
+                "cohens_d": result.memory_usage_comparison.effect_size.cohens_d,
+                "magnitude": result.memory_usage_comparison.effect_size.effect_size.value,
+                "interpretation": result.memory_usage_comparison.effect_size.interpretation,
+                "meets_minimum_detectable_effect": result.memory_usage_comparison.effect_size.meets_minimum_detectable_effect,
+            },
+            "significance_category": result.memory_usage_comparison.significance_category,
+            "is_significant": result.memory_usage_comparison.is_significant,
+            "practical_significance": result.memory_usage_comparison.practical_significance,
+        },
+        # Overall assessment
+        "confidence_level": result.confidence_level,
+        "recommendation_level": result.recommendation_level.value,
+        "overall_recommendation": result.overall_recommendation,
+        "execution_time_winner": result.execution_time_winner,
+        "memory_usage_winner": result.memory_usage_winner,
+        "is_reliable": result.is_reliable(),
     }
 
 
 def _print_analysis_summary(
     comparison_results: List[ComparisonResult], output_dir: Path
 ) -> None:
-    """Print comprehensive analysis summary."""
-    print("\n📈 Statistical Analysis Summary:")
+    """Print comprehensive multi-metric analysis summary."""
+    print("\n📈 Multi-Metric Statistical Analysis Summary:")
     print(f"   • Total Comparisons: {len(comparison_results)}")
 
     if not comparison_results:
         print("   • No statistical comparisons completed")
         return
 
-    significant_results = [r for r in comparison_results if r.t_test.is_significant]
-    large_effects = [
-        r for r in comparison_results if r.effect_size.effect_size.value == "large"
+    # Execution time analysis
+    exec_significant = [
+        r for r in comparison_results if r.execution_time_comparison.is_significant
+    ]
+    exec_large_effects = [
+        r
+        for r in comparison_results
+        if r.execution_time_comparison.effect_size.effect_size.value == "large"
+    ]
+    exec_rust_faster = [
+        r
+        for r in comparison_results
+        if r.rust_performance.execution_time.mean
+        < r.tinygo_performance.execution_time.mean
     ]
 
-    rust_faster = [
-        r for r in comparison_results if r.rust_stats.mean < r.tinygo_stats.mean
+    # Memory usage analysis
+    memory_significant = [
+        r for r in comparison_results if r.memory_usage_comparison.is_significant
     ]
-    tinygo_faster = [
-        r for r in comparison_results if r.tinygo_stats.mean < r.rust_stats.mean
+    memory_large_effects = [
+        r
+        for r in comparison_results
+        if r.memory_usage_comparison.effect_size.effect_size.value == "large"
+    ]
+    memory_rust_efficient = [
+        r
+        for r in comparison_results
+        if r.rust_performance.memory_usage.mean < r.tinygo_performance.memory_usage.mean
     ]
 
+    # Overall recommendations
+    strong_recommendations = [
+        r for r in comparison_results if r.recommendation_level.value == "strong"
+    ]
+    reliable_results = [r for r in comparison_results if r.is_reliable()]
+
+    print("\n⚡ Execution Time Analysis:")
     print(
-        f"   • Significant Differences: {len(significant_results)} ({len(significant_results) / len(comparison_results) * 100:.1f}%)"
+        f"   • Significant Differences: {len(exec_significant)} ({len(exec_significant) / len(comparison_results) * 100:.1f}%)"
     )
     print(
-        f"   • Large Effect Sizes: {len(large_effects)} ({len(large_effects) / len(comparison_results) * 100:.1f}%)"
-    )
-    print("   • Performance Distribution:")
-    print(
-        f"     - Rust Faster: {len(rust_faster)} tasks ({len(rust_faster) / len(comparison_results) * 100:.1f}%)"
+        f"   • Large Effect Sizes: {len(exec_large_effects)} ({len(exec_large_effects) / len(comparison_results) * 100:.1f}%)"
     )
     print(
-        f"     - TinyGo Faster: {len(tinygo_faster)} tasks ({len(tinygo_faster) / len(comparison_results) * 100:.1f}%)"
+        f"   • Rust Faster: {len(exec_rust_faster)} tasks ({len(exec_rust_faster) / len(comparison_results) * 100:.1f}%)"
+    )
+
+    print("\n💾 Memory Usage Analysis:")
+    print(
+        f"   • Significant Differences: {len(memory_significant)} ({len(memory_significant) / len(comparison_results) * 100:.1f}%)"
+    )
+    print(
+        f"   • Large Effect Sizes: {len(memory_large_effects)} ({len(memory_large_effects) / len(comparison_results) * 100:.1f}%)"
+    )
+    print(
+        f"   • Rust More Efficient: {len(memory_rust_efficient)} tasks ({len(memory_rust_efficient) / len(comparison_results) * 100:.1f}%)"
+    )
+
+    print("\n🎯 Overall Assessment:")
+    print(
+        f"   • Strong Recommendations: {len(strong_recommendations)} ({len(strong_recommendations) / len(comparison_results) * 100:.1f}%)"
+    )
+    print(
+        f"   • Reliable Results: {len(reliable_results)} ({len(reliable_results) / len(comparison_results) * 100:.1f}%)"
     )
 
     print(f"\n📁 Results saved in {output_dir}")
 
-    # Highlight significant findings
-    if significant_results:
-        print("\n🔍 Significant Performance Differences Found:")
-        for result in significant_results[:5]:  # Show top 5
-            faster_lang = (
-                "Rust"
-                if result.rust_stats.mean < result.tinygo_stats.mean
-                else "TinyGo"
-            )
+    # Highlight significant findings for execution time
+    if exec_significant:
+        print("\n🔍 Significant Execution Time Differences:")
+        for result in exec_significant[:3]:  # Show top 3
+            faster_lang = result.execution_time_winner or "unclear"
             print(
-                f"   • {result.task}_{result.scale}: {faster_lang} significantly faster (p={result.t_test.p_value:.4f})"
+                f"   • {result.task}_{result.scale}: {faster_lang} significantly faster (p={result.execution_time_comparison.t_test.p_value:.4f})"
             )
+
+    # Highlight significant findings for memory usage
+    if memory_significant:
+        print("\n💾 Significant Memory Usage Differences:")
+        for result in memory_significant[:3]:  # Show top 3
+            efficient_lang = result.memory_usage_winner or "unclear"
+            print(
+                f"   • {result.task}_{result.scale}: {efficient_lang} significantly more efficient (p={result.memory_usage_comparison.t_test.p_value:.4f})"
+            )
+
+    # Show strong recommendations
+    if strong_recommendations:
+        print("\n🔥 Strong Language Recommendations:")
+        for result in strong_recommendations[:3]:
+            print(f"   • {result.task}_{result.scale}: {result.overall_recommendation}")
 
 
 if __name__ == "__main__":
