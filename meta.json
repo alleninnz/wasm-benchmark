@@ -3,7 +3,7 @@
         "name": "WebAssembly Performance Benchmark",
         "description": "Comparing Rust and TinyGo WebAssembly performance across computational tasks",
         "version": "1.0",
-        "generated_date": "2025-09-05T04:29:28Z",
+        "generated_date": "2025-09-23T00:45:38Z",
         "project_root": "/Users/Ethan/Desktop/ARP/wasm-benchmark"
     },
     "system": {
@@ -30,8 +30,8 @@
             "tinygo_version": "tinygo version 0.39.0 darwin/amd64 (using go version go1.25.0 and LLVM version 19.1.2)"
         },
         "node": {
-            "node_version": "v22.19.0",
-            "npm_version": "10.9.3"
+            "node_version": "v24.7.0",
+            "npm_version": "11.5.1"
         },
         "python": {
             "python_version": "Python 3.13.5",
@@ -51,8 +51,8 @@
         "wasm2wat": "1.0.36 (git~1.0.37)"
     },
     "browser": {
-        "chrome_version": "140.0.7339.80",
-        "puppeteer_version": "24.19.0"
+        "chrome_version": "140.0.7339.185",
+        "puppeteer_version": "24.22.0"
     },
     "build_tools": {
         "make": "GNU Make 3.81",

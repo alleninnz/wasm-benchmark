@@ -16,8 +16,8 @@ wasm_opt_version=wasm-opt version 123
 wasm2wat_version=1.0.36 (git~1.0.37)
 
 # Runtime Environment
-nodejs_version=v22.19.0
-npm_version=10.9.3
+nodejs_version=v24.7.0
+npm_version=11.5.1
 
 # Python Environment
 python_version=Python 3.13.5
@@ -31,8 +31,8 @@ matplotlib_version=3.10.6
 seaborn_version=0.13.2
 
 # Browser Engine
-chrome_version=140.0.7339.80
-puppeteer_version=24.19.0
+chrome_version=140.0.7339.185
+puppeteer_version=24.22.0
 
 # System Information
 os_name=macOS
@@ -48,7 +48,7 @@ make_version=GNU Make 3.81
 git_version=git version 2.51.0
 
 # Lock File Metadata
-generated_date=2025-09-05T04:29:28Z
+generated_date=2025-09-23T00:45:38Z
 generator_script=scripts/fingerprint.sh
 lock_file_version=1.0
 project_root=/Users/Ethan/Desktop/ARP/wasm-benchmark
