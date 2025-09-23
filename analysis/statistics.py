@@ -33,6 +33,9 @@ FALLBACK_DEGREES_FREEDOM = 1.0
 FIRST_QUARTILE = 0.25
 THIRD_QUARTILE = 0.75
 
+CLEANED_DATASET_PATH = Path("reports/qc/cleaned_dataset.json")
+STATS_PATH = Path("reports/statistics/")
+
 
 class StatisticalAnalysis:
     """Statistical analysis engine for benchmark performance comparison"""
@@ -785,7 +788,8 @@ class StatisticalAnalysis:
 
         for sample in samples:
             exec_times.append(sample.executionTime)
-            memory_usage.append(sample.memoryUsageMb)
+            # Convert memory usage to KB (from bytes) 
+            memory_usage.append((sample.memoryUsed+sample.wasmMemoryBytes)/1024)
 
         return exec_times, memory_usage
 
@@ -1138,77 +1142,6 @@ class StatisticalAnalysis:
             coefficient_variation=coefficient_variation,
         )
 
-    def process_large_dataset_streaming(
-        self, batch_size: int = 1000
-    ) -> Generator[List[ComparisonResult], None, None]:
-        """
-        Process large benchmark datasets using streaming with memory-efficient batching.
-
-        Yields batches of comparison results to prevent memory overflow for massive datasets.
-
-        Args:
-            batch_size: Number of comparisons to process per batch
-
-        Yields:
-            List[ComparisonResult]: Batches of processed comparison results
-        """
-        current_batch = []
-
-        # This would typically integrate with actual data loading
-        # For now, showing the pattern for streaming processing
-        try:
-            # Load and process data in chunks
-            for task_comparison in self._stream_task_comparisons():
-                current_batch.append(task_comparison)
-
-                if len(current_batch) >= batch_size:
-                    yield current_batch
-                    current_batch = []
-
-                    # Optional: Clear cache periodically to manage memory
-                    if len(current_batch) % (batch_size * 10) == 0:
-                        self.clear_cache()
-
-            # Yield remaining items
-            if current_batch:
-                yield current_batch
-
-        except Exception as e:
-            print(f"Error in streaming processing: {e}")
-            # Ensure any remaining batch is yielded even on error
-            if current_batch:
-                yield current_batch
-
-    def _stream_task_comparisons(self) -> Generator[ComparisonResult, None, None]:
-        """
-        Stream task comparisons from large dataset file.
-
-        This would be implemented to read the dataset incrementally
-        and yield ComparisonResult objects one at a time.
-
-        Yields:
-            ComparisonResult: Individual comparison results
-        """
-        # Placeholder for actual streaming implementation
-        # In a real implementation, this would:
-        # 1. Open the dataset file
-        # 2. Read task results in chunks
-        # 3. Process each comparison immediately
-        # 4. Yield results without accumulating in memory
-
-        # Example pattern:
-        # with open(dataset_path, 'r') as f:
-        #     for chunk in read_json_chunks(f):
-        #         task_results = parse_chunk(chunk)
-        #         for rust_result, tinygo_result in pair_results(task_results):
-        #             yield self.generate_task_comparison(rust_result, tinygo_result)
-
-        # Placeholder implementation - would be replaced with actual streaming logic
-        # This method is designed for future extension when dataset streaming is implemented
-        # For now, return an empty generator
-        return
-        yield
-
     def _create_metric_comparison(
         self, metric_type: MetricType, rust_data: List[float], tinygo_data: List[float]
     ) -> MetricComparison:
@@ -1313,12 +1246,11 @@ def main():
         print(f"❌ Critical error in statistical analysis pipeline: {e}")
         sys.exit(1)
 
-
 def _execute_statistical_analysis_pipeline() -> None:
     """Execute the complete statistical analysis pipeline with proper error handling."""
     # Standard input/output paths
-    input_path = Path("reports/qc/cleaned_dataset.json")
-    output_dir = Path("reports/statistics")
+    input_path = CLEANED_DATASET_PATH
+    output_dir = STATS_PATH
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print("📊 WebAssembly Benchmark Statistical Analysis")

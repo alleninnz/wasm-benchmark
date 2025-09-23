@@ -12,11 +12,22 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .data_models import ComparisonResult, PlotsConfiguration
+from .data_models import (ComparisonResult, EffectSize, MetricType,
+                          PlotsConfiguration)
 
 
 class VisualizationGenerator:
-    """Chart and visualization generator for benchmark analysis results"""
+    """
+    Chart and visualization generator for benchmark analysis results.
+
+    Integrates with StatisticalAnalysis pipeline to create engineering-focused
+    visualizations from ComparisonResult objects. Handles memory units in KB
+    (as calculated by statistics.py: (memoryUsed + wasmMemoryBytes) / 1024).
+
+    Note: All chart generation methods expect List[ComparisonResult] with
+    complete statistical analysis including t_test, effect_size, and
+    practical_significance assessments.
+    """
 
     def __init__(self, plots_config: PlotsConfiguration):
         """
@@ -30,11 +41,12 @@ class VisualizationGenerator:
 
     def _setup_plotting_style(self) -> None:
         """Configure matplotlib styling based on configuration settings"""
-        # TODO: Configure DPI for high-quality output from config
-        # TODO: Set professional font configuration
-        # TODO: Configure professional styling (spines, grid, etc.)
-        # TODO: Set consistent color scheme for languages
-        # TODO: Configure figure layout parameters
+        # TODO: Configure DPI: plt.rcParams['figure.dpi'] = self.config.dpi
+        # TODO: Set font family: plt.rcParams['font.family'] = self.config.font_family
+        # TODO: Configure professional styling: remove spines, add grid with self.config.grid_style
+        # TODO: Set language colors: self.config.rust_color, self.config.tinygo_color
+        # TODO: Configure layout: plt.rcParams['figure.figsize'] = self.config.figure_size
+        # TODO: Set significance alpha reference: self.config.significance_alpha
         pass
 
     def create_execution_time_comparison(
@@ -58,17 +70,20 @@ class VisualizationGenerator:
         Raises:
             ValueError: If no comparison results provided or invalid data
         """
-        # TODO: Validate input comparisons data
-        # TODO: Extract execution time means and confidence intervals
-        # TODO: Create grouped bar chart with Rust vs TinyGo bars
-        # TODO: Add error bars for 95% confidence intervals
-        # TODO: Add statistical significance markers (*, **, ***)
-        # TODO: Configure professional styling and language colors
-        # TODO: Add clear axis labels and title
-        # TODO: Include legend with confidence interval explanation
-        # TODO: Add significance legend (p-value thresholds)
-        # TODO: Save chart with configured DPI and format
-        # TODO: Return path to generated visualization
+        # TODO: Validate input: raise ValueError if not comparisons or invalid ComparisonResult objects
+        # TODO: Check data completeness: ensure all comparisons have execution_time_comparison.t_test results
+        # TODO: Handle edge cases: empty comparison lists, missing confidence intervals, NaN values
+        # TODO: Extract means: comparison.rust_performance.execution_time.mean, comparison.tinygo_performance.execution_time.mean
+        # TODO: Extract CIs: comparison.execution_time_comparison.t_test.confidence_interval_lower/upper
+        # TODO: Create grouped bars: task×scale combinations with Rust/TinyGo side-by-side
+        # TODO: Add error bars using confidence interval ranges from t_test results
+        # TODO: Add significance markers: p < 0.001 (***), p < 0.01 (**), p < 0.05 (*) from comparison.execution_time_comparison.is_significant
+        # TODO: Apply styling: self.config.rust_color, self.config.tinygo_color, professional spines/grid
+        # TODO: Set labels: 'Execution Time (ms)', task names, scale indicators
+        # TODO: Add legend: confidence intervals, winner indicators from comparison.execution_time_winner
+        # TODO: Add significance legend: p-value thresholds relative to self.config.significance_alpha
+        # TODO: Save with: plt.savefig(output_path, dpi=self.config.dpi, format=self.config.image_format)
+        # TODO: Return validated output_path after successful generation
 
         return output_path
 
@@ -93,17 +108,19 @@ class VisualizationGenerator:
         Raises:
             ValueError: If memory usage data is missing or invalid
         """
-        # TODO: Extract memory usage statistics from comparison results
-        # TODO: Calculate memory usage means and standard deviations
-        # TODO: Create bar chart showing memory consumption per task
-        # TODO: Add error bars for statistical reliability
-        # TODO: Highlight GC vs zero-cost abstraction differences
-        # TODO: Include memory efficiency annotations
-        # TODO: Add clear axis labels (MB) and professional styling
-        # TODO: Configure language-specific color coding
-        # TODO: Add legend explaining memory management approaches
-        # TODO: Save chart with high-quality output settings
-        # TODO: Return path to generated visualization
+        # TODO: Validate memory data: ensure memory_usage_comparison exists and has valid statistical results
+        # TODO: Extract memory stats: comparison.rust_performance.memory_usage.mean, comparison.tinygo_performance.memory_usage.mean
+        # TODO: Handle missing data: graceful fallback when memory statistics incomplete
+        # TODO: Calculate error bars: comparison.memory_usage_comparison.t_test.confidence_interval_lower/upper
+        # TODO: Create bar chart: task×scale groups with memory consumption (KB from memoryUsed+wasmMemoryBytes)
+        # TODO: Add error bars: confidence intervals for statistical reliability
+        # TODO: Annotate winners: comparison.memory_usage_winner with efficiency indicators
+        # TODO: Add efficiency annotations: percentage differences and practical significance flags
+        # TODO: Set axis labels: 'Memory Usage (KB)' (note: statistics.py calculates in KB, not MB)
+        # TODO: Apply styling: self.config.rust_color (zero-cost), self.config.tinygo_color (GC)
+        # TODO: Add legend: memory management approaches, winner indicators, confidence intervals
+        # TODO: Save with: plt.savefig(output_path, dpi=self.config.dpi, bbox_inches='tight')
+        # TODO: Return validated output_path after successful generation
 
         return output_path
 
@@ -128,18 +145,20 @@ class VisualizationGenerator:
         Raises:
             ValueError: If effect size data is missing from comparisons
         """
-        # TODO: Extract Cohen's d values from all comparison results
-        # TODO: Organize data into task×scale matrix format
-        # TODO: Create heatmap with color coding by effect size magnitude
-        # TODO: Add effect size threshold reference lines/colors
-        # TODO: Include color bar with effect size interpretations
-        # TODO: Add task and scale labels on axes
-        # TODO: Configure professional heatmap styling
-        # TODO: Add annotations showing actual Cohen's d values
-        # TODO: Include legend explaining small/medium/large effects
-        # TODO: Apply consistent language preference indicators
-        # TODO: Save heatmap with high resolution settings
-        # TODO: Return path to generated visualization
+        # TODO: Validate effect size data: ensure both execution and memory comparisons have valid effect_size results
+        # TODO: Extract Cohen's d: comparison.execution_time_comparison.effect_size.cohens_d, comparison.memory_usage_comparison.effect_size.cohens_d
+        # TODO: Handle incomplete matrices: fill missing values, handle mismatched task×scale combinations
+        # TODO: Organize matrix: (task, scale) × (execution_time, memory_usage) with effect size values
+        # TODO: Create heatmap: plt.imshow or seaborn.heatmap with diverging colormap centered at 0
+        # TODO: Add threshold lines: self.config.effect_size_thresholds["small/medium/large"] as contour lines
+        # TODO: Configure colorbar: effect size magnitude scale with threshold markers
+        # TODO: Set axis labels: task names (x), scale×metric combinations (y)
+        # TODO: Apply styling: self.config.heatmap_colormap, professional font sizes
+        # TODO: Annotate cells: actual Cohen's d values with comparison.effect_size.effect_size.value
+        # TODO: Add legend: small (≥0.2), medium (≥0.5), large (≥0.8) effect interpretations
+        # TODO: Color-code preferences: positive=Rust advantage, negative=TinyGo advantage
+        # TODO: Save with: plt.savefig(output_path, dpi=self.config.dpi, bbox_inches='tight')
+        # TODO: Return validated output_path after successful generation
 
         return output_path
 
@@ -164,18 +183,20 @@ class VisualizationGenerator:
         Raises:
             ValueError: If insufficient data for decision recommendations
         """
-        # TODO: Analyze statistical significance and effect sizes
-        # TODO: Generate language recommendations per task
-        # TODO: Calculate decision confidence levels
-        # TODO: Create text-based summary panel with clear formatting
-        # TODO: Add confidence emoji indicators (🔥👍🤔⚖️)
-        # TODO: Include statistical evidence summary
-        # TODO: Add practical considerations (GC vs zero-cost)
-        # TODO: Format recommendations for engineering decisions
-        # TODO: Configure professional text layout and styling
-        # TODO: Add data quality warnings if applicable
-        # TODO: Save panel as high-quality image
-        # TODO: Return path to generated decision panel
+        # TODO: Validate decision data: ensure all comparisons have complete recommendation and confidence data
+        # TODO: Extract recommendations: comparison.overall_recommendation, comparison.recommendation_level.value
+        # TODO: Handle reliability warnings: check comparison.is_reliable() and display appropriate indicators
+        # TODO: Map confidence levels: comparison.confidence_level ("Very High", "High", "Medium", "Low")
+        # TODO: Calculate reliability: comparison.is_reliable() for data quality assessment
+        # TODO: Create text panel: matplotlib text with structured layout and professional typography
+        # TODO: Map confidence to indicators: "Very High" → 🔥, "High" → 👍, "Medium" → 🤔, "Low" → ⚖️
+        # TODO: Summarize evidence: execution_time_winner, memory_usage_winner, effect sizes, p-values
+        # TODO: Include considerations: comparison.execution_time_comparison.practical_significance vs statistical significance
+        # TODO: Format decisions: comparison.recommendation_level.value with actionable guidance
+        # TODO: Apply styling: self.config.text_font_size, self.config.panel_background_color
+        # TODO: Add warnings: display quality flags when not comparison.is_reliable()
+        # TODO: Save panel: plt.savefig(output_path, dpi=self.config.dpi, format='png')
+        # TODO: Return validated output_path after successful text panel generation
         return output_path
 
 
@@ -186,23 +207,22 @@ def main():
     Orchestrates the creation of all four performance analysis visualizations
     to support engineering decision-making for Rust vs TinyGo selection.
     """
-    # TODO: Parse command-line arguments for input files and output preferences
-    # TODO: Validate input file paths and output directory permissions
-    # TODO: Load statistical analysis results from JSON/CSV files
-    # TODO: Parse benchmark comparison data and validation results
-    # TODO: Initialize plots configuration from bench.yaml
-    # TODO: Create VisualizationGenerator instance with configuration
+    # TODO: Parse arguments: input_file (default: reports/statistics/statistical_analysis_report.json), output_dir (default: reports/plots/)
+    # TODO: Validate paths: check input file exists, create output_dir if needed, verify write permissions
+    # TODO: Load comparison results: json.load(statistical_analysis_report.json)["comparison_results"]
+    # TODO: Parse ComparisonResult objects: convert JSON dicts back to data model instances
+    # TODO: Load configuration: ConfigParser().load().get_plots_config() from bench.yaml
+    # TODO: Initialize generator: VisualizationGenerator(plots_config) with error handling
 
-    # TODO: Generate execution time comparison chart
-    # TODO: Generate memory usage comparison chart
-    # TODO: Generate effect size heatmap for practical significance
-    # TODO: Generate decision summary panel with recommendations
+    # TODO: Generate charts with error handling: execution_time_comparison(), memory_usage_comparison()
+    # TODO: Generate advanced visualizations: effect_size_heatmap(), decision_summary_panel()
+    # TODO: Handle generation errors: log failures, continue with remaining charts
+    # TODO: Validate outputs: check all chart files exist and have valid content
 
-    # TODO: Validate all chart generation completed successfully
-    # TODO: Create visualization manifest with file paths and metadata
-    # TODO: Generate HTML report index linking all visualizations
-    # TODO: Output summary of generated files and locations
-    # TODO: Handle any visualization generation errors gracefully
+    # TODO: Create manifest: {"charts": {"execution_time": path, "memory_usage": path, ...}, "timestamp": ...}
+    # TODO: Generate HTML index: link to charts and reports/statistics/ results with navigation
+    # TODO: Output summary: print generated file paths, chart count, any errors or warnings
+    # TODO: Return exit code: 0 for success, 1 for partial failure, 2 for complete failure
     pass
 
 
