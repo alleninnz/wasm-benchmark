@@ -9,11 +9,13 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
-from data_models import (
+
+from .data_models import (
     ConfigurationData,
     PlotsConfiguration,
     QCConfiguration,
     StatisticsConfiguration,
+    ValidationConfiguration,
 )
 
 
@@ -50,7 +52,7 @@ class ConfigParser:
             raise ValueError("Configuration file must contain a YAML object")
 
         # Validate required sections exist
-        required_sections = ["qc", "statistics", "plots"]
+        required_sections = ["qc", "statistics", "plots", "validation"]
         missing_sections = [
             section for section in required_sections if section not in config_data
         ]
@@ -129,8 +131,19 @@ class ConfigParser:
             color_scheme=color_scheme,
         )
 
+        # Parse validation configuration
+        validation_section = config_data["validation"]
+        validation_config = ValidationConfiguration(
+            required_success_rate=validation_section.get("required_success_rate", 0.95),
+            hash_tolerance=validation_section.get("hash_tolerance", 1e-8),
+            sample_limit=validation_section.get("sample_limit", 100),
+        )
+
         self._configuration_data = ConfigurationData(
-            qc=qc_config, statistics=stats_config, plots=plots_config
+            qc=qc_config,
+            statistics=stats_config,
+            plots=plots_config,
+            validation=validation_config,
         )
 
         return self
@@ -179,3 +192,18 @@ class ConfigParser:
             raise RuntimeError("Configuration not loaded. Call load() first.")
 
         return self._configuration_data.plots
+
+    def get_validation_config(self) -> ValidationConfiguration:
+        """
+        Get validation configuration parameters.
+
+        Returns:
+            ValidationConfiguration: Typed validation configuration object
+
+        Raises:
+            RuntimeError: If configuration has not been loaded yet
+        """
+        if self._configuration_data is None:
+            raise RuntimeError("Configuration not loaded. Call load() first.")
+
+        return self._configuration_data.validation
