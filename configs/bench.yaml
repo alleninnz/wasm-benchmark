@@ -146,4 +146,10 @@ plots:
     rust: "#CE422B"                # Rust orange-red
     tinygo: "#00ADD8"              # Go cyan-blue
 
+# Simplified validation for engineering reliability
+validation:
+  required_success_rate: 0.95      # Minimum 95% success rate
+  hash_tolerance: 1e-8             # Hash comparison tolerance
+  sample_limit: 1000               # Maximum samples to validate
+
 

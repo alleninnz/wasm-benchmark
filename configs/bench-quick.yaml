@@ -130,4 +130,10 @@ plots:
     rust: "#CE422B"                # Rust orange-red
     tinygo: "#00ADD8"              # Go cyan-blue
 
+# Quick mode validation (relaxed for speed)
+validation:
+  required_success_rate: 0.90      # Minimum 90% success rate (relaxed)
+  hash_tolerance: 1e-6             # More relaxed hash tolerance
+  sample_limit: 50                 # Reduced sample limit for speed
+
 
