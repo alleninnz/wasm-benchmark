@@ -30,279 +30,179 @@ class VisualizationGenerator:
 
     def _setup_plotting_style(self) -> None:
         """Configure matplotlib styling based on configuration settings"""
+        # TODO: Configure DPI for high-quality output from config
+        # TODO: Set professional font configuration
+        # TODO: Configure professional styling (spines, grid, etc.)
+        # TODO: Set consistent color scheme for languages
+        # TODO: Configure figure layout parameters
+        pass
 
-        # Configure DPI for high-quality output
-        mpl.rcParams["figure.dpi"] = self.config.dpi_detailed
-        mpl.rcParams["savefig.dpi"] = self.config.dpi_detailed
-        mpl.rcParams["savefig.format"] = self.config.output_format
-
-        # Set professional font configuration
-        mpl.rcParams["font.family"] = "sans-serif"
-        mpl.rcParams["font.sans-serif"] = ["Arial", "DejaVu Sans", "Liberation Sans"]
-        mpl.rcParams["font.size"] = self.config.font_sizes.get("default", 12)
-        mpl.rcParams["axes.titlesize"] = self.config.font_sizes.get("title", 16)
-        mpl.rcParams["axes.labelsize"] = self.config.font_sizes.get("label", 14)
-        mpl.rcParams["xtick.labelsize"] = self.config.font_sizes.get("tick", 12)
-        mpl.rcParams["ytick.labelsize"] = self.config.font_sizes.get("tick", 12)
-        mpl.rcParams["legend.fontsize"] = self.config.font_sizes.get("legend", 12)
-
-        # Configure professional styling
-        mpl.rcParams["axes.spines.top"] = False
-        mpl.rcParams["axes.spines.right"] = False
-        mpl.rcParams["axes.linewidth"] = 0.8
-        mpl.rcParams["axes.edgecolor"] = "#333333"
-        mpl.rcParams["axes.labelcolor"] = "#333333"
-
-        # Grid styling for better readability
-        mpl.rcParams["axes.grid"] = True
-        mpl.rcParams["grid.alpha"] = 0.3
-        mpl.rcParams["grid.linewidth"] = 0.5
-        mpl.rcParams["grid.color"] = "#cccccc"
-
-        # Color configuration for consistent language representation
-        plt.style.use("default")  # Start with clean slate
-
-        # Set consistent color scheme
-        self._language_colors = {
-            "rust": self.config.color_scheme.get("rust", "#CE422B"),
-            "tinygo": self.config.color_scheme.get("tinygo", "#00ADD8"),
-            "default": self.config.color_scheme.get("default", "#2E8B57"),
-        }
-
-        # Configure figure layout
-        mpl.rcParams["figure.constrained_layout.use"] = True
-        mpl.rcParams["figure.autolayout"] = False
-
-    def create_performance_comparison_chart(
+    def create_execution_time_comparison(
         self,
         comparisons: List[ComparisonResult],
-        output_path: str = "reports/plots/performance_comparison.png",
+        output_path: str = "reports/plots/execution_time_comparison.png",
     ) -> str:
         """
-        Generate comprehensive performance comparison chart across all tasks.
+        Generate execution time comparison chart across all benchmark tasks.
+
+        Shows Rust vs TinyGo execution times with statistical significance markers,
+        confidence intervals, and clear performance winners for each task.
 
         Args:
-            comparisons: Statistical comparison results for all tasks
-            output_path: Path for saving the generated chart
+            comparisons: Statistical comparison results for all tasks and scales
+            output_path: Path for saving the generated execution time chart
 
         Returns:
             str: Path to the generated chart file
+
+        Raises:
+            ValueError: If no comparison results provided or invalid data
         """
-
-        if not comparisons:
-            raise ValueError("No comparison results provided for chart generation")
-
-        # Extract performance data and confidence intervals from comparisons
-        tasks = [comp.task for comp in comparisons]
-        rust_means = [comp.rust_stats.mean for comp in comparisons]
-        tinygo_means = [comp.tinygo_stats.mean for comp in comparisons]
-
-        # Calculate confidence intervals (95% CI using t-distribution approximation)
-        rust_ci_lower = [
-            (
-                comp.t_test.confidence_interval_lower + comp.rust_stats.mean
-                if comp.t_test.confidence_interval_lower < 0
-                else comp.rust_stats.mean - abs(comp.t_test.confidence_interval_lower)
-            )
-            for comp in comparisons
-        ]
-        rust_ci_upper = [
-            (
-                comp.t_test.confidence_interval_upper + comp.rust_stats.mean
-                if comp.t_test.confidence_interval_upper > 0
-                else comp.rust_stats.mean + abs(comp.t_test.confidence_interval_upper)
-            )
-            for comp in comparisons
-        ]
-
-        # Error bars for confidence intervals
-        rust_errors = [
-            [mean - lower for mean, lower in zip(rust_means, rust_ci_lower)],
-            [upper - mean for mean, upper in zip(rust_means, rust_ci_upper)],
-        ]
-
-        # TinyGo uses same CI logic
-        tinygo_ci_lower = [
-            comp.tinygo_stats.mean - abs(comp.t_test.confidence_interval_lower)
-            for comp in comparisons
-        ]
-        tinygo_ci_upper = [
-            comp.tinygo_stats.mean + abs(comp.t_test.confidence_interval_upper)
-            for comp in comparisons
-        ]
-
-        tinygo_errors = [
-            [mean - lower for mean, lower in zip(tinygo_means, tinygo_ci_lower)],
-            [upper - mean for mean, upper in zip(tinygo_means, tinygo_ci_upper)],
-        ]
-
-        # Create grouped bar chart
-        fig_size = self.config.figure_sizes.get("performance", [12, 8])
-        fig, ax = plt.subplots(figsize=fig_size)
-
-        x = np.arange(len(tasks))
-        width = 0.35
-
-        # Create bars with error bars representing confidence intervals
-        rust_bars = ax.bar(
-            x - width / 2,
-            rust_means,
-            width,
-            yerr=rust_errors,
-            label="Rust",
-            color=self._language_colors["rust"],
-            alpha=0.8,
-            capsize=5,
-            error_kw={"linewidth": 1.5, "capthick": 1.5},
-        )
-
-        tinygo_bars = ax.bar(
-            x + width / 2,
-            tinygo_means,
-            width,
-            yerr=tinygo_errors,
-            label="TinyGo",
-            color=self._language_colors["tinygo"],
-            alpha=0.8,
-            capsize=5,
-            error_kw={"linewidth": 1.5, "capthick": 1.5},
-        )
-
-        # Include statistical significance indicators (*, **, ***)
-        for i, comp in enumerate(comparisons):
-            if comp.t_test.is_significant:
-                p_val = comp.t_test.p_value
-                if p_val < 0.001:
-                    sig_marker = "***"
-                elif p_val < 0.01:
-                    sig_marker = "**"
-                elif p_val < 0.05:
-                    sig_marker = "*"
-                else:
-                    continue
-
-                # Place significance marker above the taller bar
-                max_height = max(
-                    rust_means[i] + rust_errors[1][i],
-                    tinygo_means[i] + tinygo_errors[1][i],
-                )
-                ax.text(
-                    i,
-                    max_height * 1.05,
-                    sig_marker,
-                    ha="center",
-                    va="bottom",
-                    fontweight="bold",
-                    fontsize=14,
-                )
-
-        # Add clear axis labels and title
-        ax.set_xlabel("Benchmark Tasks", fontweight="bold")
-        ax.set_ylabel("Execution Time (ms)", fontweight="bold")
-        ax.set_title(
-            "WebAssembly Performance Comparison: Rust vs TinyGo",
-            fontweight="bold",
-            pad=20,
-        )
-        ax.set_xticks(x)
-        ax.set_xticklabels(tasks, rotation=45, ha="right")
-
-        # Include legend with confidence level explanations
-        from matplotlib.lines import Line2D
-        from matplotlib.patches import Rectangle
-
-        legend_elements = [
-            Rectangle(
-                (0, 0),
-                1,
-                1,
-                facecolor=self._language_colors["rust"],
-                alpha=0.8,
-                label="Rust",
-            ),
-            Rectangle(
-                (0, 0),
-                1,
-                1,
-                facecolor=self._language_colors["tinygo"],
-                alpha=0.8,
-                label="TinyGo",
-            ),
-            Line2D(
-                [0], [0], color="black", linewidth=1.5, label="95% Confidence Interval"
-            ),
-        ]
-
-        ax.legend(
-            handles=legend_elements,
-            loc="upper right",
-            frameon=True,
-            fancybox=True,
-            shadow=True,
-        )
-
-        # Add significance legend
-        sig_text = "Significance: * p<0.05, ** p<0.01, *** p<0.001"
-        ax.text(
-            0.02,
-            0.98,
-            sig_text,
-            transform=ax.transAxes,
-            fontsize=10,
-            verticalalignment="top",
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
-        )
-
-        # Ensure output directory exists
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-        # Save chart with configured DPI and format
-        plt.tight_layout()
-        plt.savefig(
-            output_path,
-            dpi=self.config.dpi_detailed,
-            format=self.config.output_format,
-            bbox_inches="tight",
-        )
-        plt.close()
-
-        return output_path
-
-    def create_effect_size_visualization(
-        self,
-        comparisons: List[ComparisonResult],
-        output_path: str = "reports/plots/effect_sizes.png",
-    ) -> str:
-        """
-        Generate effect size visualization showing practical significance.
-
-        Args:
-            comparisons: Comparison results with effect size calculations
-            output_path: Path for saving the effect size chart
-
-        Returns:
-            str: Path to the generated chart file
-        """
-        # TODO: Extract Cohen's d values from all comparisons
-        # TODO: Create horizontal bar chart of effect sizes by task
-        # TODO: Color-code bars by effect size magnitude (small/medium/large)
-        # TODO: Add reference lines for effect size thresholds
-        # TODO: Include confidence intervals for effect sizes
-        # TODO: Apply professional styling and clear labeling
-        # TODO: Save chart with configured output settings
+        # TODO: Validate input comparisons data
+        # TODO: Extract execution time means and confidence intervals
+        # TODO: Create grouped bar chart with Rust vs TinyGo bars
+        # TODO: Add error bars for 95% confidence intervals
+        # TODO: Add statistical significance markers (*, **, ***)
+        # TODO: Configure professional styling and language colors
+        # TODO: Add clear axis labels and title
+        # TODO: Include legend with confidence interval explanation
+        # TODO: Add significance legend (p-value thresholds)
+        # TODO: Save chart with configured DPI and format
         # TODO: Return path to generated visualization
 
         return output_path
 
+    def create_memory_usage_comparison(
+        self,
+        comparisons: List[ComparisonResult],
+        output_path: str = "reports/plots/memory_usage_comparison.png",
+    ) -> str:
+        """
+        Generate memory usage comparison chart for WebAssembly runtime analysis.
+
+        Compares memory consumption patterns between Rust (zero-cost abstractions)
+        and TinyGo (garbage collected) across different computational workloads.
+
+        Args:
+            comparisons: Statistical comparison results with memory usage data
+            output_path: Path for saving the generated memory usage chart
+
+        Returns:
+            str: Path to the generated chart file
+
+        Raises:
+            ValueError: If memory usage data is missing or invalid
+        """
+        # TODO: Extract memory usage statistics from comparison results
+        # TODO: Calculate memory usage means and standard deviations
+        # TODO: Create bar chart showing memory consumption per task
+        # TODO: Add error bars for statistical reliability
+        # TODO: Highlight GC vs zero-cost abstraction differences
+        # TODO: Include memory efficiency annotations
+        # TODO: Add clear axis labels (MB) and professional styling
+        # TODO: Configure language-specific color coding
+        # TODO: Add legend explaining memory management approaches
+        # TODO: Save chart with high-quality output settings
+        # TODO: Return path to generated visualization
+
+        return output_path
+
+    def create_effect_size_heatmap(
+        self,
+        comparisons: List[ComparisonResult],
+        output_path: str = "reports/plots/effect_size_heatmap.png",
+    ) -> str:
+        """
+        Generate Cohen's d effect size heatmap for practical significance analysis.
+
+        Visualizes the magnitude of performance differences between languages
+        across tasks and scales using color-coded effect size classifications.
+
+        Args:
+            comparisons: Statistical comparison results with effect size calculations
+            output_path: Path for saving the generated effect size heatmap
+
+        Returns:
+            str: Path to the generated chart file
+
+        Raises:
+            ValueError: If effect size data is missing from comparisons
+        """
+        # TODO: Extract Cohen's d values from all comparison results
+        # TODO: Organize data into task×scale matrix format
+        # TODO: Create heatmap with color coding by effect size magnitude
+        # TODO: Add effect size threshold reference lines/colors
+        # TODO: Include color bar with effect size interpretations
+        # TODO: Add task and scale labels on axes
+        # TODO: Configure professional heatmap styling
+        # TODO: Add annotations showing actual Cohen's d values
+        # TODO: Include legend explaining small/medium/large effects
+        # TODO: Apply consistent language preference indicators
+        # TODO: Save heatmap with high resolution settings
+        # TODO: Return path to generated visualization
+
+        return output_path
+
+    def create_decision_summary_panel(
+        self,
+        comparisons: List[ComparisonResult],
+        output_path: str = "reports/plots/decision_summary_panel.png",
+    ) -> str:
+        """
+        Generate engineering decision summary panel with clear recommendations.
+
+        Provides actionable language selection guidance based on statistical
+        analysis, effect sizes, and practical engineering considerations.
+
+        Args:
+            comparisons: Complete statistical comparison results
+            output_path: Path for saving the generated decision summary panel
+
+        Returns:
+            str: Path to the generated chart file
+
+        Raises:
+            ValueError: If insufficient data for decision recommendations
+        """
+        # TODO: Analyze statistical significance and effect sizes
+        # TODO: Generate language recommendations per task
+        # TODO: Calculate decision confidence levels
+        # TODO: Create text-based summary panel with clear formatting
+        # TODO: Add confidence emoji indicators (🔥👍🤔⚖️)
+        # TODO: Include statistical evidence summary
+        # TODO: Add practical considerations (GC vs zero-cost)
+        # TODO: Format recommendations for engineering decisions
+        # TODO: Configure professional text layout and styling
+        # TODO: Add data quality warnings if applicable
+        # TODO: Save panel as high-quality image
+        # TODO: Return path to generated decision panel
+        return output_path
+
 
 def main():
-    """Command-line interface for visualization generation"""
+    """
+    Command-line interface for comprehensive visualization generation.
+
+    Orchestrates the creation of all four performance analysis visualizations
+    to support engineering decision-making for Rust vs TinyGo selection.
+    """
     # TODO: Parse command-line arguments for input files and output preferences
-    # TODO: Load analysis results from statistical analysis pipeline
-    # TODO: Initialize visualization generator with configuration
-    # TODO: Generate all requested visualizations
-    # TODO: Save charts to specified output directory
-    # TODO: Generate visualization manifest for reporting integration
+    # TODO: Validate input file paths and output directory permissions
+    # TODO: Load statistical analysis results from JSON/CSV files
+    # TODO: Parse benchmark comparison data and validation results
+    # TODO: Initialize plots configuration from bench.yaml
+    # TODO: Create VisualizationGenerator instance with configuration
+
+    # TODO: Generate execution time comparison chart
+    # TODO: Generate memory usage comparison chart
+    # TODO: Generate effect size heatmap for practical significance
+    # TODO: Generate decision summary panel with recommendations
+
+    # TODO: Validate all chart generation completed successfully
+    # TODO: Create visualization manifest with file paths and metadata
+    # TODO: Generate HTML report index linking all visualizations
+    # TODO: Output summary of generated files and locations
+    # TODO: Handle any visualization generation errors gracefully
     pass
 
 
