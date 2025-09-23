@@ -292,7 +292,12 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             };
 
             this.resultsService.addResult(benchmarkResult);
-            this.logger.success(`Completed: ${benchmark.name} (${duration}ms)`);
+            
+            // Extract scale from benchmark name (format: taskName_scale_language)
+            const nameParts = benchmark.name.split('_');
+            const scale = nameParts.length >= 3 ? nameParts[nameParts.length - 2] : 'unknown';
+            const taskName = benchmark.task || benchmark.name.replace(/_[^_]+_[^_]+$/, '');
+            this.logger.success(`✅ Completed: ${taskName} ${scale} (${duration}ms)`);
 
             return benchmarkResult;
 
@@ -396,13 +401,13 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                     }
 
                     // Add progress monitoring for long-running WASM tasks
-                    this.logger.info(`🚀 Starting WASM benchmark: ${taskName} (${language}) - this may take several minutes...`);
+                    this.logger.info(`🚀 Starting WASM benchmark: ${taskName} ${scale} (${language}) - this may take several minutes...`);
                     const taskStartTime = Date.now();
 
                     // Set up progress heartbeat for long tasks
                     progressInterval = setInterval(() => {
                         const elapsed = Math.floor((Date.now() - taskStartTime) / 1000);
-                        this.logger.info(`⏳ Still running ${taskName} (${language}) - ${elapsed}s elapsed...`);
+                        this.logger.info(`⏳ Still running ${taskName} ${scale} (${language}) - ${elapsed}s elapsed...`);
                     }, 30000); // Log every 30 seconds
 
                     // Execute benchmark script on appropriate page with enhanced error handling
@@ -432,8 +437,6 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                     }
 
                     clearInterval(progressInterval);
-                    const taskDuration = Math.floor((Date.now() - taskStartTime) / 1000);
-                    this.logger.success(`✅ Completed ${taskName} (${language}) in ${taskDuration}s`);
 
                     // Add the result directly since it's already in the correct format
                     results.push(result);
@@ -451,7 +454,6 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                         }
                     }
 
-                    this.logger.success(`Completed ${taskName} for ${language}`);
                 } catch (error) {
                     // Clear progress interval on error
                     if (progressInterval) {
