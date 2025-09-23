@@ -91,12 +91,25 @@ class PlotsConfiguration:
 
 
 @dataclass
+class ValidationConfiguration:
+    """Simplified validation configuration for engineering reliability"""
+
+    # Core validation settings
+    required_success_rate: float = 0.95
+    hash_tolerance: float = 1e-8
+
+    # Quick mode controls
+    sample_limit: int = 100
+
+
+@dataclass
 class ConfigurationData:
     """Complete configuration data containing all specialized configurations"""
 
     qc: QCConfiguration
     statistics: StatisticsConfiguration
     plots: PlotsConfiguration
+    validation: ValidationConfiguration
 
 
 @dataclass
