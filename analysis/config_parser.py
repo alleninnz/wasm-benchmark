@@ -9,8 +9,12 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
-from data_models import (ConfigurationData, PlotsConfiguration,
-                         QCConfiguration, StatisticsConfiguration)
+from data_models import (
+    ConfigurationData,
+    PlotsConfiguration,
+    QCConfiguration,
+    StatisticsConfiguration,
+)
 
 
 class ConfigParser:
