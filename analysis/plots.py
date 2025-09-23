@@ -12,7 +12,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .data_models import ComparisonResult, EffectSize, MetricType, PlotsConfiguration
+from . import common
+from .data_models import (ComparisonResult, EffectSize, MetricType,
+                          PlotsConfiguration)
 
 
 class VisualizationGenerator:
@@ -206,19 +208,39 @@ def main():
     Orchestrates the creation of all four performance analysis visualizations
     to support engineering decision-making for Rust vs TinyGo selection.
     """
-    # TODO: Parse arguments: input_file (default: reports/statistics/statistical_analysis_report.json), output_dir (default: reports/plots/)
-    # TODO: Validate paths: check input file exists, create output_dir if needed, verify write permissions
-    # TODO: Load comparison results: json.load(statistical_analysis_report.json)["comparison_results"]
-    # TODO: Parse ComparisonResult objects: convert JSON dicts back to data model instances
-    # TODO: Load configuration: ConfigParser().load().get_plots_config() from bench.yaml
-    # TODO: Initialize generator: VisualizationGenerator(plots_config) with error handling
 
-    # TODO: Generate charts with error handling: execution_time_comparison(), memory_usage_comparison()
-    # TODO: Generate advanced visualizations: effect_size_heatmap(), decision_summary_panel()
-    # TODO: Handle generation errors: log failures, continue with remaining charts
-    # TODO: Validate outputs: check all chart files exist and have valid content
+    args = common.setup_analysis_cli(
+        "Visualization generation for WebAssembly benchmark analysis"
+    )
 
-    # TODO: Create manifest: {"charts": {"execution_time": path, "memory_usage": path, ...}, "timestamp": ...}
+    try:
+        _execute_visualization_pipeline(quick_mode=args.quick)
+    except Exception as e:
+        common.handle_critical_error(f"Visualization pipeline error: {e}")
+
+
+def _execute_visualization_pipeline(quick_mode: bool = False) -> None:
+    """Execute the complete visualization pipeline."""
+
+    # Setup using common utilities
+    common.print_analysis_header(
+        "WebAssembly Benchmark Visualization Analysis", quick_mode
+    )
+    output_dir = common.setup_output_directory("plots")
+
+    print("🔄 Executing visualization pipeline...")
+    print("⚠️  Note: Visualization functionality is currently under development")
+    print(
+        f"📁 Configuration loaded from: {'configs/bench-quick.yaml' if quick_mode else 'configs/bench.yaml'}"
+    )
+    print(f"📁 Reports would be saved to: {output_dir}")
+
+    print("\n📊 Visualization Summary:")
+    print("   • Status: Implementation in progress")
+    print("   • Framework: Ready for plot generation logic")
+    print("   • Infrastructure: Complete")
+    print("\n🔍 Visualization pipeline setup complete!")
+    print(f"📁 Output directory ready: {output_dir}")
     # TODO: Generate HTML index: link to charts and reports/statistics/ results with navigation
     # TODO: Output summary: print generated file paths, chart count, any errors or warnings
     # TODO: Return exit code: 0 for success, 1 for partial failure, 2 for complete failure

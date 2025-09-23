@@ -16,7 +16,7 @@ from typing import Any, Dict, Generator, Iterable, List, Tuple
 
 from scipy.stats import t as t_dist
 
-from analysis.config_parser import ConfigParser
+from . import common
 
 from .data_models import (
     BenchmarkSample,
@@ -1250,26 +1250,30 @@ class StatisticalAnalysis:
 
 def main():
     """Main function for standalone execution of statistical analysis."""
+    args = common.setup_analysis_cli(
+        "Statistical analysis for WebAssembly benchmark performance comparison"
+    )
+
     try:
-        _execute_statistical_analysis_pipeline()
+        _execute_statistical_analysis_pipeline(quick_mode=args.quick)
     except Exception as e:
-        print(f"❌ Critical error in statistical analysis pipeline: {e}")
-        sys.exit(1)
+        common.handle_critical_error(f"Statistical analysis pipeline error: {e}")
 
 
-def _execute_statistical_analysis_pipeline() -> None:
+def _execute_statistical_analysis_pipeline(quick_mode: bool = False) -> None:
     """Execute the complete statistical analysis pipeline with proper error handling."""
-    # Standard input/output paths
-    input_path = CLEANED_DATASET_PATH
-    output_dir = STATS_PATH
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Setup using common utilities
+    common.print_analysis_header(
+        "WebAssembly Benchmark Statistical Analysis", quick_mode
+    )
+    output_dir = common.setup_output_directory("statistics")
 
-    print("📊 WebAssembly Benchmark Statistical Analysis")
-    print("=" * 60)
+    # Note: For now, statistics.py uses cleaned dataset from QC, so no quick mode data loading needed
+    input_path = Path("reports/qc/cleaned_dataset.json")
 
     # Step 1: Load configuration
     print("🔧 Loading statistical analysis configuration...")
-    stats_config = _load_statistics_config()
+    stats_config = _load_statistics_config(quick_mode)
 
     # Step 2: Load cleaned dataset
     print(f"📂 Loading cleaned dataset from {input_path}...")
@@ -1293,27 +1297,15 @@ def _execute_statistical_analysis_pipeline() -> None:
     print("\n✅ Statistical analysis pipeline completed successfully!")
 
 
-def _load_statistics_config() -> StatisticsConfiguration:
+def _load_statistics_config(quick_mode: bool = False) -> StatisticsConfiguration:
     """
     Load statistical analysis configuration.
 
     Returns:
         StatisticsConfiguration object with loaded parameters
     """
-    try:
-        config_parser = ConfigParser().load()
-        stats_config = config_parser.get_stats_config()
-        print("✅ Loaded statistical analysis configuration")
-        return stats_config
-    except FileNotFoundError:
-        print("❌ Configuration file not found")
-        sys.exit(1)
-    except (ValueError, KeyError) as e:
-        print(f"❌ Invalid configuration format: {e}")
-        sys.exit(1)
-    except Exception as e:
-        print(f"❌ Error loading configuration: {e}")
-        sys.exit(1)
+    config_parser = common.load_configuration(quick_mode)
+    return config_parser.get_stats_config()
 
 
 def _load_cleaned_dataset(input_path: Path) -> CleanedDataset:

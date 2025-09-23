@@ -11,8 +11,12 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from . import common
-from .data_models import (BenchmarkSample, TaskResult, ValidationConfiguration,
-                          ValidationResult)
+from .data_models import (
+    BenchmarkSample,
+    TaskResult,
+    ValidationConfiguration,
+    ValidationResult,
+)
 
 
 class BenchmarkValidator:
