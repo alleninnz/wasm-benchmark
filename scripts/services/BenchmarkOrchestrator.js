@@ -121,11 +121,22 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                 _results = await this.executeSequentially(benchmarks, { ...options, parallel: false });
             }
 
-            // Finalize results
+            // Finalize results with actual configuration values
+            const actualOptions = {
+                headless: this.browserService.isHeadless,
+                devtools: options.devtools,
+                verbose: options.verbose,
+                parallel: shouldUseParallel,
+                quick: options.quick,
+                timeout: this.configService.getTimeout(),
+                maxParallel: this.configService.getParallelConfig().maxParallel,
+                failureThreshold: this.configService.getFailureThreshold()
+            };
+
             this.resultsService.finalize({
                 executionMode: shouldUseParallel ? 'parallel' : 'sequential',
                 totalBenchmarks: benchmarks.length,
-                options
+                options: actualOptions
             });
 
             // Signal to frontend that entire benchmark suite is finished
