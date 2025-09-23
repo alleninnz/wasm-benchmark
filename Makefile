@@ -3,7 +3,7 @@
 
 # Declare all phony targets (targets that don't create files)
 .PHONY: help help-setup init build build-rust build-tinygo build-all run run-headed run-quick \
-        qc analyze all all-quick clean clean-results clean-all clean-cache cache-file-discovery \
+        qc qc-quick analyze analyze-quick all all-quick clean clean-results clean-all clean-cache cache-file-discovery \
         lint lint-python lint-rust lint-go lint-js format format-python format-rust format-go \
         test validate status info check-deps build-config build-config-quick
 
@@ -179,7 +179,9 @@ help: ## Show complete list of all available targets
 	$(call log_info,  run-headed             👁️  Run benchmarks with visible browser)
 	$(call log_info,  run-quick              ⚡ Run quick benchmarks for development (~2-3 min))
 	$(call log_info,  qc                     🔍 Run quality control on benchmark data)
+	$(call log_info,  qc-quick               ⚡ Run quality control with quick configuration)
 	$(call log_info,  analyze                📊 Run statistical analysis and generate plots)
+	$(call log_info,  analyze-quick          ⚡ Run analysis with quick configuration)
 	$(call log_info,  all                    🎯 Run complete experiment pipeline)
 	$(call log_info,  all-quick              ⚡ Run quick experiment for development/testing)
 	@echo ""
@@ -352,39 +354,47 @@ run-quick: $(NODE_MODULES) build-config-quick ## Run quick benchmarks for develo
 # ============================================================================
 
 qc: ## Run quality control on benchmark data
-	$(call log_step,Running quality control on results...)
-	@LATEST_RESULT=$(call find_latest_result); \
-	if [ -n "$$LATEST_RESULT" ]; then \
-		if [ -f analysis/qc.py ]; then \
-			python3 analysis/qc.py $$LATEST_RESULT; \
-		else \
-			$(call log_warning,analysis/qc.py not found, skipping quality control); \
-		fi; \
-		$(call log_success,🔍 Quality control completed for $$LATEST_RESULT); \
+	$(call log_step,Running quality control analysis...)
+	@if [ -f analysis/qc.py ]; then \
+		python3 -m analysis.qc; \
 	else \
-		$(call log_error,No benchmark results found); \
+		$(call log_error,analysis/qc.py not found); \
+		exit 1; \
+	fi
+
+qc-quick: ## Run quality control with quick configuration and data
+	$(call log_step,Running quick quality control analysis...)
+	@if [ -f analysis/qc.py ]; then \
+		python3 -m analysis.qc --quick; \
+	else \
+		$(call log_error,analysis/qc.py not found); \
 		exit 1; \
 	fi
 
 analyze: ## Run statistical analysis and generate plots
-	$(call log_step,Running statistical analysis...)
-	@LATEST_RESULT=$(call find_latest_result); \
-	if [ -n "$$LATEST_RESULT" ]; then \
-		if [ -f analysis/statistics.py ]; then \
-			python3 analysis/statistics.py $$LATEST_RESULT; \
-		else \
-			$(call log_warning,analysis/statistics.py not found, skipping statistics); \
-		fi; \
-		if [ -f analysis/plots.py ]; then \
-			python3 analysis/plots.py $$LATEST_RESULT; \
-		else \
-			$(call log_warning,analysis/plots.py not found, skipping plots); \
-		fi; \
-		$(call log_success,📊 Analysis completed for $$LATEST_RESULT); \
+	$(call log_step,Running statistical analysis and visualization...)
+	@if [ -f analysis/statistics.py ]; then \
+		python3 -m analysis.statistics; \
 	else \
-		$(call log_error,No benchmark results found); \
-		$(call log_info,Run 'make run' first to generate benchmark data,shell); \
-		exit 1; \
+		$(call log_warning,analysis/statistics.py not found, skipping statistics); \
+	fi
+	@if [ -f analysis/plots.py ]; then \
+		python3 -m analysis.plots; \
+	else \
+		$(call log_warning,analysis/plots.py not found, skipping plots); \
+	fi
+
+analyze-quick: ## Run statistical analysis and plots with quick configuration and data
+	$(call log_step,Running quick statistical analysis and visualization...)
+	@if [ -f analysis/statistics.py ]; then \
+		python3 -m analysis.statistics --quick; \
+	else \
+		$(call log_warning,analysis/statistics.py not found, skipping statistics); \
+	fi
+	@if [ -f analysis/plots.py ]; then \
+		python3 -m analysis.plots --quick; \
+	else \
+		$(call log_warning,analysis/plots.py not found, skipping plots); \
 	fi
 
 # ============================================================================
