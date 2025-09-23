@@ -12,8 +12,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .data_models import (ComparisonResult, EffectSize, MetricType,
-                          PlotsConfiguration)
+from .data_models import ComparisonResult, EffectSize, MetricType, PlotsConfiguration
 
 
 class VisualizationGenerator:

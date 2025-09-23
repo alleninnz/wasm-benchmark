@@ -18,10 +18,20 @@ from scipy.stats import t as t_dist
 
 from analysis.config_parser import ConfigParser
 
-from .data_models import (BenchmarkSample, CleanedDataset, ComparisonResult,
-                          EffectSize, EffectSizeResult, MetricComparison,
-                          MetricType, PerformanceStatistics, StatisticalResult,
-                          StatisticsConfiguration, TaskResult, TTestResult)
+from .data_models import (
+    BenchmarkSample,
+    CleanedDataset,
+    ComparisonResult,
+    EffectSize,
+    EffectSizeResult,
+    MetricComparison,
+    MetricType,
+    PerformanceStatistics,
+    StatisticalResult,
+    StatisticsConfiguration,
+    TaskResult,
+    TTestResult,
+)
 
 # Statistical constants
 MINIMUM_SAMPLES_FOR_TEST = 2
@@ -788,8 +798,8 @@ class StatisticalAnalysis:
 
         for sample in samples:
             exec_times.append(sample.executionTime)
-            # Convert memory usage to KB (from bytes) 
-            memory_usage.append((sample.memoryUsed+sample.wasmMemoryBytes)/1024)
+            # Convert memory usage to KB (from bytes)
+            memory_usage.append((sample.memoryUsed + sample.wasmMemoryBytes) / 1024)
 
         return exec_times, memory_usage
 
@@ -1245,6 +1255,7 @@ def main():
     except Exception as e:
         print(f"❌ Critical error in statistical analysis pipeline: {e}")
         sys.exit(1)
+
 
 def _execute_statistical_analysis_pipeline() -> None:
     """Execute the complete statistical analysis pipeline with proper error handling."""

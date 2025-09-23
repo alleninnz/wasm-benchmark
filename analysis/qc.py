@@ -12,8 +12,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from analysis.config_parser import ConfigParser
-from analysis.data_models import (
+from . import common
+from .data_models import (
     BenchmarkResult,
     BenchmarkSample,
     CleanedDataset,
@@ -511,28 +511,28 @@ class QualityController:
 
 def main():
     """Execute quality control analysis on benchmark data"""
+    args = common.setup_analysis_cli(
+        "Quality control analysis for WebAssembly benchmark data"
+    )
+
     try:
-        _execute_quality_control_pipeline()
+        _execute_quality_control_pipeline(quick_mode=args.quick)
     except Exception as e:
-        print(f"❌ Critical error in quality control pipeline: {e}")
-        sys.exit(1)
+        common.handle_critical_error(f"Quality control pipeline error: {e}")
 
 
-def _execute_quality_control_pipeline() -> None:
+def _execute_quality_control_pipeline(quick_mode: bool = False) -> None:
     """Execute the complete quality control pipeline with proper error handling."""
-    # Standard input/output paths
-    input_dir = Path("results")
-    output_dir = Path("reports/qc")
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Setup using common utilities
+    common.print_analysis_header(
+        "WebAssembly Benchmark Quality Control Analysis", quick_mode
+    )
+    output_dir = common.setup_output_directory("qc")
 
-    print("🔍 WebAssembly Benchmark Quality Control Analysis")
-    print(QCConstants.TITLE_SEPARATOR)
-
-    # Load benchmark data with specific error handling
-    latest_file, raw_data = _load_latest_benchmark_data(input_dir)
-
-    # Load configuration with specific error handling
-    qc_config = _load_qc_configuration()
+    # Load benchmark data and configuration using common utilities
+    latest_file, raw_data = common.load_latest_results(quick_mode)
+    config_parser = common.load_configuration(quick_mode)
+    qc_config = config_parser.get_qc_config()
 
     # Convert raw JSON data to structured data models
     benchmark_results = _convert_raw_data_to_benchmark_results(raw_data)
@@ -554,59 +554,6 @@ def _execute_quality_control_pipeline() -> None:
 
     # Print summary and check quality status
     _print_quality_summary(quality_assessment, cleaned_dataset, output_dir)
-
-
-def _load_latest_benchmark_data(input_dir: Path) -> Tuple[Path, Dict[str, Any]]:
-    """Load the latest benchmark data file with specific error handling."""
-    try:
-        json_files = list(input_dir.glob(QCConstants.JSON_FILE_PATTERN))
-        if not json_files:
-            print(f"❌ Error: No benchmark data files found in {input_dir}")
-            print("💡 Run benchmark tests first to generate data")
-            sys.exit(1)
-
-        # Use the latest non-meta JSON file
-        non_meta_files = [
-            f for f in json_files if QCConstants.META_FILE_PATTERN not in f.name
-        ]
-        if not non_meta_files:
-            print(f"❌ Error: No non-meta JSON files found in {input_dir}")
-            sys.exit(1)
-
-        latest_file = max(non_meta_files, key=lambda x: x.stat().st_mtime)
-
-        with open(latest_file, "r") as f:
-            raw_data = json.load(f)
-        print(f"✅ Loaded raw benchmark data from {latest_file}")
-        return latest_file, raw_data
-
-    except FileNotFoundError:
-        print(f"❌ Benchmark data directory not found: {input_dir}")
-        sys.exit(1)
-    except json.JSONDecodeError as e:
-        print(f"❌ Invalid JSON format in {latest_file}: {e}")
-        sys.exit(1)
-    except IOError as e:
-        print(f"❌ Error reading {latest_file}: {e}")
-        sys.exit(1)
-
-
-def _load_qc_configuration() -> QCConfiguration:
-    """Load quality control configuration with specific error handling."""
-    try:
-        config_parser = ConfigParser().load()
-        qc_config = config_parser.get_qc_config()
-        print("✅ Loaded quality control configuration")
-        return qc_config
-    except FileNotFoundError:
-        print("❌ Configuration file not found")
-        sys.exit(1)
-    except (ValueError, KeyError) as e:
-        print(f"❌ Invalid configuration format: {e}")
-        sys.exit(1)
-    except Exception as e:
-        print(f"❌ Error loading configuration: {e}")
-        sys.exit(1)
 
 
 def _convert_raw_data_to_benchmark_results(

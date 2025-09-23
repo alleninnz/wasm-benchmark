@@ -5,14 +5,12 @@ Validates implementation correctness across Rust and TinyGo through hash verific
 and result consistency checks. Focuses on engineering reliability over academic rigor.
 """
 
-import argparse
 import json
 import sys
-from glob import glob
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from .config_parser import ConfigParser
+from . import common
 from .data_models import (BenchmarkSample, TaskResult, ValidationConfiguration,
                           ValidationResult)
 
@@ -73,6 +71,7 @@ class BenchmarkValidator:
         # TODO: Check record counts: rust_result.samples[0].recordsProcessed == tinygo_result.samples[0].recordsProcessed
         # TODO: Return ValidationResult with validation_passed and specific issues list
 
+        # Implementation placeholder
         return ValidationResult(
             task="placeholder",
             scale="placeholder",
@@ -128,59 +127,49 @@ class BenchmarkValidator:
         return False, []
 
 
-def _load_latest_results_file(quick_mode: bool) -> Path:
-    """
-    Load the most recent results file based on mode.
-
-    Args:
-        quick_mode: If True, load latest *quick.json; if False, load latest non-quick .json
-
-    Returns:
-        Path to the most recent results file
-
-    Raises:
-        FileNotFoundError: If no suitable results files found
-    """
-    # TODO: Search results directory: results_dir = Path("results")
-    # TODO: Find files: quick_files = glob("results/*quick.json") if quick_mode else [f for f in glob("results/*.json") if "quick" not in f]
-    # TODO: Sort by modification time: sorted(files, key=lambda f: Path(f).stat().st_mtime, reverse=True)
-    # TODO: Return most recent: files[0] if files else raise FileNotFoundError
-    # TODO: Log selected file: print(f"Loading {selected_file} (quick_mode={quick_mode})")
-    return Path("placeholder")
-
-
-def _load_task_results_from_file(results_file: Path) -> List[TaskResult]:
-    """
-    Load TaskResult objects from benchmark results JSON file.
-
-    Args:
-        results_file: Path to results JSON file
-
-    Returns:
-        List of TaskResult objects parsed from file
-    """
-    # TODO: Load JSON: with open(results_file) as f: raw_data = json.load(f)
-    # TODO: Parse task_results: convert raw_data["task_results"] to TaskResult objects
-    # TODO: Validate structure: ensure required fields present
-    # TODO: Return parsed TaskResult list with proper data model conversion
-    return []
-
-
 def main():
     """
     Command-line interface for benchmark validation operations.
 
     Supports quick mode for faster validation with relaxed tolerances.
     """
-    # TODO: Parse arguments: parser = argparse.ArgumentParser(description="Benchmark validation for engineering decisions")
-    # TODO: Add quick option: parser.add_argument("--quick", action="store_true", help="Use quick mode with relaxed validation")
-    # TODO: Load configuration: config_file = "configs/bench-quick.yaml" if args.quick else "configs/bench.yaml"
-    # TODO: Initialize validator: validation_config = ConfigParser().load(config_file).get_validation_config()
-    # TODO: Load results: task_results = _load_task_results_from_file(_load_latest_results_file(args.quick))
-    # TODO: Run validation: validator = BenchmarkValidator(validation_config); results = validator.validate_task_results(task_results)
-    # TODO: Save results: output_path = Path("reports/validation/validation_report.json")
-    # TODO: Print summary: print(f"Validation completed: {len([r for r in results if r.validation_passed])}/{len(results)} tasks passed")
-    pass
+    args = common.setup_analysis_cli("Benchmark validation for engineering decisions")
+
+    try:
+        _execute_validation_pipeline(quick_mode=args.quick)
+    except Exception as e:
+        common.handle_critical_error(f"Validation pipeline error: {e}")
+
+
+def _execute_validation_pipeline(quick_mode: bool = False) -> None:
+    """
+    Execute the complete validation pipeline with proper error handling.
+    """
+    # Setup using common utilities
+    common.print_analysis_header(
+        "WebAssembly Benchmark Validation Analysis", quick_mode
+    )
+    output_dir = common.setup_output_directory("validation")
+
+    # Load benchmark data and configuration using common utilities
+    latest_file, raw_data = common.load_latest_results(quick_mode)
+    config_parser = common.load_configuration(quick_mode)
+    validation_config = config_parser.get_validation_config()
+
+    print("🔄 Executing validation pipeline...")
+    print("⚠️  Note: Validation functionality is currently under development")
+    print(
+        f"📁 Configuration loaded from: {'configs/bench-quick.yaml' if quick_mode else 'configs/bench.yaml'}"
+    )
+    print(f"📁 Data loaded from: {latest_file}")
+    print(f"📁 Reports would be saved to: {output_dir}")
+
+    print("\n📊 Validation Summary:")
+    print("   • Status: Implementation in progress")
+    print("   • Framework: Ready for validation logic")
+    print("   • Infrastructure: Complete")
+    print("\n🔍 Validation pipeline setup complete!")
+    print(f"📁 Output directory ready: {output_dir}")
 
 
 if __name__ == "__main__":
