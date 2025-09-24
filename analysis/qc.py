@@ -10,7 +10,7 @@ import math
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from . import common
 from .data_models import (
@@ -54,7 +54,7 @@ class QualityController:
     """Data quality control and validation for benchmark analysis pipeline"""
 
     def __init__(
-        self, benchmark_results: List[BenchmarkResult], qc_config: QCConfiguration
+        self, benchmark_results: list[BenchmarkResult], qc_config: QCConfiguration
     ):
         """
         Initialize quality controller with benchmark results and configuration parameters.
@@ -69,7 +69,7 @@ class QualityController:
         self.iqr_multiplier = self.config.outlier_iqr_multiplier
         self.min_samples = self.config.min_valid_samples
         self.failure_rate = self.config.failure_rate
-        self.cleaning_log: List[str] = []
+        self.cleaning_log: list[str] = []
 
     def validate_and_clean(self) -> CleanedDataset:
         """
@@ -126,17 +126,17 @@ class QualityController:
 
         return self._create_cleaned_dataset(cleaned_task_results, all_removed_outliers)
 
-    def _extract_all_samples(self) -> List[BenchmarkSample]:
+    def _extract_all_samples(self) -> list[BenchmarkSample]:
         """Extract all samples from benchmark results."""
         return [
             sample for result in self.benchmark_results for sample in result.samples
         ]
 
     def _group_samples_by_task(
-        self, all_samples: List[BenchmarkSample]
-    ) -> Dict[Tuple[str, str, str], List[BenchmarkSample]]:
+        self, all_samples: list[BenchmarkSample]
+    ) -> dict[tuple[str, str, str], list[BenchmarkSample]]:
         """Group samples by task, language, and scale combination."""
-        task_groups: Dict[Tuple[str, str, str], List[BenchmarkSample]] = {}
+        task_groups: dict[tuple[str, str, str], list[BenchmarkSample]] = {}
         for sample in all_samples:
             key = (sample.task, sample.language, sample.scale)
             if key not in task_groups:
@@ -145,8 +145,8 @@ class QualityController:
         return task_groups
 
     def _process_task_groups(
-        self, task_groups: Dict[Tuple[str, str, str], List[BenchmarkSample]]
-    ) -> Tuple[List[TaskResult], List[BenchmarkSample]]:
+        self, task_groups: dict[tuple[str, str, str], list[BenchmarkSample]]
+    ) -> tuple[list[TaskResult], list[BenchmarkSample]]:
         """Process each task group to detect outliers and create task results."""
         cleaned_task_results = []
         all_removed_outliers = []
@@ -200,8 +200,8 @@ class QualityController:
         return cleaned_task_results, all_removed_outliers
 
     def _partition_samples_by_success(
-        self, samples: List[BenchmarkSample]
-    ) -> Tuple[List[BenchmarkSample], List[BenchmarkSample]]:
+        self, samples: list[BenchmarkSample]
+    ) -> tuple[list[BenchmarkSample], list[BenchmarkSample]]:
         """Partition samples into successful and failed lists in a single pass."""
         successful_samples = []
         failed_samples = []
@@ -218,8 +218,8 @@ class QualityController:
 
     def _create_cleaned_dataset(
         self,
-        cleaned_task_results: List[TaskResult],
-        all_removed_outliers: List[BenchmarkSample],
+        cleaned_task_results: list[TaskResult],
+        all_removed_outliers: list[BenchmarkSample],
     ) -> CleanedDataset:
         """Create the final cleaned dataset with summary statistics."""
         return CleanedDataset(
@@ -229,8 +229,8 @@ class QualityController:
         )
 
     def detect_outliers(
-        self, samples: List[BenchmarkSample]
-    ) -> Tuple[List[BenchmarkSample], List[BenchmarkSample]]:
+        self, samples: list[BenchmarkSample]
+    ) -> tuple[list[BenchmarkSample], list[BenchmarkSample]]:
         """
         Detect statistical outliers using IQR method with configurable multiplier.
 
@@ -409,7 +409,7 @@ class QualityController:
         )
 
     def calculate_overall_quality(
-        self, task_results: List[TaskResult]
+        self, task_results: list[TaskResult]
     ) -> QualityAssessment:
         """
         Calculate overall quality using layered threshold evaluation strategy.
@@ -557,8 +557,8 @@ def _execute_quality_control_pipeline(quick_mode: bool = False) -> None:
 
 
 def _convert_raw_data_to_benchmark_results(
-    raw_data: Dict[str, Any],
-) -> List[BenchmarkResult]:
+    raw_data: dict[str, Any],
+) -> list[BenchmarkResult]:
     """Convert raw JSON data to structured BenchmarkResult objects."""
     benchmark_results = []
     raw_results = raw_data.get("results", [])
@@ -581,8 +581,8 @@ def _convert_raw_data_to_benchmark_results(
 
 
 def _convert_raw_samples_to_benchmark_samples(
-    result_data: Dict[str, Any],
-) -> List[BenchmarkSample]:
+    result_data: dict[str, Any],
+) -> list[BenchmarkSample]:
     """Convert raw sample data to BenchmarkSample objects."""
     samples = []
     results_data = result_data.get("results", [])
@@ -629,7 +629,7 @@ def _convert_raw_samples_to_benchmark_samples(
 
 def _execute_quality_analysis(
     quality_controller: QualityController,
-) -> Tuple[CleanedDataset, QualityAssessment]:
+) -> tuple[CleanedDataset, QualityAssessment]:
     """Execute quality control analysis with proper error handling."""
     print("🔄 Executing quality control pipeline...")
     try:
@@ -654,7 +654,7 @@ def _generate_qc_report(
     qc_config: QCConfiguration,
     cleaned_dataset: CleanedDataset,
     quality_assessment: QualityAssessment,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generate comprehensive quality control report."""
     return {
         "timestamp": datetime.now().isoformat(),
@@ -683,7 +683,7 @@ def _generate_qc_report(
 
 def _convert_quality_metrics_to_dict(
     quality_assessment: QualityAssessment,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Convert quality metrics to dictionary format for JSON serialization."""
     if not quality_assessment.quality_summary:
         return {}
@@ -704,7 +704,7 @@ def _convert_quality_metrics_to_dict(
     }
 
 
-def _sample_to_dict(sample: BenchmarkSample) -> Dict[str, Any]:
+def _sample_to_dict(sample: BenchmarkSample) -> dict[str, Any]:
     """Convert BenchmarkSample to dictionary representation."""
     return {
         "task": sample.task,
@@ -726,14 +726,14 @@ def _sample_to_dict(sample: BenchmarkSample) -> Dict[str, Any]:
     }
 
 
-def _save_qc_report(output_dir: Path, qc_report: Dict[str, Any]) -> None:
+def _save_qc_report(output_dir: Path, qc_report: dict[str, Any]) -> None:
     """Save quality control report with proper error handling."""
     try:
         report_path = output_dir / QCConstants.QC_REPORT_FILENAME
         with open(report_path, "w") as f:
             json.dump(qc_report, f, indent=QCConstants.DEFAULT_JSON_INDENT)
         print(f"✅ Quality control report saved to {report_path}")
-    except IOError as e:
+    except OSError as e:
         print(f"❌ Error saving QC report: {e}")
         sys.exit(1)
 
@@ -772,7 +772,7 @@ def _save_cleaned_dataset(
         with open(cleaned_dataset_path, "w") as f:
             json.dump(cleaned_data_json, f, indent=QCConstants.DEFAULT_JSON_INDENT)
         print(f"✅ Cleaned dataset saved to {cleaned_dataset_path}")
-    except IOError as e:
+    except OSError as e:
         print(f"❌ Error saving cleaned dataset: {e}")
         sys.exit(1)
 

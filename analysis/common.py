@@ -9,7 +9,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from .config_parser import ConfigParser
 
@@ -61,7 +61,7 @@ def load_configuration(quick_mode: bool) -> ConfigParser:
         sys.exit(1)
 
 
-def load_latest_results(quick_mode: bool) -> Tuple[Path, Dict[str, Any]]:
+def load_latest_results(quick_mode: bool) -> tuple[Path, dict[str, Any]]:
     """
     Load the most recent results file based on analysis mode.
 
@@ -109,7 +109,7 @@ def load_latest_results(quick_mode: bool) -> Tuple[Path, Dict[str, Any]]:
 
         latest_file = max(filtered_files, key=lambda x: x.stat().st_mtime)
 
-        with open(latest_file, "r") as f:
+        with open(latest_file) as f:
             raw_data = json.load(f)
 
         print(f"✅ Loaded raw benchmark data from {latest_file}")
@@ -121,7 +121,7 @@ def load_latest_results(quick_mode: bool) -> Tuple[Path, Dict[str, Any]]:
     except json.JSONDecodeError as e:
         print(f"❌ Invalid JSON format in {latest_file}: {e}")
         sys.exit(1)
-    except IOError as e:
+    except OSError as e:
         print(f"❌ Error reading {latest_file}: {e}")
         sys.exit(1)
 

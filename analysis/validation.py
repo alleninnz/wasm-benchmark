@@ -5,11 +5,6 @@ Validates implementation correctness across Rust and TinyGo through hash verific
 and result consistency checks. Focuses on engineering reliability over academic rigor.
 """
 
-import json
-import sys
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-
 from . import common
 from .data_models import (
     BenchmarkSample,
@@ -38,8 +33,8 @@ class BenchmarkValidator:
         self.config = validation_config
 
     def validate_task_results(
-        self, task_results: List[TaskResult]
-    ) -> List[ValidationResult]:
+        self, task_results: list[TaskResult]
+    ) -> list[ValidationResult]:
         """
         Validate all task results for cross-language consistency.
 
@@ -90,8 +85,8 @@ class BenchmarkValidator:
         )
 
     def _verify_hash_consistency(
-        self, samples: List[BenchmarkSample]
-    ) -> Tuple[bool, List[str]]:
+        self, samples: list[BenchmarkSample]
+    ) -> tuple[bool, list[str]]:
         """
         Verify that all samples in a task produce the same result hash.
 
@@ -110,8 +105,8 @@ class BenchmarkValidator:
         return False, []
 
     def _verify_cross_language_hash_match(
-        self, rust_samples: List[BenchmarkSample], tinygo_samples: List[BenchmarkSample]
-    ) -> Tuple[bool, List[str]]:
+        self, rust_samples: list[BenchmarkSample], tinygo_samples: list[BenchmarkSample]
+    ) -> tuple[bool, list[str]]:
         """
         Validate that Rust and TinyGo implementations produce identical result hashes.
 
@@ -158,7 +153,7 @@ def _execute_validation_pipeline(quick_mode: bool = False) -> None:
     # Load benchmark data and configuration using common utilities
     latest_file, raw_data = common.load_latest_results(quick_mode)
     config_parser = common.load_configuration(quick_mode)
-    validation_config = config_parser.get_validation_config()
+    config_parser.get_validation_config()
 
     print("🔄 Executing validation pipeline...")
     print("⚠️  Note: Validation functionality is currently under development")

@@ -7,17 +7,14 @@ for engineering-grade statistical comparison between Rust and TinyGo implementat
 
 import json
 import math
-import random
 import sys
 from datetime import datetime
-from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, Generator, Iterable, List, Tuple
+from typing import Any
 
 from scipy.stats import t as t_dist
 
 from . import common
-
 from .data_models import (
     BenchmarkSample,
     CleanedDataset,
@@ -43,6 +40,7 @@ FALLBACK_DEGREES_FREEDOM = 1.0
 FIRST_QUARTILE = 0.25
 THIRD_QUARTILE = 0.75
 
+
 CLEANED_DATASET_PATH = Path("reports/qc/cleaned_dataset.json")
 STATS_PATH = Path("reports/statistics/")
 
@@ -63,12 +61,7 @@ class StatisticalAnalysis:
         self.effect_thresholds = self.config.effect_size_thresholds
         self.minimum_detectable_effect = self.config.minimum_detectable_effect
 
-        # Performance optimization: LRU cache for expensive calculations
-        self._cache_enabled = True  # Can be disabled for testing or memory constraints
-        self._cache_size = 1000  # Maximum cache entries
-        self._streaming_threshold = 10000  # Use streaming for datasets larger than this
-
-    def welch_t_test(self, group1: List[float], group2: List[float]) -> TTestResult:
+    def welch_t_test(self, group1: list[float], group2: list[float]) -> TTestResult:
         """
         Perform Welch's t-test for comparing two groups with potentially unequal variances.
 
@@ -89,8 +82,8 @@ class StatisticalAnalysis:
         """
         self._validate_groups(group1, group2, "welch_t_test")
         # Calculate sample statistics for both groups with caching
-        n1, mean1, var1 = self._get_cached_stats(group1)
-        n2, mean2, var2 = self._get_cached_stats(group2)
+        n1, mean1, var1 = self._get_basic_stats(group1)
+        n2, mean2, var2 = self._get_basic_stats(group2)
 
         if n1 < MINIMUM_SAMPLES_FOR_TEST or n2 < MINIMUM_SAMPLES_FOR_TEST:
             # Insufficient data for meaningful t-test
@@ -131,7 +124,7 @@ class StatisticalAnalysis:
             alpha=self.alpha,
         )
 
-    def cohens_d(self, group1: List[float], group2: List[float]) -> EffectSizeResult:
+    def cohens_d(self, group1: list[float], group2: list[float]) -> EffectSizeResult:
         """
         Calculate Cohen's d effect size for quantifying practical significance.
 
@@ -157,8 +150,8 @@ class StatisticalAnalysis:
         """
         self._validate_groups(group1, group2, "cohens_d")
         # Calculate sample statistics for both groups with caching
-        n1, mean1, var1 = self._get_cached_stats(group1)
-        n2, mean2, var2 = self._get_cached_stats(group2)
+        n1, mean1, var1 = self._get_basic_stats(group1)
+        n2, mean2, var2 = self._get_basic_stats(group2)
 
         if n1 < MINIMUM_SAMPLES_FOR_TEST or n2 < MINIMUM_SAMPLES_FOR_TEST:
             # Insufficient data for meaningful effect size calculation
@@ -201,7 +194,7 @@ class StatisticalAnalysis:
         )
 
     def _validate_groups(
-        self, group1: List[float], group2: List[float], method_name: str
+        self, group1: list[float], group2: list[float], method_name: str
     ) -> None:
         """Validate input groups for statistical analysis.
 
@@ -262,7 +255,7 @@ class StatisticalAnalysis:
             coefficient_variation=0.0,
         )
 
-    def _calculate_median_from_sorted(self, sorted_data: List[float]) -> float:
+    def _calculate_median_from_sorted(self, sorted_data: list[float]) -> float:
         """
         Calculate median from pre-sorted data.
 
@@ -279,8 +272,8 @@ class StatisticalAnalysis:
             return sorted_data[n // 2]
 
     def _calculate_basic_stats_welford(
-        self, data: List[float]
-    ) -> Tuple[int, float, float]:
+        self, data: list[float]
+    ) -> tuple[int, float, float]:
         """
         Calculate mean and variance using Welford's online algorithm.
 
@@ -360,7 +353,7 @@ class StatisticalAnalysis:
 
         return numerator / denominator
 
-    def _calculate_quartiles(self, sorted_data: List[float]) -> Tuple[float, float]:
+    def _calculate_quartiles(self, sorted_data: list[float]) -> tuple[float, float]:
         """
         Calculate first and third quartiles efficiently.
 
@@ -453,12 +446,9 @@ class StatisticalAnalysis:
 
         return base_interpretation + mde_interpretation + practical_assessment
 
-    def _get_cached_stats(self, data: List[float]) -> Tuple[int, float, float]:
+    def _get_basic_stats(self, data: list[float]) -> tuple[int, float, float]:
         """
-        Get basic statistics with LRU caching to avoid recomputation.
-
-        Performance optimization: Cache expensive calculations when the same
-        dataset is processed multiple times with automatic memory management.
+        Get basic statistics using Welford's algorithm for numerical stability.
 
         Args:
             data: Performance data samples
@@ -466,78 +456,7 @@ class StatisticalAnalysis:
         Returns:
             Tuple[int, float, float]: (n, mean, variance)
         """
-        if not self._cache_enabled:
-            return self._calculate_basic_stats_welford(data)
-
-        # Create optimized hash for the data using content-based approach
-        if len(data) < 100:
-            # For small datasets, use full tuple hash
-            cache_key = hash(tuple(data))
-        else:
-            # For larger datasets, use statistical fingerprint that's more robust
-            # Include more statistical properties to reduce collision probability
-            data_min, data_max = min(data), max(data)
-            data_mid = data[len(data) // 2] if data else 0
-            cache_key = hash(
-                (
-                    len(data),
-                    sum(data),
-                    data[0],
-                    data[-1],
-                    data_mid,
-                    data_min,
-                    data_max,
-                    (
-                        sum(data[:10]) if len(data) >= 10 else sum(data)
-                    ),  # First 10 elements
-                )
-            )
-
-        # Use the cached computation function
-        return self._compute_stats_cached(cache_key, tuple(data))
-
-    @lru_cache(maxsize=1000)
-    def _compute_stats_cached(
-        self, _cache_key: int, data_tuple: Tuple[float, ...]
-    ) -> Tuple[int, float, float]:
-        """
-        LRU-cached computation of basic statistics.
-
-        Args:
-            _cache_key: Hash key for cache identification (unused but required for LRU cache)
-            data_tuple: Data as tuple for hashing
-
-        Returns:
-            Tuple[int, float, float]: (n, mean, variance)
-        """
-        return self._calculate_basic_stats_welford(list(data_tuple))
-
-    def clear_cache(self) -> None:
-        """
-        Clear the LRU statistics cache to free memory.
-
-        Useful for long-running processes or when memory usage becomes a concern.
-        """
-        self._compute_stats_cached.cache_clear()
-
-    def disable_cache(self) -> None:
-        """Disable caching for memory-constrained environments."""
-        self._cache_enabled = False
-        self._compute_stats_cached.cache_clear()
-
-    def enable_cache(self) -> None:
-        """Re-enable caching for performance optimization."""
-        self._cache_enabled = True
-
-    def get_cache_info(self) -> str:
-        """
-        Get LRU cache performance information for monitoring.
-
-        Returns:
-            str: Cache hit/miss statistics and current size
-        """
-        info = self._compute_stats_cached.cache_info()
-        return f"Cache: {info.hits} hits, {info.misses} misses, {info.currsize}/{info.maxsize} entries"
+        return self._calculate_basic_stats_welford(data)
 
     def _calculate_p_value(self, t_stat: float, df: float) -> float:
         """
@@ -617,8 +536,8 @@ class StatisticalAnalysis:
             return EffectSize.NEGLIGIBLE
 
     def _confidence_interval(
-        self, group1: List[float], group2: List[float]
-    ) -> Tuple[float, float]:
+        self, group1: list[float], group2: list[float]
+    ) -> tuple[float, float]:
         """
         Calculate confidence interval for the difference in means using accurate t-distribution.
 
@@ -630,8 +549,8 @@ class StatisticalAnalysis:
             Tuple[float, float]: (lower_bound, upper_bound) of confidence interval
         """
         # Calculate sample statistics for both groups with caching
-        n1, mean1, var1 = self._get_cached_stats(group1)
-        n2, mean2, var2 = self._get_cached_stats(group2)
+        n1, mean1, var1 = self._get_basic_stats(group1)
+        n2, mean2, var2 = self._get_basic_stats(group2)
 
         if n1 < MINIMUM_SAMPLES_FOR_TEST or n2 < MINIMUM_SAMPLES_FOR_TEST:
             # Insufficient data for confidence interval
@@ -737,7 +656,7 @@ class StatisticalAnalysis:
 
     def _extract_performance_data(
         self, rust_result: TaskResult, tinygo_result: TaskResult
-    ) -> Tuple[PerformanceStatistics, PerformanceStatistics]:
+    ) -> tuple[PerformanceStatistics, PerformanceStatistics]:
         """
         Extract and compute performance statistics for both languages.
 
@@ -780,8 +699,8 @@ class StatisticalAnalysis:
         return rust_performance, tinygo_performance
 
     def _extract_metrics_from_samples(
-        self, samples: List[BenchmarkSample]
-    ) -> Tuple[List[float], List[float]]:
+        self, samples: list[BenchmarkSample]
+    ) -> tuple[list[float], list[float]]:
         """
         Single-pass extraction of execution time and memory usage from samples.
 
@@ -805,7 +724,7 @@ class StatisticalAnalysis:
 
     def _perform_metric_comparisons(
         self, rust_result: TaskResult, tinygo_result: TaskResult
-    ) -> Tuple[MetricComparison, MetricComparison]:
+    ) -> tuple[MetricComparison, MetricComparison]:
         """
         Perform statistical comparisons for all performance metrics.
 
@@ -836,131 +755,9 @@ class StatisticalAnalysis:
 
         return exec_time_comparison, memory_usage_comparison
 
-    def _calculate_complete_stats_streaming(
-        self, data_stream: Iterable[float]
-    ) -> StatisticalResult:
+    def _calculate_complete_stats(self, data: list[float]) -> StatisticalResult:
         """
-        Calculate complete statistics using streaming algorithm for large datasets.
-
-        Memory-efficient processing that doesn't require loading entire dataset into memory.
-        Uses online algorithms for mean, variance, and streaming quantile estimation.
-
-        Args:
-            data_stream: Generator yielding float values
-
-        Returns:
-            StatisticalResult: Complete statistical measures computed incrementally
-        """
-        # Streaming statistics accumulators
-        n = 0
-        mean = 0.0
-        m2 = 0.0  # Sum of squares of differences for variance
-        min_val = float("inf")
-        max_val = float("-inf")
-
-        # Streaming quantile estimation using P²-algorithm approximation
-        # For simplicity, collect sample for quantiles (could be further optimized)
-        quantile_sample = []
-        sample_limit = min(
-            1000, max(100, self._streaming_threshold // 10)
-        )  # Adaptive sampling with minimum
-
-        for value in data_stream:
-            n += 1
-
-            # Update min/max
-            min_val = min(min_val, value)
-            max_val = max(max_val, value)
-
-            # Welford's online algorithm for mean and variance
-            delta = value - mean
-            mean += delta / n
-            delta2 = value - mean
-            m2 += delta * delta2
-
-            # Collect sample for quantile estimation
-            if len(quantile_sample) < sample_limit:
-                quantile_sample.append(value)
-            elif (
-                sample_limit > 0
-                and n % max(1, self._streaming_threshold // sample_limit) == 0
-            ):
-                # Replace random element to maintain representative sample
-                quantile_sample[random.randint(0, len(quantile_sample) - 1)] = value
-
-        if n == 0:
-            return self._empty_statistical_result()
-
-        # Calculate final statistics
-        variance = m2 / (n - 1) if n > 1 else 0.0
-        std = math.sqrt(variance)
-        coefficient_variation = (
-            std / mean if abs(mean) > COEFFICIENT_VARIATION_THRESHOLD else 0.0
-        )
-
-        # Calculate quantiles from sample
-        if quantile_sample:
-            quantile_sample.sort()
-            median = self._calculate_median_from_sorted(quantile_sample)
-            q1, q3 = self._calculate_quartiles(quantile_sample)
-        else:
-            median = mean
-            q1 = q3 = mean
-
-        return StatisticalResult(
-            count=n,
-            mean=mean,
-            std=std,
-            min=min_val if min_val != float("inf") else 0.0,
-            max=max_val if max_val != float("-inf") else 0.0,
-            median=median,
-            q1=q1,
-            q3=q3,
-            iqr=q3 - q1,
-            coefficient_variation=coefficient_variation,
-        )
-
-    def _should_use_streaming(self, data: List[float]) -> bool:
-        """
-        Determine whether to use streaming processing based on data size.
-
-        Args:
-            data: Dataset to analyze
-
-        Returns:
-            bool: True if streaming should be used
-        """
-        return len(data) > self._streaming_threshold and self._streaming_threshold > 0
-
-    def _validate_streaming_data(
-        self, data_stream: Iterable[float]
-    ) -> Generator[float, None, None]:
-        """
-        Validate and clean data stream for streaming processing.
-
-        Args:
-            data_stream: Input data stream
-
-        Yields:
-            float: Validated numeric values
-
-        Raises:
-            ValueError: If data contains invalid values
-        """
-        for i, value in enumerate(data_stream):
-            if not isinstance(value, (int, float)):
-                raise ValueError(f"Non-numeric value at position {i}: {value}")
-            if math.isnan(value) or math.isinf(value):
-                raise ValueError(f"Invalid numeric value at position {i}: {value}")
-            if value < 0:
-                raise ValueError(f"Negative value at position {i}: {value}")
-            yield float(value)
-
-    def _calculate_complete_stats(self, data: List[float]) -> StatisticalResult:
-        """
-        Calculate complete descriptive statistics with automatic streaming support.
-
-        Automatically chooses between in-memory and streaming processing based on data size.
+        Calculate complete descriptive statistics using in-memory processing.
 
         Args:
             data: Performance data samples
@@ -971,24 +768,11 @@ class StatisticalAnalysis:
         if not data:
             return self._empty_statistical_result()
 
-        # Use streaming for large datasets
-        if self._should_use_streaming(data):
-            try:
-                validated_stream = self._validate_streaming_data(iter(data))
-                return self._calculate_complete_stats_streaming(validated_stream)
-            except Exception as e:
-                # Fallback to memory processing if streaming fails
-                print(
-                    f"Warning: Streaming processing failed ({e}), falling back to memory processing"
-                )
-                return self._calculate_complete_stats_memory(data)
-
-        # Use optimized in-memory processing for smaller datasets
         return self._calculate_complete_stats_memory(data)
 
     def _calculate_complete_stats_optimized_summary(
-        self, comparison_results: List[ComparisonResult]
-    ) -> Dict[str, Any]:
+        self, comparison_results: list[ComparisonResult]
+    ) -> dict[str, Any]:
         """
         Generate summary statistics using single-pass optimization for all metrics.
 
@@ -1109,7 +893,7 @@ class StatisticalAnalysis:
             },
         }
 
-    def _calculate_complete_stats_memory(self, data: List[float]) -> StatisticalResult:
+    def _calculate_complete_stats_memory(self, data: list[float]) -> StatisticalResult:
         """
         Calculate complete descriptive statistics with optimized in-memory processing.
 
@@ -1153,7 +937,7 @@ class StatisticalAnalysis:
         )
 
     def _create_metric_comparison(
-        self, metric_type: MetricType, rust_data: List[float], tinygo_data: List[float]
+        self, metric_type: MetricType, rust_data: list[float], tinygo_data: list[float]
     ) -> MetricComparison:
         """
         Create MetricComparison with complete statistical analysis.
@@ -1326,7 +1110,7 @@ def _load_cleaned_dataset(input_path: Path) -> CleanedDataset:
         if not input_path.exists():
             raise FileNotFoundError(f"Cleaned dataset file not found: {input_path}")
 
-        with open(input_path, "r") as f:
+        with open(input_path) as f:
             raw_data = json.load(f)
 
         # Validate required fields
@@ -1355,14 +1139,14 @@ def _load_cleaned_dataset(input_path: Path) -> CleanedDataset:
     except (ValueError, KeyError) as e:
         print(f"❌ Invalid cleaned dataset format: {e}")
         sys.exit(1)
-    except IOError as e:
+    except OSError as e:
         print(f"❌ Error reading {input_path}: {e}")
         sys.exit(1)
 
 
 def _perform_comparisons(
     dataset: CleanedDataset, stats_engine: StatisticalAnalysis
-) -> List[ComparisonResult]:
+) -> list[ComparisonResult]:
     """
     Perform statistical comparisons for all tasks in the cleaned dataset.
 
@@ -1426,7 +1210,7 @@ def _perform_comparisons(
 
 
 def _save_comparison_results(
-    comparison_results: List[ComparisonResult],
+    comparison_results: list[ComparisonResult],
     output_dir: Path,
     stats_engine: StatisticalAnalysis,
 ) -> None:
@@ -1479,7 +1263,7 @@ def _save_comparison_results(
 
         print(f"✅ Saved {len(comparison_results)} individual comparison files")
 
-    except IOError as e:
+    except OSError as e:
         print(f"❌ Error saving comparison results: {e}")
         sys.exit(1)
     except Exception as e:
@@ -1487,7 +1271,7 @@ def _save_comparison_results(
         sys.exit(1)
 
 
-def _validate_cleaned_dataset_structure(raw_data: Dict[str, Any]) -> None:
+def _validate_cleaned_dataset_structure(raw_data: dict[str, Any]) -> None:
     """Validate that the loaded JSON has the expected structure."""
     required_fields = ["task_results", "cleaning_log"]
     for field in required_fields:
@@ -1499,8 +1283,8 @@ def _validate_cleaned_dataset_structure(raw_data: Dict[str, Any]) -> None:
 
 
 def _convert_raw_task_results(
-    raw_task_results: List[Dict[str, Any]],
-) -> List[TaskResult]:
+    raw_task_results: list[dict[str, Any]],
+) -> list[TaskResult]:
     """Convert raw task result data to TaskResult objects."""
     task_results = []
     for raw_result in raw_task_results:
@@ -1520,7 +1304,7 @@ def _convert_raw_task_results(
     return task_results
 
 
-def _convert_raw_samples(raw_samples: List[Dict[str, Any]]) -> List[BenchmarkSample]:
+def _convert_raw_samples(raw_samples: list[dict[str, Any]]) -> list[BenchmarkSample]:
     """Convert raw sample data to BenchmarkSample objects."""
     samples = []
     for raw_sample in raw_samples:
@@ -1553,8 +1337,8 @@ def _convert_raw_samples(raw_samples: List[Dict[str, Any]]) -> List[BenchmarkSam
 
 
 def _group_task_results_for_comparison(
-    task_results: List[TaskResult],
-) -> Dict[Tuple[str, str], Dict[str, TaskResult]]:
+    task_results: list[TaskResult],
+) -> dict[tuple[str, str], dict[str, TaskResult]]:
     """Group task results by (task, scale) and then by language for comparison."""
     groups = {}
 
@@ -1570,7 +1354,7 @@ def _group_task_results_for_comparison(
 
 def _comparison_result_to_dict(
     result: ComparisonResult, compact: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Convert ComparisonResult object to dictionary for JSON serialization with optional compression.
 
@@ -1587,7 +1371,7 @@ def _comparison_result_to_dict(
     return _comparison_result_to_dict_full(result)
 
 
-def _comparison_result_to_dict_compact(result: ComparisonResult) -> Dict[str, Any]:
+def _comparison_result_to_dict_compact(result: ComparisonResult) -> dict[str, Any]:
     """Compact JSON representation with ~60% size reduction."""
 
     def _compact_stats(stats):
@@ -1658,7 +1442,7 @@ def _comparison_result_to_dict_compact(result: ComparisonResult) -> Dict[str, An
     }
 
 
-def _comparison_result_to_dict_full(result: ComparisonResult) -> Dict[str, Any]:
+def _comparison_result_to_dict_full(result: ComparisonResult) -> dict[str, Any]:
     """Full verbose JSON representation for detailed analysis."""
     return {
         "task": result.task,
@@ -1772,7 +1556,7 @@ def _comparison_result_to_dict_full(result: ComparisonResult) -> Dict[str, Any]:
 
 
 def _print_analysis_summary(
-    comparison_results: List[ComparisonResult], output_dir: Path
+    comparison_results: list[ComparisonResult], output_dir: Path
 ) -> None:
     """Print comprehensive multi-metric analysis summary."""
     print("\n📈 Multi-Metric Statistical Analysis Summary:")

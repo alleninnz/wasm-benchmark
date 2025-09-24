@@ -8,7 +8,7 @@ metrics, statistical analysis results, and pipeline configuration management.
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import cached_property
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 
 class DataQuality(Enum):
@@ -55,6 +55,19 @@ class RecommendationLevel(Enum):
     TRADEOFF = "tradeoff"
 
 
+class SignificanceCategory(Enum):
+    """Statistical significance categories"""
+
+    STRONG_EVIDENCE = "Strong evidence"
+    STATISTICALLY_SIGNIFICANT_BUT_SMALL_EFFECT = (
+        "Statistically significant but small effect"
+    )
+    LARGE_EFFECT_BUT_NOT_STATISTICALLY_CONFIRMED = (
+        "Large effect but not statistically confirmed"
+    )
+    NO_SIGNIFICANT_DIFFERENCE = "No significant difference"
+
+
 @dataclass
 class QCConfiguration:
     """Quality Control configuration parameters"""
@@ -74,7 +87,7 @@ class StatisticsConfiguration:
 
     confidence_level: float
     significance_alpha: float
-    effect_size_thresholds: Dict[str, float]
+    effect_size_thresholds: dict[str, float]
     minimum_detectable_effect: float
 
 
@@ -85,9 +98,9 @@ class PlotsConfiguration:
     dpi_basic: int
     dpi_detailed: int
     output_format: str
-    figure_sizes: Dict[str, List[int]]
-    font_sizes: Dict[str, int]
-    color_scheme: Dict[str, str]
+    figure_sizes: dict[str, list[int]]
+    font_sizes: dict[str, int]
+    color_scheme: dict[str, str]
 
 
 @dataclass
@@ -133,7 +146,7 @@ class BenchmarkSample:
     jsHeapAfter: int
     success: bool
     implementation: str
-    resultDimensions: Optional[List[int]] = None
+    resultDimensions: Optional[list[int]] = None
     recordsProcessed: Optional[int] = None
 
 
@@ -143,7 +156,7 @@ class BenchmarkResult:
 
     benchmark: str
     success: bool
-    samples: List[BenchmarkSample]
+    samples: list[BenchmarkSample]
     timestamp: str
     duration: int
     id: str
@@ -153,8 +166,8 @@ class BenchmarkResult:
 class RawBenchmarkData:
     """Raw benchmark data as loaded from JSON files"""
 
-    summary: Dict[str, Any]
-    results: List[BenchmarkResult]
+    summary: dict[str, Any]
+    results: list[BenchmarkResult]
     file_path: str
     load_timestamp: str
 
@@ -166,7 +179,7 @@ class TaskResult:
     task: str
     language: str
     scale: str
-    samples: List[BenchmarkSample]
+    samples: list[BenchmarkSample]
     successful_runs: int
     failed_runs: int
     success_rate: float
@@ -176,9 +189,9 @@ class TaskResult:
 class CleanedDataset:
     """Dataset after quality control and cleaning"""
 
-    task_results: List[TaskResult]
-    removed_outliers: List[BenchmarkSample]
-    cleaning_log: List[str]
+    task_results: list[TaskResult]
+    removed_outliers: list[BenchmarkSample]
+    cleaning_log: list[str]
 
 
 @dataclass
@@ -193,15 +206,15 @@ class QualityMetrics:
     outlier_rate: float
     success_rate: float
     data_quality: DataQuality
-    quality_issues: List[str]
+    quality_issues: list[str]
 
 
 @dataclass
 class QualityAssessment:
-    quality_summary: Optional[Dict[str, QualityMetrics]]
+    quality_summary: Optional[dict[str, QualityMetrics]]
     overall_quality: DataQuality
     quality_reason: str
-    quality_stats: Dict[str, int]
+    quality_stats: dict[str, int]
 
 
 @dataclass
@@ -325,16 +338,16 @@ class MetricComparison:
         return self.effect_size.effect_size in [EffectSize.MEDIUM, EffectSize.LARGE]
 
     @property
-    def significance_category(self) -> str:
+    def significance_category(self) -> SignificanceCategory:
         """Get significance category for this comparison"""
         if self.is_significant and self.practical_significance:
-            return "Strong evidence"
+            return SignificanceCategory.STRONG_EVIDENCE
         elif self.is_significant and not self.practical_significance:
-            return "Statistically significant but small effect"
+            return SignificanceCategory.STATISTICALLY_SIGNIFICANT_BUT_SMALL_EFFECT
         elif not self.is_significant and self.practical_significance:
-            return "Large effect but not statistically confirmed"
+            return SignificanceCategory.LARGE_EFFECT_BUT_NOT_STATISTICALLY_CONFIRMED
         else:
-            return "No significant difference"
+            return SignificanceCategory.NO_SIGNIFICANT_DIFFERENCE
 
 
 @dataclass
@@ -417,12 +430,12 @@ class ComparisonResult:
     @cached_property
     def _execution_significance(self) -> str:
         """Cached execution time significance level"""
-        return self.execution_time_comparison.significance_category
+        return self.execution_time_comparison.significance_category.value
 
     @cached_property
     def _memory_significance(self) -> str:
         """Cached memory usage significance level"""
-        return self.memory_usage_comparison.significance_category
+        return self.memory_usage_comparison.significance_category.value
 
     @cached_property
     def recommendation_level(self) -> RecommendationLevel:
@@ -440,7 +453,6 @@ class ComparisonResult:
             return RecommendationLevel.TRADEOFF
         elif exec_winner is not None or mem_winner is not None:
             # Check if the single winner has strong evidence
-            single_winner = exec_winner or mem_winner
             sig_level = (
                 self._execution_significance
                 if exec_winner
@@ -526,12 +538,12 @@ class ValidationResult:
     scale: str
     rust_hash: int
     tinygo_hash: int
-    rust_dimensions: Optional[List[int]]
-    tinygo_dimensions: Optional[List[int]]
+    rust_dimensions: Optional[list[int]]
+    tinygo_dimensions: Optional[list[int]]
     rust_records: Optional[int]
     tinygo_records: Optional[int]
     validation_passed: bool
-    validation_issues: List[str]
+    validation_issues: list[str]
 
     @property
     def hash_match(self) -> bool:

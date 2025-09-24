@@ -6,15 +6,18 @@ support graphics with configurable styling and engineering-focused presentation.
 """
 
 import os
-from typing import Dict, List
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.lines import Line2D
+from matplotlib.patches import Rectangle
 
 from . import common
-from .data_models import (ComparisonResult, EffectSize, MetricType,
-                          PlotsConfiguration)
+from .data_models import (
+    ComparisonResult,
+    PlotsConfiguration,
+    SignificanceCategory,
+)
 
 
 class VisualizationGenerator:
@@ -42,24 +45,51 @@ class VisualizationGenerator:
 
     def _setup_plotting_style(self) -> None:
         """Configure matplotlib styling based on configuration settings"""
-        # TODO: Configure DPI: plt.rcParams['figure.dpi'] = self.config.dpi
-        # TODO: Set font family: plt.rcParams['font.family'] = self.config.font_family
-        # TODO: Configure professional styling: remove spines, add grid with self.config.grid_style
-        # TODO: Set language colors: self.config.rust_color, self.config.tinygo_color
-        # TODO: Configure layout: plt.rcParams['figure.figsize'] = self.config.figure_size
-        # TODO: Set significance alpha reference: self.config.significance_alpha
-        pass
+        # Configure DPI for high-quality output
+        plt.rcParams["figure.dpi"] = self.config.dpi_basic
+        plt.rcParams["savefig.dpi"] = self.config.dpi_detailed
+
+        # Set professional font styling
+        plt.rcParams["font.family"] = "sans-serif"
+        plt.rcParams["font.sans-serif"] = ["Arial", "DejaVu Sans", "Liberation Sans"]
+        plt.rcParams["font.size"] = self.config.font_sizes["default"]
+        plt.rcParams["axes.labelsize"] = self.config.font_sizes["labels"]
+        plt.rcParams["axes.titlesize"] = self.config.font_sizes["titles"]
+        plt.rcParams["legend.fontsize"] = self.config.font_sizes["default"]
+        plt.rcParams["xtick.labelsize"] = self.config.font_sizes["default"]
+        plt.rcParams["ytick.labelsize"] = self.config.font_sizes["default"]
+
+        # Configure professional styling with clean appearance
+        plt.rcParams["axes.spines.top"] = False
+        plt.rcParams["axes.spines.right"] = False
+        plt.rcParams["axes.linewidth"] = 0.8
+        plt.rcParams["axes.edgecolor"] = "#333333"
+        plt.rcParams["axes.grid"] = True
+        plt.rcParams["grid.alpha"] = 0.3
+        plt.rcParams["grid.linewidth"] = 0.5
+        plt.rcParams["grid.color"] = "#cccccc"
+
+        # Set default figure size
+        plt.rcParams["figure.figsize"] = self.config.figure_sizes["basic"]
+
+        # Configure layout and spacing
+        plt.rcParams["figure.autolayout"] = True
+        plt.rcParams["axes.axisbelow"] = True
+
+        # Store language colors for easy access
+        self.rust_color = self.config.color_scheme["rust"]
+        self.tinygo_color = self.config.color_scheme["tinygo"]
 
     def create_execution_time_comparison(
         self,
-        comparisons: List[ComparisonResult],
+        comparisons: list[ComparisonResult],
         output_path: str = "reports/plots/execution_time_comparison.png",
     ) -> str:
         """
         Generate execution time comparison chart across all benchmark tasks.
 
-        Shows Rust vs TinyGo execution times with statistical significance markers,
-        confidence intervals, and clear performance winners for each task.
+        Shows Rust vs TinyGo execution times with comprehensive statistical analysis including
+        means, medians, variability metrics, and both statistical and practical significance.
 
         Args:
             comparisons: Statistical comparison results for all tasks and scales
@@ -71,26 +101,295 @@ class VisualizationGenerator:
         Raises:
             ValueError: If no comparison results provided or invalid data
         """
-        # TODO: Validate input: raise ValueError if not comparisons or invalid ComparisonResult objects
-        # TODO: Check data completeness: ensure all comparisons have execution_time_comparison.t_test results
-        # TODO: Handle edge cases: empty comparison lists, missing confidence intervals, NaN values
-        # TODO: Extract means: comparison.rust_performance.execution_time.mean, comparison.tinygo_performance.execution_time.mean
-        # TODO: Extract CIs: comparison.execution_time_comparison.t_test.confidence_interval_lower/upper
-        # TODO: Create grouped bars: task×scale combinations with Rust/TinyGo side-by-side
-        # TODO: Add error bars using confidence interval ranges from t_test results
-        # TODO: Add significance markers: p < 0.001 (***), p < 0.01 (**), p < 0.05 (*) from comparison.execution_time_comparison.is_significant
-        # TODO: Apply styling: self.config.rust_color, self.config.tinygo_color, professional spines/grid
-        # TODO: Set labels: 'Execution Time (ms)', task names, scale indicators
-        # TODO: Add legend: confidence intervals, winner indicators from comparison.execution_time_winner
-        # TODO: Add significance legend: p-value thresholds relative to self.config.significance_alpha
-        # TODO: Save with: plt.savefig(output_path, dpi=self.config.dpi, format=self.config.image_format)
-        # TODO: Return validated output_path after successful generation
+        # Validate input
+        if not comparisons:
+            raise ValueError("No comparison results provided")
+
+        # Check data completeness
+        for comparison in comparisons:
+            if not hasattr(comparison, "execution_time_comparison") or not hasattr(
+                comparison.execution_time_comparison, "t_test"
+            ):
+                raise ValueError(
+                    f"Missing execution time comparison data for {comparison.task}_{comparison.scale}"
+                )
+
+        # Create figure with appropriate size for enhanced information
+        _, (ax_main, ax_stats) = plt.subplots(
+            2,
+            1,
+            figsize=(
+                self.config.figure_sizes["detailed"][0],
+                self.config.figure_sizes["detailed"][1] * 1.4,
+            ),
+        )
+
+        # Prepare data for plotting
+        task_scale_labels = []
+        rust_means = []
+        tinygo_means = []
+        rust_medians = []
+        tinygo_medians = []
+        rust_errors = []
+        tinygo_errors = []
+        significance_categories = []
+        rust_cvs = []
+        tinygo_cvs = []
+
+        for comparison in comparisons:
+            # Create task-scale label
+            label = f"{comparison.task}\n{comparison.scale}"
+            task_scale_labels.append(label)
+
+            # Extract comprehensive execution time statistics
+            rust_stats = comparison.rust_performance.execution_time
+            tinygo_stats = comparison.tinygo_performance.execution_time
+
+            rust_means.append(rust_stats.mean)
+            tinygo_means.append(tinygo_stats.mean)
+            rust_medians.append(rust_stats.median)
+            tinygo_medians.append(tinygo_stats.median)
+            rust_cvs.append(rust_stats.coefficient_variation)
+            tinygo_cvs.append(tinygo_stats.coefficient_variation)
+
+            # Calculate proper error bars using standard error
+            rust_std_err = rust_stats.std / np.sqrt(rust_stats.count)
+            tinygo_std_err = tinygo_stats.std / np.sqrt(tinygo_stats.count)
+            rust_errors.append(rust_std_err)
+            tinygo_errors.append(tinygo_std_err)
+
+            # Use comprehensive significance category instead of just is_significant
+            significance_categories.append(
+                comparison.execution_time_comparison.significance_category
+            )
+
+        # Create grouped bar chart for means
+        x = np.arange(len(task_scale_labels))
+        width = 0.35
+
+        _ = ax_main.bar(
+            x - width / 2,
+            rust_means,
+            width,
+            label="Rust (Mean)",
+            color=self.rust_color,
+            yerr=rust_errors,
+            capsize=5,
+            alpha=0.8,
+        )
+        _ = ax_main.bar(
+            x + width / 2,
+            tinygo_means,
+            width,
+            label="TinyGo (Mean)",
+            color=self.tinygo_color,
+            yerr=tinygo_errors,
+            capsize=5,
+            alpha=0.8,
+        )
+
+        # Add median indicators as diamond markers
+        _ = ax_main.scatter(
+            x - width / 2,
+            rust_medians,
+            marker="D",
+            color="darkred",
+            s=50,
+            zorder=3,
+            label="Rust (Median)",
+            alpha=0.9,
+        )
+        _ = ax_main.scatter(
+            x + width / 2,
+            tinygo_medians,
+            marker="D",
+            color="darkblue",
+            s=50,
+            zorder=3,
+            label="TinyGo (Median)",
+            alpha=0.9,
+        )
+
+        # Enhanced significance markers with comprehensive categories
+        for i, category in enumerate(significance_categories):
+            max_height = max(
+                rust_means[i] + rust_errors[i], tinygo_means[i] + tinygo_errors[i]
+            )
+
+            if category == SignificanceCategory.STRONG_EVIDENCE:
+                marker = "🔥"
+                color = "red"
+            elif (
+                category
+                == SignificanceCategory.STATISTICALLY_SIGNIFICANT_BUT_SMALL_EFFECT
+            ):
+                marker = "⚠️"
+                color = "orange"
+            elif (
+                category
+                == SignificanceCategory.LARGE_EFFECT_BUT_NOT_STATISTICALLY_CONFIRMED
+            ):
+                marker = "💡"
+                color = "blue"
+            else:  # "No significant difference"
+                marker = "≈"
+                color = "gray"
+
+            ax_main.text(
+                i,
+                max_height * 1.05,
+                marker,
+                ha="center",
+                va="bottom",
+                fontweight="bold",
+                fontsize=12,
+                color=color,
+            )
+
+        # Add winner indicators considering both statistical and practical significance
+        for i, comparison in enumerate(comparisons):
+            winner = comparison.execution_time_winner
+            if winner:
+                y_pos = (
+                    max(
+                        rust_means[i] + rust_errors[i],
+                        tinygo_means[i] + tinygo_errors[i],
+                    )
+                    * 1.15
+                )
+                winner_symbol = "🏆" if winner == "rust" else "🥇"
+                ax_main.text(
+                    i, y_pos, winner_symbol, ha="center", va="bottom", fontsize=14
+                )
+
+        # Configure main chart axes and labels
+        ax_main.set_ylabel(
+            "Execution Time (ms)", fontsize=self.config.font_sizes["labels"]
+        )
+        ax_main.set_title(
+            "Execution Time Comparison: Rust vs TinyGo (Mean ± SE with Medians)",
+            fontsize=self.config.font_sizes["titles"],
+            fontweight="bold",
+        )
+        ax_main.set_xticks(x)
+        ax_main.set_xticklabels(task_scale_labels, rotation=45, ha="right")
+
+        # Create statistics summary panel
+        ax_stats.axis("off")
+
+        # Create table with comprehensive statistics
+        stats_data = []
+        for i, comparison in enumerate(comparisons):
+            rust_stats = comparison.rust_performance.execution_time
+            tinygo_stats = comparison.tinygo_performance.execution_time
+
+            row = [
+                task_scale_labels[i].replace("\n", " "),
+                f"{rust_stats.mean:.1f}",
+                f"{rust_stats.median:.1f}",
+                f"{rust_stats.coefficient_variation:.3f}",
+                f"{tinygo_stats.mean:.1f}",
+                f"{tinygo_stats.median:.1f}",
+                f"{tinygo_stats.coefficient_variation:.3f}",
+                (
+                    significance_categories[i][:15] + "..."
+                    if len(significance_categories[i]) > 15
+                    else significance_categories[i]
+                ),
+            ]
+            stats_data.append(row)
+
+        # Create table
+        columns = [
+            "Task/Scale",
+            "Rust Mean",
+            "Rust Med",
+            "Rust CV",
+            "TinyGo Mean",
+            "TinyGo Med",
+            "TinyGo CV",
+            "Significance",
+        ]
+        table = ax_stats.table(
+            cellText=stats_data, colLabels=columns, loc="center", cellLoc="center"
+        )
+        table.auto_set_font_size(False)
+        table.set_fontsize(8)
+        table.scale(1, 2)
+
+        # Style the table
+        for i in range(len(columns)):
+            table[(0, i)].set_facecolor("#E6E6FA")
+            table[(0, i)].set_text_props(weight="bold")
+
+        ax_stats.set_title(
+            "Statistical Summary",
+            fontsize=self.config.font_sizes["labels"],
+            fontweight="bold",
+            pad=20,
+        )
+
+        # Enhanced legend for main chart
+        legend_elements = [
+            Rectangle((0, 0), 1, 1, facecolor=self.rust_color, alpha=0.8, label="Rust"),
+            Rectangle(
+                (0, 0), 1, 1, facecolor=self.tinygo_color, alpha=0.8, label="TinyGo"
+            ),
+            Line2D(
+                [0],
+                [0],
+                color="black",
+                marker="_",
+                linestyle="None",
+                markersize=10,
+                label="95% CI (SE)",
+            ),
+            Line2D(
+                [0],
+                [0],
+                color="black",
+                marker="D",
+                linestyle="None",
+                markersize=8,
+                label="Median",
+            ),
+        ]
+
+        # Enhanced significance legend
+        sig_legend_text = [
+            "🔥 Strong evidence",
+            "⚠️ Stat. sig. only",
+            "💡 Large effect only",
+            "≈ No difference",
+            "🏆 Winner (both sig.)",
+        ]
+        for text in sig_legend_text:
+            legend_elements.append(Line2D([0], [0], color="white", label=text))
+
+        ax_main.legend(
+            handles=legend_elements, loc="upper left", bbox_to_anchor=(1.02, 1)
+        )
+
+        # Adjust layout to prevent overlapping
+        plt.tight_layout()
+
+        # Create output directory if it doesn't exist
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+        # Save the plot
+        plt.savefig(
+            output_path,
+            dpi=self.config.dpi_detailed,
+            format=self.config.output_format,
+            bbox_inches="tight",
+        )
+        plt.close()
 
         return output_path
 
     def create_memory_usage_comparison(
         self,
-        comparisons: List[ComparisonResult],
+        comparisons: list[ComparisonResult],  # noqa: ARG002
         output_path: str = "reports/plots/memory_usage_comparison.png",
     ) -> str:
         """
@@ -127,7 +426,7 @@ class VisualizationGenerator:
 
     def create_effect_size_heatmap(
         self,
-        comparisons: List[ComparisonResult],
+        comparisons: list[ComparisonResult],  # noqa: ARG002
         output_path: str = "reports/plots/effect_size_heatmap.png",
     ) -> str:
         """
@@ -165,7 +464,7 @@ class VisualizationGenerator:
 
     def create_decision_summary_panel(
         self,
-        comparisons: List[ComparisonResult],
+        comparisons: list[ComparisonResult],  # noqa: ARG002
         output_path: str = "reports/plots/decision_summary_panel.png",
     ) -> str:
         """

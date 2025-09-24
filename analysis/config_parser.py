@@ -43,10 +43,10 @@ class ConfigParser:
             raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
 
         try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
+            with open(self.config_path, encoding="utf-8") as f:
                 config_data = yaml.safe_load(f)
         except yaml.YAMLError as e:
-            raise yaml.YAMLError(f"Failed to parse YAML configuration: {e}")
+            raise yaml.YAMLError(f"Failed to parse YAML configuration: {e}") from e
 
         if not isinstance(config_data, dict):
             raise ValueError("Configuration file must contain a YAML object")
