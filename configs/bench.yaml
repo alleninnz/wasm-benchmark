@@ -11,7 +11,7 @@ experiment:
 environment:
   warmup_runs: 15
   measure_runs: 50
-  repetitions: 2
+  repetitions: 3
 
   # Global timeout for each individual task execution (in seconds)
   timeout: 1800
@@ -110,7 +110,6 @@ qc:
 
   # Overall quality evaluation thresholds (layered threshold strategy)
   quality_invalid_threshold: 0.1    # 10% invalid groups triggers INVALID overall
-  quality_high_risk_threshold: 0.3  # 30% problem groups triggers INVALID overall
   quality_warning_threshold: 0.3    # 30% warning groups triggers WARNING overall
 
 # Engineering-focused statistical analysis

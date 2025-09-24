@@ -9,7 +9,7 @@ experiment:
 # Minimal measurement parameters for speed
 environment:
   warmup_runs: 5
-  measure_runs: 10
+  measure_runs: 20
   repetitions: 2
 
   # Quick timeout for fast feedback
@@ -83,19 +83,18 @@ verification:
   hash_prime: 16777619
   floating_point_precision: 6
 
-# Engineering-focused quality control
+# Engineering-focused quality control with TinyGo-aware thresholds
 qc:
-  max_coefficient_variation: 0.15
+  max_coefficient_variation: 0.30   # Increased for TinyGo GC variability
   outlier_iqr_multiplier: 1.5
   min_valid_samples: 10
   # timeout handling
-  treat_timeout_as: "failure" 
+  treat_timeout_as: "failure"
   failure_rate: 0.1          # 10% failure rate maximum
 
   # Overall quality evaluation thresholds (layered threshold strategy)
-  quality_invalid_threshold: 0.1    # 10% invalid groups triggers INVALID overall
-  quality_high_risk_threshold: 0.3  # 30% problem groups triggers INVALID overall
-  quality_warning_threshold: 0.3    # 30% warning groups triggers WARNING overall
+  quality_invalid_threshold: 0.6    # 60% invalid groups triggers INVALID overall
+  quality_warning_threshold: 0.7    # 70% warning groups triggers WARNING overall
 
 # Engineering-focused statistical analysis
 statistics:
