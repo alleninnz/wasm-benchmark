@@ -6,12 +6,8 @@ and result consistency checks. Focuses on engineering reliability over academic 
 """
 
 from . import common
-from .data_models import (
-    BenchmarkSample,
-    TaskResult,
-    ValidationConfiguration,
-    ValidationResult,
-)
+from .data_models import (BenchmarkSample, ConsistencyResult, TaskResult,
+                          ValidationConfiguration, ValidationResult)
 
 
 class BenchmarkValidator:
@@ -33,42 +29,47 @@ class BenchmarkValidator:
         self.config = validation_config
 
     def validate_task_results(
-        self, task_results: list[TaskResult]
+        self, benchmark_results: list[TaskResult]
     ) -> list[ValidationResult]:
         """
-        Validate all task results for cross-language consistency.
+        Validate benchmark results for production deployment confidence.
+
+        Performs cross-language consistency validation to ensure both Rust and TinyGo
+        implementations produce equivalent results for engineering decision-making.
 
         Args:
-            task_results: Complete benchmark results from both languages
+            benchmark_results: Complete benchmark results from all language implementations
 
         Returns:
-            List[ValidationResult]: Validation results for each task-scale combination
+            ValidationResult for each task-scale combination with pass/fail status
+
+        Raises:
+            ValidationError: When critical inconsistencies threaten deployment confidence
         """
-        # TODO: Group task_results by (task, scale): {(task, scale): {language: TaskResult}}
-        # TODO: For each group with both rust and tinygo: validate_task_implementation(rust_result, tinygo_result)
-        # TODO: Handle missing language implementations gracefully
-        # TODO: Return comprehensive validation report with all results
+        # TODO: Group benchmark results by task-scale combinations
+        # TODO: Validate cross-language consistency for each complete pair
+        # TODO: Return comprehensive validation report with pass/fail status
         return []
 
-    def _validate_task_implementation(
-        self, rust_result: TaskResult, tinygo_result: TaskResult
+    def _validate_cross_language_consistency(
+        self, primary_result: TaskResult, secondary_result: TaskResult
     ) -> ValidationResult:
         """
-        Validate that Rust and TinyGo implementations produce consistent results.
+        Validate that two language implementations produce functionally equivalent results.
+
+        Critical for ensuring deployment reliability when choosing between Rust/TinyGo
+        implementations based on performance characteristics.
 
         Args:
-            rust_result: Complete TaskResult from Rust implementation
-            tinygo_result: Complete TaskResult from TinyGo implementation
+            primary_result: Primary language implementation result
+            secondary_result: Secondary language implementation result
 
         Returns:
-            ValidationResult: Engineering-focused validation assessment
+            ValidationResult with pass/fail status and actionable issue details
         """
-        # TODO: Extract task info: rust_result.task, rust_result.scale
-        # TODO: Validate success rates: rust_result.success_rate >= self.config.required_success_rate
-        # TODO: Check hash consistency: _verify_cross_language_hash_match(rust_result.samples, tinygo_result.samples)
-        # TODO: Validate result dimensions: rust_result.samples[0].resultDimensions == tinygo_result.samples[0].resultDimensions
-        # TODO: Check record counts: rust_result.samples[0].recordsProcessed == tinygo_result.samples[0].recordsProcessed
-        # TODO: Return ValidationResult with validation_passed and specific issues list
+        # TODO: Validate execution success meets engineering thresholds
+        # TODO: Verify result hash consistency between implementations
+        # TODO: Check structural consistency (dimensions, record counts)
 
         # Implementation placeholder
         return ValidationResult(
@@ -85,45 +86,45 @@ class BenchmarkValidator:
         )
 
     def _verify_hash_consistency(
-        self, samples: list[BenchmarkSample]
-    ) -> tuple[bool, list[str]]:
+        self, implementation_samples: list[BenchmarkSample]
+    ) -> ConsistencyResult:
         """
-        Verify that all samples in a task produce the same result hash.
+        Verify implementation produces consistent results across multiple runs.
+
+        Ensures algorithmic correctness and deterministic behavior required for
+        production reliability and engineering confidence in results.
 
         Args:
-            samples: List of benchmark samples for a single implementation
+            implementation_samples: Benchmark samples from single implementation
 
         Returns:
-            Tuple of (consistency_passed, list_of_issues)
+            ConsistencyResult with validation status and specific issue details
         """
-        # TODO: Limit samples: samples[:self.config.sample_limit] for performance
-        # TODO: Extract result hashes: [sample.resultHash for sample in samples]
-        # TODO: Check consistency: all hashes should be identical (engineering requirement)
-        # TODO: Verify input consistency: [sample.inputDataHash for sample in samples] should be identical
-        # TODO: Generate specific error messages: "Hash mismatch: expected {expected}, got {actual} in {count} samples"
-        # TODO: Return (len(unique_hashes) == 1, detailed_issues_list)
-        return False, []
+        # TODO: Verify all samples produce identical result hashes
+        # TODO: Validate input data consistency across samples
+        # TODO: Apply sample size limits per configuration
+        return ConsistencyResult(is_consistent=False, issues=[])
 
     def _verify_cross_language_hash_match(
-        self, rust_samples: list[BenchmarkSample], tinygo_samples: list[BenchmarkSample]
-    ) -> tuple[bool, list[str]]:
+        self, primary_samples: list[BenchmarkSample], secondary_samples: list[BenchmarkSample]
+    ) -> ConsistencyResult:
         """
-        Validate that Rust and TinyGo implementations produce identical result hashes.
+        Verify two language implementations produce identical result hashes.
+
+        Critical for cross-language correctness validation ensuring both implementations
+        produce functionally equivalent results for engineering deployment confidence.
 
         Args:
-            rust_samples: Rust implementation samples
-            tinygo_samples: TinyGo implementation samples
+            primary_samples: Primary language implementation samples
+            secondary_samples: Secondary language implementation samples
 
         Returns:
-            Tuple of (validation_passed, list_of_issues)
+            ConsistencyResult with validation status and specific issue details
         """
-        # TODO: Extract representative hashes: rust_samples[0].resultHash, tinygo_samples[0].resultHash
-        # TODO: Compare with tolerance: abs(rust_hash - tinygo_hash) <= self.config.hash_tolerance
-        # TODO: Check input data consistency: rust_samples[0].inputDataHash == tinygo_samples[0].inputDataHash
-        # TODO: Validate task/scale match: rust_samples[0].task == tinygo_samples[0].task
-        # TODO: Generate engineering-focused error messages for hash mismatches
-        # TODO: Return (hashes_match_within_tolerance, specific_mismatch_details)
-        return False, []
+        # TODO: Compare result hashes within engineering tolerance
+        # TODO: Validate input consistency between language implementations
+        # TODO: Verify task-scale parameter matching
+        return ConsistencyResult(is_consistent=False, issues=[])
 
 
 def main():

@@ -115,6 +115,16 @@ class ValidationConfiguration:
 
 
 @dataclass
+class ConsistencyResult:
+    """
+    Structured consistency validation result
+    """
+    is_consistent: bool
+    issues: list[str]
+    confidence_level: float = 1.0
+
+
+@dataclass
 class ConfigurationData:
     """Complete configuration data containing all specialized configurations"""
 
