@@ -282,7 +282,7 @@ const blockedPaths = [
     '/.gitignore',
     '/README.md',
     '/Makefile',
-    '/requirements.txt'
+    '/pyproject.toml'
 ];
 
 blockedPaths.forEach(blockedPath => {
