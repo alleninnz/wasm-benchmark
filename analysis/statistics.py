@@ -15,10 +15,20 @@ from typing import Any
 from scipy.stats import t as t_dist
 
 from . import common
-from .data_models import (BenchmarkSample, CleanedDataset, ComparisonResult,
-                          EffectSize, EffectSizeResult, MetricComparison,
-                          MetricType, PerformanceStatistics, StatisticalResult,
-                          StatisticsConfiguration, TaskResult, TTestResult)
+from .data_models import (
+    BenchmarkSample,
+    CleanedDataset,
+    ComparisonResult,
+    EffectSize,
+    EffectSizeResult,
+    MetricComparison,
+    MetricType,
+    PerformanceStatistics,
+    StatisticalResult,
+    StatisticsConfiguration,
+    TaskResult,
+    TTestResult,
+)
 
 # Statistical constants
 MINIMUM_SAMPLES_FOR_TEST = 2
@@ -1234,7 +1244,7 @@ def _save_comparison_results(
 
         # Save main statistical report
         report_path = output_dir / "statistical_analysis_report.json"
-        with open(report_path, "w", encoding='utf-8') as f:
+        with open(report_path, "w", encoding="utf-8") as f:
             json.dump(statistical_report, f, indent=2, ensure_ascii=False)
         print(f"✅ Statistical analysis report saved to {report_path}")
 
@@ -1248,7 +1258,7 @@ def _save_comparison_results(
             detailed_result = _comparison_result_to_dict(
                 result, compact=False
             )  # Keep full detail for individual files
-            with open(result_path, "w", encoding='utf-8') as f:
+            with open(result_path, "w", encoding="utf-8") as f:
                 json.dump(detailed_result, f, indent=2, ensure_ascii=False)
 
         print(f"✅ Saved {len(comparison_results)} individual comparison files")

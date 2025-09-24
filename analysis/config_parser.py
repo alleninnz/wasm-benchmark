@@ -10,9 +10,13 @@ from typing import Optional
 
 import yaml
 
-from .data_models import (ConfigurationData, PlotsConfiguration,
-                          QCConfiguration, StatisticsConfiguration,
-                          ValidationConfiguration)
+from .data_models import (
+    ConfigurationData,
+    PlotsConfiguration,
+    QCConfiguration,
+    StatisticsConfiguration,
+    ValidationConfiguration,
+)
 
 
 class ConfigParser:

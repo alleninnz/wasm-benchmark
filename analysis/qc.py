@@ -13,9 +13,16 @@ from pathlib import Path
 from typing import Any
 
 from . import common
-from .data_models import (BenchmarkResult, BenchmarkSample, CleanedDataset,
-                          DataQuality, QCConfiguration, QualityAssessment,
-                          QualityMetrics, TaskResult)
+from .data_models import (
+    BenchmarkResult,
+    BenchmarkSample,
+    CleanedDataset,
+    DataQuality,
+    QCConfiguration,
+    QualityAssessment,
+    QualityMetrics,
+    TaskResult,
+)
 
 
 class QCConstants:
@@ -786,7 +793,9 @@ def _print_quality_summary(
     print(f"📁 Reports saved in {output_dir}")
 
     if quality_assessment.overall_quality.value == "invalid":
-        print("🔥🔥🔥 Warning: Data quality is \033[31mINVALID\033[0m - review before proceeding")
+        print(
+            "🔥🔥🔥 Warning: Data quality is \033[31mINVALID\033[0m - review before proceeding"
+        )
         sys.exit(1)
 
 
