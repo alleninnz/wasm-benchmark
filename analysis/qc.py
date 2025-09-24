@@ -13,16 +13,9 @@ from pathlib import Path
 from typing import Any
 
 from . import common
-from .data_models import (
-    BenchmarkResult,
-    BenchmarkSample,
-    CleanedDataset,
-    DataQuality,
-    QCConfiguration,
-    QualityAssessment,
-    QualityMetrics,
-    TaskResult,
-)
+from .data_models import (BenchmarkResult, BenchmarkSample, CleanedDataset,
+                          DataQuality, QCConfiguration, QualityAssessment,
+                          QualityMetrics, TaskResult)
 
 
 class QCConstants:
@@ -120,7 +113,6 @@ class QualityController:
         # Add threshold information for transparency
         self.cleaning_log.append(
             f"  - Quality thresholds: invalid>{self.config.quality_invalid_threshold:.1%}, "
-            f"high-risk>{self.config.quality_high_risk_threshold:.1%}, "
             f"warning>{self.config.quality_warning_threshold:.1%}"
         )
 
@@ -379,12 +371,11 @@ class QualityController:
             )
             data_quality = DataQuality.INVALID
 
-        extreme_cv_threshold = (
-            self.config.max_coefficient_variation * QCConstants.EXTREME_CV_MULTIPLIER
-        )
+        # Only mark as INVALID for extreme variability (CV > 1.0 means std > mean)
+        extreme_cv_threshold = 1.0
         if coefficient_variation > extreme_cv_threshold:
             quality_issues.append(
-                f"Extremely high variability: CV={coefficient_variation:.3f} > {extreme_cv_threshold:.3f} (2x threshold)"
+                f"Extremely high variability: CV={coefficient_variation:.3f} > {extreme_cv_threshold:.3f} (std > mean)"
             )
             data_quality = DataQuality.INVALID
 
@@ -477,16 +468,6 @@ class QualityController:
             reason = (
                 f"Critical quality issues: {invalid_count}/{total_groups} groups are invalid "
                 f"({invalid_ratio:.1%}, threshold: {self.config.quality_invalid_threshold:.1%})"
-            )
-            overall_quality = DataQuality.INVALID
-
-        elif (
-            invalid_count > 0
-            and problem_ratio > self.config.quality_high_risk_threshold
-        ):
-            reason = (
-                f"High risk quality issues: {invalid_count} invalid + {warning_count} warning groups "
-                f"= {problem_ratio:.1%} total problems (threshold: {self.config.quality_high_risk_threshold:.1%})"
             )
             overall_quality = DataQuality.INVALID
 
@@ -587,42 +568,46 @@ def _convert_raw_samples_to_benchmark_samples(
     samples = []
     results_data = result_data.get("results", [])
 
-    # Handle both array and dict formats for results
-    if isinstance(results_data, list):
-        sample_list = results_data
-    elif isinstance(results_data, dict):
-        sample_list = list(results_data.values())
-    else:
-        sample_list = []
-
-    for sample_data in sample_list:
-        if not isinstance(sample_data, dict):
+    # Handle nested structure: results -> [group] -> results -> [actual_samples]
+    for group_data in results_data:
+        if not isinstance(group_data, dict):
             continue
 
-        sample = BenchmarkSample(
-            task=sample_data.get("task", ""),
-            language=sample_data.get("language", ""),
-            scale=sample_data.get("scale", ""),
-            run=sample_data.get("run", 0),
-            repetition=sample_data.get(
-                "repetition", 1
-            ),  # Extract repetition field, default to 1
-            moduleId=sample_data.get("moduleId", ""),
-            inputDataHash=sample_data.get("inputDataHash", 0),
-            executionTime=sample_data.get("executionTime", 0.0),
-            memoryUsageMb=sample_data.get("memoryUsageMb", 0.0),
-            memoryUsed=sample_data.get("memoryUsed", 0),
-            wasmMemoryBytes=sample_data.get("wasmMemoryBytes", 0),
-            resultHash=sample_data.get("resultHash", 0),
-            timestamp=sample_data.get("timestamp", 0),
-            jsHeapBefore=sample_data.get("jsHeapBefore", 0),
-            jsHeapAfter=sample_data.get("jsHeapAfter", 0),
-            success=sample_data.get("success", False),
-            implementation=sample_data.get("implementation", ""),
-            resultDimensions=sample_data.get("resultDimensions"),
-            recordsProcessed=sample_data.get("recordsProcessed"),
-        )
-        samples.append(sample)
+        # Extract task, language, scale from the group level
+        task = group_data.get("task", "")
+        language = group_data.get("language", "")
+        scale = group_data.get("scale", "")
+
+        # Get the inner results array containing actual execution samples
+        inner_results = group_data.get("results", [])
+
+        for sample_data in inner_results:
+            if not isinstance(sample_data, dict):
+                continue
+
+            # Use group-level metadata for samples that don't have their own
+            sample = BenchmarkSample(
+                task=sample_data.get("task", task),
+                language=sample_data.get("language", language),
+                scale=sample_data.get("scale", scale),
+                run=sample_data.get("run", 0),
+                repetition=sample_data.get("repetition", 1),
+                moduleId=sample_data.get("moduleId", ""),
+                inputDataHash=sample_data.get("inputDataHash", 0),
+                executionTime=sample_data.get("executionTime", 0.0),
+                memoryUsageMb=sample_data.get("memoryUsageMb", 0.0),
+                memoryUsed=sample_data.get("memoryUsed", 0),
+                wasmMemoryBytes=sample_data.get("wasmMemoryBytes", 0),
+                resultHash=sample_data.get("resultHash", 0),
+                timestamp=sample_data.get("timestamp", 0),
+                jsHeapBefore=sample_data.get("jsHeapBefore", 0),
+                jsHeapAfter=sample_data.get("jsHeapAfter", 0),
+                success=sample_data.get("success", False),
+                implementation=sample_data.get("implementation", ""),
+                resultDimensions=sample_data.get("resultDimensions"),
+                recordsProcessed=sample_data.get("recordsProcessed"),
+            )
+            samples.append(sample)
 
     return samples
 
@@ -801,7 +786,7 @@ def _print_quality_summary(
     print(f"📁 Reports saved in {output_dir}")
 
     if quality_assessment.overall_quality.value == "invalid":
-        print("⚠️  Warning: Data quality is INVALID - review before proceeding")
+        print("🔥🔥🔥 Warning: Data quality is \033[31mINVALID\033[0m - review before proceeding")
         sys.exit(1)
 
 

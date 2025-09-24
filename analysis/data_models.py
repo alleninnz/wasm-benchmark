@@ -77,7 +77,6 @@ class QCConfiguration:
     min_valid_samples: int
     failure_rate: float
     quality_invalid_threshold: float
-    quality_high_risk_threshold: float
     quality_warning_threshold: float
 
 

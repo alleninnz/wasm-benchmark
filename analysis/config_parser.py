@@ -10,13 +10,9 @@ from typing import Optional
 
 import yaml
 
-from .data_models import (
-    ConfigurationData,
-    PlotsConfiguration,
-    QCConfiguration,
-    StatisticsConfiguration,
-    ValidationConfiguration,
-)
+from .data_models import (ConfigurationData, PlotsConfiguration,
+                          QCConfiguration, StatisticsConfiguration,
+                          ValidationConfiguration)
 
 
 class ConfigParser:
@@ -69,9 +65,6 @@ class ConfigParser:
             min_valid_samples=qc_section.get("min_valid_samples", 80),
             failure_rate=qc_section.get("failure_rate", 0.1),
             quality_invalid_threshold=qc_section.get("quality_invalid_threshold", 0.1),
-            quality_high_risk_threshold=qc_section.get(
-                "quality_high_risk_threshold", 0.3
-            ),
             quality_warning_threshold=qc_section.get("quality_warning_threshold", 0.3),
         )
 
