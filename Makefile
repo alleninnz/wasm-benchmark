@@ -243,19 +243,19 @@ help-setup: ## Show setup and installation help
 	$(call log_error,  🚨 Permission denied:     Add source ~/.bashrc or restart terminal)
 	$(call log_error,  🚨 Command not found:     Check echo $$PATH includes tool binaries)
 	$(call log_error,  🚨 TinyGo build fails:    Update to TinyGo 0.30.0+ for WASM target support)
-	$(call log_error,  🚨 Python module missing: Run python3 -m pip install --user -r requirements.txt)
+	$(call log_error,  🚨 Python module missing: Run pip install -e .)
 
 # ============================================================================
 # Environment Setup Targets
 # ============================================================================
 
-init: $(NODE_MODULES) versions.lock ## Initialize environment and install dependencies
+init: $(NODE_MODULES) versions.lock check-deps ## Initialize environment and install dependencies
 	$(call log_step,Installing Python dependencies...)
-	@if [ ! -f requirements.txt ]; then \
-		$(call log_error,requirements.txt not found); \
+	@if [ ! -f pyproject.toml ]; then \
+		$(call log_error,pyproject.toml not found); \
 		exit 1; \
 	fi
-	python3 -m pip install --user -r requirements.txt
+	poetry install
 	$(call log_success,🐍 Python dependencies installed)
 	$(call log_success,🎉 Environment initialized successfully)
 	$(call log_info,Ready to run: make build)
@@ -733,6 +733,12 @@ check-deps: ## Check if all required dependencies are available
 		$(call log_success,  ✓ 📦 pip3:      $$version,shell); \
 	else \
 		$(call log_error,  ✗ 📦 pip3:      not found,shell); \
+	fi
+	@if command -v poetry >/dev/null 2>&1; then \
+		version=$$(poetry --version 2>/dev/null); \
+		$(call log_success,  ✓ 📦 poetry:    $$version,shell); \
+	else \
+		$(call log_error,  ✗ 📦 poetry:    not found,shell); \
 	fi
 	@echo ""
 	$(call log_info,🔧 Optional WebAssembly Tools:)
