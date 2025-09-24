@@ -240,7 +240,7 @@ wasm-benchmark/
 │   └── plots/                 # Chart outputs
 ├── meta.json                  # Experiment metadata
 ├── versions.lock              # Toolchain version lock
-├── requirements.txt           # Python dependencies
+├── pyproject.toml            # Python dependencies
 ├── package.json               # Node.js dependencies
 ├── Makefile                   # Automated build and workflow
 ├── vitest.config.js           # Test configuration

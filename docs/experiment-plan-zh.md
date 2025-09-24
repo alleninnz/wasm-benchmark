@@ -244,7 +244,7 @@ wasm-benchmark/
 │   └── plots/                 # 图表输出
 ├── meta.json                  # 实验元数据
 ├── versions.lock              # 工具链版本锁定
-├── requirements.txt           # Python依赖
+├── pyproject.toml            # Python依赖
 ├── package.json               # Node.js依赖
 ├── Makefile                   # 自动化构建和工作流
 ├── vitest.config.js           # 测试配置

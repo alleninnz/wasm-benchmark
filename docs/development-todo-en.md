@@ -27,7 +27,7 @@
 
 - ✅ **Directory Structure** - Comprehensive project organization following research standards
 - ✅ **Toolchain Configuration** - Rust, TinyGo, Node.js, Python environments properly configured
-- ✅ **Dependency Management** - Complete package.json, requirements.txt, Cargo.toml configuration
+- ✅ **Dependency Management** - Complete package.json, pyproject.toml, Cargo.toml configuration
 - ✅ **Environment Fingerprinting** - versions.lock and fingerprint.sh implementation
 - ✅ **Cross-platform Support** - macOS/Linux compatibility with portable formatting
 

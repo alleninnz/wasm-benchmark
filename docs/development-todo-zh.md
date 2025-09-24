@@ -27,7 +27,7 @@
 
 - ✅ **目录结构** - 遵循研究标准的全面项目组织
 - ✅ **工具链配置** - Rust、TinyGo、Node.js、Python 环境正确配置
-- ✅ **依赖管理** - package.json、requirements.txt、Cargo.toml 配置完整
+- ✅ **依赖管理** - package.json、pyproject.toml、Cargo.toml 配置完整
 - ✅ **环境指纹识别** - versions.lock 和 fingerprint.sh 实现
 - ✅ **跨平台支持** - macOS/Linux 兼容性，具有便携式格式化
 
