@@ -15,20 +15,10 @@ from typing import Any
 from scipy.stats import t as t_dist
 
 from . import common
-from .data_models import (
-    BenchmarkSample,
-    CleanedDataset,
-    ComparisonResult,
-    EffectSize,
-    EffectSizeResult,
-    MetricComparison,
-    MetricType,
-    PerformanceStatistics,
-    StatisticalResult,
-    StatisticsConfiguration,
-    TaskResult,
-    TTestResult,
-)
+from .data_models import (BenchmarkSample, CleanedDataset, ComparisonResult,
+                          EffectSize, EffectSizeResult, MetricComparison,
+                          MetricType, PerformanceStatistics, StatisticalResult,
+                          StatisticsConfiguration, TaskResult, TTestResult)
 
 # Statistical constants
 MINIMUM_SAMPLES_FOR_TEST = 2
@@ -1244,8 +1234,8 @@ def _save_comparison_results(
 
         # Save main statistical report
         report_path = output_dir / "statistical_analysis_report.json"
-        with open(report_path, "w") as f:
-            json.dump(statistical_report, f, indent=2)
+        with open(report_path, "w", encoding='utf-8') as f:
+            json.dump(statistical_report, f, indent=2, ensure_ascii=False)
         print(f"✅ Statistical analysis report saved to {report_path}")
 
         # Save individual comparison results for detailed analysis
@@ -1258,8 +1248,8 @@ def _save_comparison_results(
             detailed_result = _comparison_result_to_dict(
                 result, compact=False
             )  # Keep full detail for individual files
-            with open(result_path, "w") as f:
-                json.dump(detailed_result, f, indent=2)
+            with open(result_path, "w", encoding='utf-8') as f:
+                json.dump(detailed_result, f, indent=2, ensure_ascii=False)
 
         print(f"✅ Saved {len(comparison_results)} individual comparison files")
 
@@ -1377,21 +1367,21 @@ def _comparison_result_to_dict_compact(result: ComparisonResult) -> dict[str, An
     def _compact_stats(stats):
         """Extract essential statistics only."""
         return {
-            "n": stats.count,
-            "μ": round(stats.mean, 4),  # Greek mu for mean
-            "σ": round(stats.std, 4),  # Greek sigma for std
-            "cv": round(stats.coefficient_variation, 4),
-            "med": round(stats.median, 4),
-            "rng": [round(stats.min, 4), round(stats.max, 4)],
+            "count": stats.count,
+            "mean": round(stats.mean, 4),
+            "std": round(stats.std, 4),
+            "coefficient_variation": round(stats.coefficient_variation, 4),
+            "median": round(stats.median, 4),
+            "range": [round(stats.min, 4), round(stats.max, 4)],
         }
 
     def _compact_test(test_result):
         """Extract essential test statistics."""
         return {
-            "t": round(test_result.t_statistic, 4),
-            "p": round(test_result.p_value, 6),
-            "sig": test_result.is_significant,
-            "ci": [
+            "t_statistic": round(test_result.t_statistic, 4),
+            "p_value": round(test_result.p_value, 6),
+            "significant": test_result.is_significant,
+            "confidence_interval": [
                 round(test_result.confidence_interval_lower, 4),
                 round(test_result.confidence_interval_upper, 4),
             ],
@@ -1400,9 +1390,9 @@ def _comparison_result_to_dict_compact(result: ComparisonResult) -> dict[str, An
     def _compact_effect(effect_result):
         """Extract essential effect size information."""
         return {
-            "d": round(effect_result.cohens_d, 4),
-            "mag": effect_result.effect_size.value,
-            "mde": effect_result.meets_minimum_detectable_effect,
+            "cohens_d": round(effect_result.cohens_d, 4),
+            "magnitude": effect_result.effect_size.value,
+            "meets_minimum_detectable_effect": effect_result.meets_minimum_detectable_effect,
         }
 
     return {
@@ -1410,33 +1400,33 @@ def _comparison_result_to_dict_compact(result: ComparisonResult) -> dict[str, An
         "scale": result.scale,
         # Compact performance data
         "rust": {
-            "exec": _compact_stats(result.rust_performance.execution_time),
-            "mem": _compact_stats(result.rust_performance.memory_usage),
-            "sr": round(result.rust_performance.success_rate, 3),
+            "execution_time": _compact_stats(result.rust_performance.execution_time),
+            "memory_usage": _compact_stats(result.rust_performance.memory_usage),
+            "success_rate": round(result.rust_performance.success_rate, 3),
         },
         "tinygo": {
-            "exec": _compact_stats(result.tinygo_performance.execution_time),
-            "mem": _compact_stats(result.tinygo_performance.memory_usage),
-            "sr": round(result.tinygo_performance.success_rate, 3),
+            "execution_time": _compact_stats(result.tinygo_performance.execution_time),
+            "memory_usage": _compact_stats(result.tinygo_performance.memory_usage),
+            "success_rate": round(result.tinygo_performance.success_rate, 3),
         },
         # Compact statistical comparisons
-        "exec_cmp": {
+        "execution_time_comparison": {
             "test": _compact_test(result.execution_time_comparison.t_test),
             "effect": _compact_effect(result.execution_time_comparison.effect_size),
-            "cat": result.execution_time_comparison.significance_category,
+            "category": result.execution_time_comparison.significance_category.value,
         },
-        "mem_cmp": {
+        "memory_usage_comparison": {
             "test": _compact_test(result.memory_usage_comparison.t_test),
             "effect": _compact_effect(result.memory_usage_comparison.effect_size),
-            "cat": result.memory_usage_comparison.significance_category,
+            "category": result.memory_usage_comparison.significance_category.value,
         },
         # Essential conclusions
-        "conf": result.confidence_level,
-        "rec_lvl": result.recommendation_level.value,
-        "rec": result.overall_recommendation,
+        "confidence_level": result.confidence_level,
+        "recommendation_level": result.recommendation_level.value,
+        "recommendation": result.overall_recommendation,
         "winners": {
-            "exec": result.execution_time_winner,
-            "mem": result.memory_usage_winner,
+            "execution_time": result.execution_time_winner,
+            "memory_usage": result.memory_usage_winner,
         },
         "reliable": result.is_reliable(),
     }
@@ -1519,7 +1509,7 @@ def _comparison_result_to_dict_full(result: ComparisonResult) -> dict[str, Any]:
                 "interpretation": result.execution_time_comparison.effect_size.interpretation,
                 "meets_minimum_detectable_effect": result.execution_time_comparison.effect_size.meets_minimum_detectable_effect,
             },
-            "significance_category": result.execution_time_comparison.significance_category,
+            "significance_category": result.execution_time_comparison.significance_category.value,
             "is_significant": result.execution_time_comparison.is_significant,
             "practical_significance": result.execution_time_comparison.practical_significance,
         },
@@ -1541,7 +1531,7 @@ def _comparison_result_to_dict_full(result: ComparisonResult) -> dict[str, Any]:
                 "interpretation": result.memory_usage_comparison.effect_size.interpretation,
                 "meets_minimum_detectable_effect": result.memory_usage_comparison.effect_size.meets_minimum_detectable_effect,
             },
-            "significance_category": result.memory_usage_comparison.significance_category,
+            "significance_category": result.memory_usage_comparison.significance_category.value,
             "is_significant": result.memory_usage_comparison.is_significant,
             "practical_significance": result.memory_usage_comparison.practical_significance,
         },
