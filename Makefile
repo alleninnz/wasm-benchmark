@@ -3,9 +3,9 @@
 
 # Declare all phony targets (targets that don't create files)
 .PHONY: help help-setup init build build-rust build-tinygo build-all run run-headed run-quick \
-        qc qc-quick analyze analyze-quick all all-quick clean clean-results clean-all clean-cache cache-file-discovery \
+        qc qc-quick analyze analyze-quick validate validate-quick validate-tasks all all-quick clean clean-results clean-all clean-cache cache-file-discovery \
         lint lint-python lint-rust lint-go lint-js format format-python format-rust format-go \
-        test validate status info check-deps build-config build-config-quick
+        test status info check-deps build-config build-config-quick
 
 .DEFAULT_GOAL := help
 
@@ -182,6 +182,8 @@ help: ## Show complete list of all available targets
 	$(call log_info,  qc-quick               ⚡ Run quality control with quick configuration)
 	$(call log_info,  analyze                📊 Run statistical analysis and generate plots)
 	$(call log_info,  analyze-quick          ⚡ Run analysis with quick configuration)
+	$(call log_info,  validate               🔬 Run benchmark validation analysis)
+	$(call log_info,  validate-quick         ⚡ Run validation analysis with quick configuration)
 	$(call log_info,  all                    🎯 Run complete experiment pipeline)
 	$(call log_info,  all-quick              ⚡ Run quick experiment for development/testing)
 	@echo ""
@@ -202,7 +204,7 @@ help: ## Show complete list of all available targets
 	$(call log_info,  format-rust            🦀 Format Rust code)
 	$(call log_info,  format-go              🐹 Format Go code)
 	$(call log_info,  test                   🧪 Run tests (JavaScript and Python))
-	$(call log_info,  validate               ✅ Run WASM task validation suite)
+	$(call log_info,  validate-tasks         ✅ Run WASM task validation suite)
 	@echo ""
 	$(call log_info,ℹ️  Information Targets:)
 	$(call log_info,  help                   📋 Show complete list of all available targets)
@@ -395,6 +397,24 @@ analyze-quick: ## Run statistical analysis and plots with quick configuration an
 		python3 -m analysis.plots --quick; \
 	else \
 		$(call log_warning,analysis/plots.py not found, skipping plots); \
+	fi
+
+validate: ## Run benchmark validation analysis
+	$(call log_step,Running benchmark validation analysis...)
+	@if [ -f analysis/validation.py ]; then \
+		python3 -m analysis.validation; \
+	else \
+		$(call log_error,analysis/validation.py not found); \
+		exit 1; \
+	fi
+
+validate-quick: ## Run benchmark validation analysis with quick configuration
+	$(call log_step,Running quick benchmark validation analysis...)
+	@if [ -f analysis/validation.py ]; then \
+		python3 -m analysis.validation --quick; \
+	else \
+		$(call log_error,analysis/validation.py not found); \
+		exit 1; \
 	fi
 
 # ============================================================================
@@ -626,7 +646,7 @@ test: ## Run tests (JavaScript and Python)
 		$(call log_info,Create tests/ directory and add your test files,shell); \
 	fi
 
-validate: ## Run WASM task validation suite
+validate-tasks: ## Run WASM task validation suite
 	$(call log_step,Running WASM task validation...)
 	$(call check_script_exists,scripts/validate-tasks.sh)
 	@scripts/validate-tasks.sh
