@@ -569,28 +569,61 @@
             <div class="section-header">🔧 Technical Implementation Notes</div>
             <div class="section-content">
                 <div class="technical-details">
-                    <h4>📦 Build Configuration</h4>
-                    <p>Rust: <code>wasm-pack build --target web --release</code></p>
-                    <p>TinyGo: <code>tinygo build -o main.wasm -target wasm main.go</code></p>
+                    <h4>�️ Experimental Environment</h4>
+                    <p><strong>Hardware:</strong> MacBook Pro M4 10Core CPU 16GB RAM</p>
+                    <p><strong>Operating System:</strong> macOS 15.6+</p>
+                    <p><strong>Browser:</strong> Headless Chromium 140+ (Puppeteer 24+)</p>
+                    <p><strong>Language Toolchains:</strong></p>
+                    <ul>
+                        <li>Rust 1.89+ (stable) targeting wasm32-unknown-unknown</li>
+                        <li>TinyGo 0.39+ + Go 1.25+ targeting WebAssembly</li>
+                        <li>Node.js 22 LTS, Python 3.13+</li>
+                    </ul>
+                </div>
+
+                <div class="technical-details">
+                    <h4>�📦 Build Configuration</h4>
+                    <p><strong>Rust (Bare Interface):</strong></p>
+                    <ul>
+                        <li>Optimization: opt-level=3, lto="fat", codegen-units=1</li>
+                        <li>Panic: abort, Strip: debuginfo</li>
+                        <li>Post-processing: wasm-strip + wasm-opt -O3</li>
+                    </ul>
+                    <p><strong>TinyGo:</strong></p>
+                    <ul>
+                        <li>Build flags: -opt=2, -panic=trap, -no-debug, -scheduler=none, -gc=conservative</li>
+                        <li>Post-processing: wasm-strip + wasm-opt -Oz</li>
+                    </ul>
+                </div>
+
+                <div class="technical-details">
+                    <h4>🎯 Benchmark Tasks</h4>
+                    <p><strong>Mandelbrot:</strong> CPU floating-point intensive (256×256 to 1024×1024)</p>
+                    <p><strong>JSON Parsing:</strong> Structured data processing (6K to 50K records)</p>
+                    <p><strong>Matrix Multiplication:</strong> Dense numerical computation (256×256 to 512×512)</p>
+                    <p><strong>Verification:</strong> FNV-1a hash consistency across languages</p>
                 </div>
 
                 <div class="technical-details">
                     <h4>🚀 Deployment Considerations</h4>
-                    <p><strong>Rust:</strong> {{ rust_deployment_notes }}</p>
-                    <p><strong>TinyGo:</strong> {{ tinygo_deployment_notes }}</p>
+                    <p><strong>Rust:</strong> Zero-cost abstractions, compile-time memory management, no GC overhead</p>
+                    <p><strong>TinyGo:</strong> Garbage collector with GC pauses and allocation overhead</p>
                 </div>
 
                 <div class="technical-details">
                     <h4>📈 Scalability Analysis</h4>
-                    <p>Performance scaling characteristics across workload sizes:</p>
-                    <p><strong>Rust:</strong> {{ rust_scalability_notes }}</p>
-                    <p><strong>TinyGo:</strong> {{ tinygo_scalability_notes }}</p>
+                    <p>Progressive GC pressure design across scales:</p>
+                    <ul>
+                        <li><strong>Small:</strong> No GC trigger (< 1MB usage)</li>
+                        <li><strong>Medium:</strong> Light GC trigger (2-4MB usage)</li>
+                        <li><strong>Large:</strong> Moderate GC trigger (6-10MB usage)</li>
+                    </ul>
                 </div>
 
                 <div class="technical-details">
                     <h4>⚠️ Limitations & Trade-offs</h4>
-                    <p><strong>Rust:</strong> {{ rust_limitations }}</p>
-                    <p><strong>TinyGo:</strong> {{ tinygo_limitations }}</p>
+                    <p><strong>Rust:</strong> Steeper learning curve, longer compile times, complex dependency management</p>
+                    <p><strong>TinyGo:</strong> GC pauses affect latency-critical applications, limited Go standard library</p>
                 </div>
             </div>
         </div>
@@ -599,12 +632,31 @@
         <div class="section">
             <div class="section-header">🔬 Methodology & Validation</div>
             <div class="section-content">
-                <p><strong>Benchmark Tasks:</strong> {{ benchmark_tasks_description }}</p>
-                <p><strong>Test Environment:</strong> {{ test_environment }}</p>
-                <p><strong>Sample Size:</strong> {{ total_samples }} measurements per configuration</p>
-                <p><strong>Statistical Method:</strong> Mann-Whitney U test with Bonferroni correction</p>
-                <p><strong>Quality Control:</strong> Outlier detection via IQR method, {{ quality_control_notes }}</p>
-                <p><strong>Reproducibility:</strong> All results reproducible with seed {{ random_seed }}</p>
+                <p><strong>Benchmark Tasks:</strong> Mandelbrot, JSON parsing, matrix multiplication across small/medium/large scales</p>
+                <p><strong>Test Environment:</strong> Headless Chromium with Puppeteer automation</p>
+                <p><strong>Data Collection:</strong> 15 warmup runs + 50 measurement runs per configuration</p>
+                <p><strong>Repetitions:</strong> 3 full cycles with statistical aggregation</p>
+                <p><strong>Statistical Methods:</strong></p>
+                <ul>
+                    <li>Welch's t-test for significance (p < 0.05)</li>
+                    <li>Cohen's d effect size (small: 0.3, medium: 0.6, large: 1.0)</li>
+                    <li>95% confidence intervals</li>
+                </ul>
+                <p><strong>Quality Control:</strong></p>
+                <ul>
+                    <li>IQR outlier detection (1.5×IQR multiplier)</li>
+                    <li>Coefficient of variation < 15%</li>
+                    <li>Minimum 30 valid samples per dataset</li>
+                    <li>Cross-language hash consistency verification</li>
+                </ul>
+                <p><strong>Verification Mechanisms:</strong></p>
+                <ul>
+                    <li>FNV-1a hash algorithm for result validation</li>
+                    <li>Fixed random seed (42) for reproducibility</li>
+                    <li>Memory usage monitoring via browser performance API</li>
+                    <li>Execution timing via performance.now()</li>
+                </ul>
+                <p><strong>Reproducibility:</strong> All results reproducible with seed 42, environment fingerprinting</p>
             </div>
         </div>
     </div>
