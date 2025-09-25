@@ -11,26 +11,19 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import matplotlib.patheffects as patheffects
 import matplotlib.pyplot as plt
 import numpy as np
 from jinja2 import Environment, FileSystemLoader
 from matplotlib.colors import TwoSlopeNorm
 from matplotlib.lines import Line2D
-from matplotlib.patches import Rectangle
+from matplotlib.patches import FancyBboxPatch, Rectangle
 
 from . import common
-from .data_models import (
-    ComparisonResult,
-    EffectSize,
-    EffectSizeResult,
-    MetricComparison,
-    MetricType,
-    PerformanceStatistics,
-    PlotsConfiguration,
-    SignificanceCategory,
-    StatisticalResult,
-    TTestResult,
-)
+from .data_models import (ComparisonResult, EffectSize, EffectSizeResult,
+                          MetricComparison, MetricType, PerformanceStatistics,
+                          PlotsConfiguration, SignificanceCategory,
+                          StatisticalResult, TTestResult)
 from .decision import DecisionSummaryGenerator
 
 
@@ -38,24 +31,11 @@ class ChartConstants:
     """Constants for chart styling and configuration."""
 
     BAR_WIDTH = 0.35
-    MARKER_SIZE = 50
+    MARKER_SIZE = 30  # Reduced from 50 to make median markers less prominent
     MARKER_FONTSIZE = 12
     WINNER_FONTSIZE = 14
     EFFECT_SIZE_THRESHOLDS = {"small": 0.3, "medium": 0.6, "large": 1.0}
 
-    # Significance markers - using Unicode symbols that work reliably in matplotlib
-    SIGNIFICANCE_MARKERS = {
-        SignificanceCategory.STRONG_EVIDENCE: {"marker": "★", "color": "red"},
-        SignificanceCategory.STATISTICALLY_SIGNIFICANT_BUT_SMALL_EFFECT: {
-            "marker": "⚠",
-            "color": "orange",
-        },
-        SignificanceCategory.LARGE_EFFECT_BUT_NOT_STATISTICALLY_CONFIRMED: {
-            "marker": "◆",
-            "color": "blue",
-        },
-    }
-    DEFAULT_SIGNIFICANCE = {"marker": "≈", "color": "gray"}
 
 
 class VisualizationGenerator:
@@ -88,8 +68,8 @@ class VisualizationGenerator:
         plt.rcParams["figure.dpi"] = self.config.dpi_basic
         plt.rcParams["savefig.dpi"] = self.config.dpi_detailed
 
-        # Set professional font styling with emoji support
-        self._configure_emoji_fonts()
+        # Set professional font styling
+        self._configure_fonts()
         plt.rcParams["font.size"] = self.config.font_sizes["default"]
         plt.rcParams["axes.labelsize"] = self.config.font_sizes["labels"]
         plt.rcParams["axes.titlesize"] = self.config.font_sizes["titles"]
@@ -250,16 +230,16 @@ class VisualizationGenerator:
             alpha=0.8,
         )
 
-        # Add median indicators as diamond markers
+        # Add median indicators as diamond markers - less prominent
         ax.scatter(
             x - width / 2,
             data["rust_medians"],
             marker="D",
             color="darkred",
             s=self.constants.MARKER_SIZE,
-            zorder=3,
+            zorder=2,  # Lower z-order
             label="Rust (Median)",
-            alpha=0.9,
+            alpha=0.6,  # Reduced transparency
         )
         ax.scatter(
             x + width / 2,
@@ -267,9 +247,9 @@ class VisualizationGenerator:
             marker="D",
             color="darkblue",
             s=self.constants.MARKER_SIZE,
-            zorder=3,
+            zorder=2,  # Lower z-order
             label="TinyGo (Median)",
-            alpha=0.9,
+            alpha=0.6,  # Reduced transparency
         )
 
         # Configure axes
@@ -284,170 +264,47 @@ class VisualizationGenerator:
         ax,
         data: dict,
         comparisons: list[ComparisonResult],
-        x_positions: np.ndarray,
         metric_type: str,
     ) -> None:
         """
-        Add significance markers and winner indicators to chart.
+        Add simplified significance markers to chart.
 
         Args:
             ax: Matplotlib axes object
             data: Dictionary containing statistical data
             comparisons: List of comparison results
-            x_positions: Array of x positions for markers
             metric_type: Type of metric for winner determination
         """
-        for i, category in enumerate(data["significance_categories"]):
-            max_height = max(
-                data["rust_means"][i] + data["rust_errors"][i],
-                data["tinygo_means"][i] + data["tinygo_errors"][i],
-            )
-
-            # Get marker configuration
-            marker_config = self.constants.SIGNIFICANCE_MARKERS.get(
-                category, self.constants.DEFAULT_SIGNIFICANCE
-            )
-
-            ax.text(
-                i,
-                max_height * 1.05,
-                marker_config["marker"],
-                ha="center",
-                va="bottom",
-                fontweight="bold",
-                fontsize=self.constants.MARKER_FONTSIZE,
-                color=marker_config["color"],
-            )
-
-        # Add winner indicators
+        # Add only simple significance indicators for strong evidence
         for i, comparison in enumerate(comparisons):
-            winner = getattr(comparison, f"{metric_type}_winner")
-            if winner:
-                y_pos = (
-                    max(
-                        data["rust_means"][i] + data["rust_errors"][i],
-                        data["tinygo_means"][i] + data["tinygo_errors"][i],
-                    )
-                    * 1.15
+            comparison_obj = getattr(comparison, f"{metric_type}_comparison")
+
+            # Only mark cases with both statistical significance AND large effect
+            if (comparison_obj.is_significant and
+                comparison_obj.effect_size.effect_size.value in ['medium', 'large']):
+
+                max_height = max(
+                    data["rust_means"][i] + data["rust_errors"][i],
+                    data["tinygo_means"][i] + data["tinygo_errors"][i],
                 )
-                winner_symbol = "★" if winner == "rust" else "☆"
+
+                # Simple asterisk for significance - make more prominent
                 ax.text(
                     i,
-                    y_pos,
-                    winner_symbol,
+                    max_height * 1.05,
+                    "*",
                     ha="center",
                     va="bottom",
-                    fontsize=self.constants.WINNER_FONTSIZE,
+                    fontweight="bold",
+                    fontsize=18,
+                    color="red",
                 )
-
-    def _create_statistics_table(
-        self,
-        ax,
-        data: dict,
-        comparisons: list[ComparisonResult],
-        metric_type: str,
-        include_percentage_diff: bool = False,
-    ) -> None:
-        """
-        Create statistics summary table for comparison results.
-
-        Args:
-            ax: Matplotlib axes object for the table
-            data: Dictionary containing statistical data
-            comparisons: List of comparison results
-            metric_type: Type of metric ('execution_time' or 'memory_usage')
-            include_percentage_diff: Whether to include percentage difference column
-        """
-        ax.axis("off")
-
-        # Build table data
-        stats_data = []
-        for i, comparison in enumerate(comparisons):
-            if metric_type == "execution_time":
-                rust_stats = comparison.rust_performance.execution_time
-                tinygo_stats = comparison.tinygo_performance.execution_time
-            else:  # memory_usage
-                rust_stats = comparison.rust_performance.memory_usage
-                tinygo_stats = comparison.tinygo_performance.memory_usage
-
-            row = [
-                data["task_scale_labels"][i].replace("\n", " "),
-                f"{rust_stats.mean:.1f}",
-                f"{rust_stats.median:.1f}",
-                f"{rust_stats.coefficient_variation:.3f}",
-                f"{tinygo_stats.mean:.1f}",
-                f"{tinygo_stats.median:.1f}",
-                f"{tinygo_stats.coefficient_variation:.3f}",
-            ]
-
-            if include_percentage_diff:
-                pct_diff = (
-                    (tinygo_stats.mean - rust_stats.mean) / rust_stats.mean
-                ) * 100
-                row.append(f"{pct_diff:+.1f}%")
-
-            significance_text = data["significance_categories"][i].value
-            if len(significance_text) > 15:
-                significance_text = significance_text[:12] + "..."
-            row.append(significance_text)
-
-            stats_data.append(row)
-
-        # Define columns
-        columns = [
-            "Task/Scale",
-            "Rust Mean",
-            "Rust Med",
-            "Rust CV",
-            "TinyGo Mean",
-            "TinyGo Med",
-            "TinyGo CV",
-        ]
-        if include_percentage_diff:
-            columns.append("Diff %")
-        columns.append("Significance")
-
-        # Create table
-        table = ax.table(
-            cellText=stats_data, colLabels=columns, loc="center", cellLoc="center"
-        )
-        table.auto_set_font_size(False)
-        table.set_fontsize(8)
-        table.scale(1, 2)
-
-        # Style the table header
-        for i in range(len(columns)):
-            table[(0, i)].set_facecolor("#E6E6FA")
-            table[(0, i)].set_text_props(weight="bold")
-
-        # Color-code percentage difference column if present
-        if include_percentage_diff:
-            diff_col_idx = len(columns) - 2  # Second to last column
-            for i in range(1, len(stats_data) + 1):
-                diff_cell = table[(i, diff_col_idx)]
-                diff_value = float(
-                    stats_data[i - 1][diff_col_idx].replace("+", "").replace("%", "")
-                )
-                if diff_value < 0:  # Rust performs better
-                    diff_cell.set_facecolor("#FFE6E6")  # Light red
-                elif diff_value > 0:  # TinyGo performs worse
-                    diff_cell.set_facecolor("#E6FFE6")  # Light green
-
-        # Set table title
-        title_suffix = " (Lower is Better)" if metric_type == "memory_usage" else ""
-        title = f"Statistical Summary{title_suffix}"
-        ax.set_title(
-            title,
-            fontsize=self.config.font_sizes["labels"],
-            fontweight="bold",
-            pad=20,
-        )
 
     def _create_comparison_legend(
         self, ax, metric_type: str = "execution_time"
     ) -> None:
         """
-        Create enhanced legend for comparison charts.
+        Create simplified legend for comparison charts.
 
         Args:
             ax: Matplotlib axes object
@@ -486,27 +343,61 @@ class VisualizationGenerator:
                 markersize=8,
                 label="Median",
             ),
+            Line2D(
+                [0],
+                [0],
+                color="red",
+                marker="*",
+                linestyle="None",
+                markersize=16,
+                label="* Statistically significant",
+            ),
         ]
-
-        # Add significance interpretation
-        sig_legend_text = [
-            "★ Strong evidence",
-            "⚠ Stat. sig. only",
-            "◆ Large effect only",
-            "≈ No difference",
-        ]
-
-        winner_label = (
-            "★ Winner (both sig.)"
-            if metric_type == "execution_time"
-            else "★ More efficient"
-        )
-        sig_legend_text.append(winner_label)
-
-        for text in sig_legend_text:
-            legend_elements.append(Line2D([0], [0], color="white", label=text))
 
         ax.legend(handles=legend_elements, loc="upper left", bbox_to_anchor=(1.02, 1))
+
+    def _add_statistical_note(self, fig, comparisons: list[ComparisonResult], metric_type: str) -> None:
+        """
+        Add statistical summary note below the chart.
+
+        Args:
+            fig: Matplotlib figure object
+            comparisons: List of comparison results
+            metric_type: Type of metric for analysis
+        """
+        # Count significant results
+        significant_count = 0
+        rust_wins = 0
+        tinygo_wins = 0
+
+        for comparison in comparisons:
+            comparison_obj = getattr(comparison, f"{metric_type}_comparison")
+            winner = getattr(comparison, f"{metric_type}_winner")
+
+            if (comparison_obj.is_significant and
+                comparison_obj.effect_size.effect_size.value in ['medium', 'large']):
+                significant_count += 1
+
+                if winner == "rust":
+                    rust_wins += 1
+                elif winner == "tinygo":
+                    tinygo_wins += 1
+
+        # Create summary text
+        total_comparisons = len(comparisons)
+        note_text = (
+            f"Statistical Summary: {significant_count}/{total_comparisons} comparisons "
+            f"show statistically significant differences (p<0.05) with medium/large effect sizes. "
+        )
+
+        if rust_wins > 0 or tinygo_wins > 0:
+            note_text += f"Performance advantage: Rust ({rust_wins}), TinyGo ({tinygo_wins})."
+        else:
+            note_text += "No clear performance advantage found."
+
+        # Add note at bottom of figure with proper spacing
+        fig.text(0.1, 0.12, note_text, fontsize=12, ha="left", va="bottom",
+                 wrap=True, fontweight='bold', color='#333333')
 
     def _save_plot(self, output_path: str) -> str:
         """
@@ -524,8 +415,8 @@ class VisualizationGenerator:
         # Create output directory if it doesn't exist
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-        # Adjust layout to prevent overlapping
-        plt.tight_layout()
+        # Adjust layout to prevent overlapping with more bottom space
+        plt.tight_layout(rect=(0, 0.18, 1, 1))  # Leave 18% space at bottom
 
         # Save the plot with high quality settings
         plt.savefig(
@@ -562,37 +453,30 @@ class VisualizationGenerator:
         # Validate input and data completeness
         self._validate_comparison_data(comparisons, "execution_time")
 
-        # Create figure with appropriate size for enhanced information
-        _, (ax_main, ax_stats) = plt.subplots(
-            2,
+        # Create figure with a single main axis
+        fig, ax_main = plt.subplots(
+            1,
             1,
             figsize=(
                 self.config.figure_sizes["detailed"][0],
-                self.config.figure_sizes["detailed"][1] * 1.4,
+                self.config.figure_sizes["detailed"][1] * 1.2,
             ),
         )
 
         # Extract statistical data for plotting
         data = self._extract_comparison_statistics(comparisons, "execution_time")
 
-        # Create bar chart and get x positions
-        x = self._create_comparison_bar_chart(ax_main, data, "Execution Time (ms)")
+        # Create bar chart
+        self._create_comparison_bar_chart(ax_main, data, "Execution Time (ms)")
 
         # Add significance markers and winner indicators
-        self._add_significance_markers(ax_main, data, comparisons, x, "execution_time")
+        self._add_significance_markers(ax_main, data, comparisons, "execution_time")
 
-        # Set main chart title
-        ax_main.set_title(
-            "Execution Time Comparison: Rust vs TinyGo (Mean ± SE with Medians)",
-            fontsize=self.config.font_sizes["titles"],
-            fontweight="bold",
-        )
-
-        # Create statistics summary table
-        self._create_statistics_table(ax_stats, data, comparisons, "execution_time")
-
-        # Create enhanced legend
+        # Create simplified legend
         self._create_comparison_legend(ax_main, "execution_time")
+
+        # Add statistical summary as figure note
+        self._add_statistical_note(fig, comparisons, "execution_time")
 
         # Save plot
         return self._save_plot(output_path)
@@ -621,39 +505,30 @@ class VisualizationGenerator:
         # Validate input and data completeness
         self._validate_comparison_data(comparisons, "memory_usage")
 
-        # Create figure with appropriate size for enhanced information
-        _, (ax_main, ax_stats) = plt.subplots(
-            2,
+        # Create figure with a single main axis
+        fig, ax_main = plt.subplots(
+            1,
             1,
             figsize=(
                 self.config.figure_sizes["detailed"][0],
-                self.config.figure_sizes["detailed"][1] * 1.4,
+                self.config.figure_sizes["detailed"][1] * 1.2,
             ),
         )
 
         # Extract statistical data for plotting
         data = self._extract_comparison_statistics(comparisons, "memory_usage")
 
-        # Create bar chart and get x positions
-        x = self._create_comparison_bar_chart(ax_main, data, "Memory Usage (KB)")
+        # Create bar chart
+        self._create_comparison_bar_chart(ax_main, data, "Memory Usage (KB)")
 
         # Add significance markers and winner indicators
-        self._add_significance_markers(ax_main, data, comparisons, x, "memory_usage")
+        self._add_significance_markers(ax_main, data, comparisons, "memory_usage")
 
-        # Set main chart title
-        ax_main.set_title(
-            "Memory Usage Comparison: Rust vs TinyGo (Mean ± SE with Medians)",
-            fontsize=self.config.font_sizes["titles"],
-            fontweight="bold",
-        )
-
-        # Create statistics summary table with percentage difference
-        self._create_statistics_table(
-            ax_stats, data, comparisons, "memory_usage", include_percentage_diff=True
-        )
-
-        # Create enhanced legend
+        # Create simplified legend
         self._create_comparison_legend(ax_main, "memory_usage")
+
+        # Add statistical summary as figure note
+        self._add_statistical_note(fig, comparisons, "memory_usage")
 
         # Save plot
         return self._save_plot(output_path)
@@ -754,19 +629,53 @@ class VisualizationGenerator:
         ax_main.set_yticklabels(row_labels, fontsize=self.config.font_sizes["default"])
 
         # Annotate cells with Cohen's d values
+        # Use the heatmap's colormap + normalization to compute the actual
+        # background color for each cell, then pick a high-contrast text
+        # color and draw the label with a stroked outline so numbers remain
+        # legible on light or dark backgrounds. All annotations use the
+        # same font settings from configuration.
         for i in range(len(row_labels)):
             for j in range(len(col_labels)):
                 cohens_d_value = effect_matrix[i, j]
-                text_color = "white" if abs(cohens_d_value) > 0.5 else "black"
-                ax_main.text(
+
+                # Map the value to an RGBA color using the image's colormap
+                try:
+                    rgba = im.cmap(norm(cohens_d_value))
+                except Exception:
+                    # Fallback: normalize manually and sample cmap
+                    cmap = plt.get_cmap("RdBu_r")
+                    normalized_value = (cohens_d_value + vmax) / (2 * vmax)
+                    rgba = cmap(normalized_value)
+
+                # Compute perceived luminance (standard rec. 709 luma)
+                r, g, b, _ = rgba
+                luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+                # Choose text color and contrasting stroke color
+                if luminance < 0.5:
+                    text_color = "white"
+                    stroke_color = "black"
+                else:
+                    text_color = "black"
+                    stroke_color = "white"
+
+                # Draw text with a stroke outline for robust contrast
+                txt = ax_main.text(
                     j,
                     i,
                     f"{cohens_d_value:.2f}",
                     ha="center",
                     va="center",
-                    fontsize=self.config.font_sizes["default"] - 1,
-                    fontweight="bold",
+                    fontsize=self.config.font_sizes["default"],
+                    fontweight="normal",
                     color=text_color,
+                    family=plt.rcParams.get("font.family", ["sans-serif"])[0],
+                    zorder=5,
+                )
+
+                # Apply a thin contrasting stroke so text is readable on any color
+                txt.set_path_effects(
+                    [patheffects.withStroke(linewidth=2.5, foreground=stroke_color),]
                 )
 
         # Add colorbar
@@ -784,14 +693,6 @@ class VisualizationGenerator:
             cbar.ax.axhline(
                 y=-threshold, color="black", linestyle="--", alpha=0.7, linewidth=1
             )
-
-        # Set title
-        ax_main.set_title(
-            "Cohen's d Effect Size Heatmap\n(Red = Rust Advantage, Blue = TinyGo Advantage)",
-            fontsize=self.config.font_sizes["titles"],
-            fontweight="bold",
-            pad=20,
-        )
 
         # Create legend panel
         ax_legend.axis("off")
@@ -818,71 +719,232 @@ class VisualizationGenerator:
             "  |d| ≥ 1.0: Large effect",
         ]
 
-        y_pos = 0.95
-        for line in legend_text:
-            weight = (
-                "bold" if line.endswith(":") or line.startswith("Effect") else "normal"
-            )
-            size = (
-                self.config.font_sizes["labels"]
-                if weight == "bold"
-                else self.config.font_sizes["default"] - 1
-            )
-            ax_legend.text(
-                0.05,
-                y_pos,
-                line,
-                transform=ax_legend.transAxes,
-                fontsize=size,
-                fontweight=weight,
-                verticalalignment="top",
-            )
-            y_pos -= 0.05
+        # Draw a rounded panel with subtle shadow to contain the legend text
+        total_lines = len(legend_text)
+        line_height = 0.05
+        padding = 0.03
+        top = 0.96
+        height = total_lines * line_height + padding
+        bottom = top - height
+        left = 0.04
+        width = 0.9
 
-        # Add significance indicators for each comparison
-        y_pos -= 0.05
+        # Shadow (slightly offset, low alpha)
+        shadow = FancyBboxPatch(
+            (left + 0.01, bottom - 0.01),
+            width,
+            height,
+            boxstyle="round,pad=0.02,rounding_size=6",
+            transform=ax_legend.transAxes,
+            linewidth=0,
+            facecolor="#000000",
+            alpha=0.08,
+            zorder=1,
+        )
+        ax_legend.add_patch(shadow)
+
+        # Main rounded box (soft white fill, colored border matching Rust accent)
+        # Main rounded box: soft white fill with a subtle light-gray border
+        panel = FancyBboxPatch(
+            (left, bottom),
+            width,
+            height,
+            boxstyle="round,pad=0.02,rounding_size=6",
+            transform=ax_legend.transAxes,
+            linewidth=1,
+            edgecolor="#e6e6e6",
+            facecolor="#ffffff",
+            alpha=0.95,
+            zorder=2,
+        )
+        ax_legend.add_patch(panel)
+
+        # Write legend content inside the rounded panel with refined layout
+        y_pos = top - 0.02
+
+        # Title
         ax_legend.text(
-            0.05,
+            left + 0.03,
             y_pos,
-            "Statistical Significance:",
+            "Effect Size Interpretation:",
             transform=ax_legend.transAxes,
             fontsize=self.config.font_sizes["labels"],
             fontweight="bold",
             verticalalignment="top",
+            zorder=3,
         )
-        y_pos -= 0.05
+        y_pos -= line_height * 1.2
 
-        for i, comparison in enumerate(comparisons):
-            exec_sig = (
-                "✓" if comparison.execution_time_comparison.is_significant else "✗"
-            )
-            mem_sig = "✓" if comparison.memory_usage_comparison.is_significant else "✗"
+        # Positive row: colored marker + bold label, then description line
+        marker_x = left + 0.06
+        label_x = left + 0.12
+        ax_legend.scatter(
+            [marker_x],
+            [y_pos],
+            transform=ax_legend.transAxes,
+            color=self.rust_color,
+            s=120,
+            marker="o",
+            edgecolors="#333333",
+            linewidths=0.6,
+            zorder=4,
+        )
+        ax_legend.text(
+            label_x,
+            y_pos,
+            "Positive (Red):",
+            transform=ax_legend.transAxes,
+            fontsize=self.config.font_sizes["default"],
+            fontweight="bold",
+            verticalalignment="center",
+            zorder=4,
+        )
+        y_pos -= line_height * 0.9
+        ax_legend.text(
+            label_x,
+            y_pos,
+            "Rust performs better",
+            transform=ax_legend.transAxes,
+            fontsize=self.config.font_sizes["default"] - 1,
+            color="#222222",
+            verticalalignment="top",
+            zorder=3,
+        )
 
-            # Shorten task labels more aggressively to prevent truncation
-            task_label = (
-                row_labels[i][:12] + "..." if len(row_labels[i]) > 12 else row_labels[i]
-            )
+        # Space before next block
+        y_pos -= line_height * 1.1
 
-            ax_legend.text(
-                0.02,
-                y_pos,
-                f"{task_label}:",
-                transform=ax_legend.transAxes,
-                fontsize=self.config.font_sizes["default"] - 3,  # Smaller font
-                fontweight="bold",
-                verticalalignment="top",
-            )
-            y_pos -= 0.025  # Reduced spacing
+        # Negative row: colored marker + bold label, then description line
+        ax_legend.scatter(
+            [marker_x],
+            [y_pos],
+            transform=ax_legend.transAxes,
+            color=self.tinygo_color,
+            s=120,
+            marker="o",
+            edgecolors="#333333",
+            linewidths=0.6,
+            zorder=4,
+        )
+        ax_legend.text(
+            label_x,
+            y_pos,
+            "Negative (Blue):",
+            transform=ax_legend.transAxes,
+            fontsize=self.config.font_sizes["default"],
+            fontweight="bold",
+            verticalalignment="center",
+            zorder=4,
+        )
+        y_pos -= line_height * 0.9
+        ax_legend.text(
+            label_x,
+            y_pos,
+            "TinyGo performs better",
+            transform=ax_legend.transAxes,
+            fontsize=self.config.font_sizes["default"] - 1,
+            color="#222222",
+            verticalalignment="top",
+            zorder=3,
+        )
 
-            ax_legend.text(
-                0.02,  # Align with task label
-                y_pos,
-                f"E:{exec_sig} M:{mem_sig}",  # Shorter labels
-                transform=ax_legend.transAxes,
-                fontsize=self.config.font_sizes["default"] - 3,  # Smaller font
-                verticalalignment="top",
-            )
-            y_pos -= 0.04
+        # Space before thresholds
+        y_pos -= line_height * 1.2
+
+        # Magnitude thresholds and guidelines (kept smaller)
+        ax_legend.text(
+            left + 0.03,
+            y_pos,
+            "Magnitude Thresholds:",
+            transform=ax_legend.transAxes,
+            fontsize=self.config.font_sizes["default"],
+            fontweight="bold",
+            verticalalignment="top",
+            zorder=3,
+        )
+        y_pos -= line_height * 0.9
+        ax_legend.text(
+            left + 0.06,
+            y_pos,
+            f"Small: ±{effect_thresholds[0]:.1f}",
+            transform=ax_legend.transAxes,
+            fontsize=self.config.font_sizes["default"] - 1,
+            verticalalignment="top",
+            zorder=3,
+        )
+        y_pos -= line_height * 0.85
+        ax_legend.text(
+            left + 0.06,
+            y_pos,
+            f"Medium: ±{effect_thresholds[1]:.1f}",
+            transform=ax_legend.transAxes,
+            fontsize=self.config.font_sizes["default"] - 1,
+            verticalalignment="top",
+            zorder=3,
+        )
+        y_pos -= line_height * 0.85
+        ax_legend.text(
+            left + 0.06,
+            y_pos,
+            f"Large: ±{effect_thresholds[2]:.1f}",
+            transform=ax_legend.transAxes,
+            fontsize=self.config.font_sizes["default"] - 1,
+            verticalalignment="top",
+            zorder=3,
+        )
+
+        # Space before Cohen guidelines
+        y_pos -= line_height * 1.05
+        ax_legend.text(
+            left + 0.03,
+            y_pos,
+            "Cohen's d Guidelines:",
+            transform=ax_legend.transAxes,
+            fontsize=self.config.font_sizes["default"],
+            fontweight="bold",
+            verticalalignment="top",
+            zorder=3,
+        )
+        y_pos -= line_height * 0.9
+        ax_legend.text(
+            left + 0.06,
+            y_pos,
+            "|d| < 0.3: Negligible",
+            transform=ax_legend.transAxes,
+            fontsize=self.config.font_sizes["default"] - 1,
+            verticalalignment="top",
+            zorder=3,
+        )
+        y_pos -= line_height * 0.8
+        ax_legend.text(
+            left + 0.06,
+            y_pos,
+            "|d| ≥ 0.3: Small effect",
+            transform=ax_legend.transAxes,
+            fontsize=self.config.font_sizes["default"] - 1,
+            verticalalignment="top",
+            zorder=3,
+        )
+        y_pos -= line_height * 0.8
+        ax_legend.text(
+            left + 0.06,
+            y_pos,
+            "|d| ≥ 0.6: Medium effect",
+            transform=ax_legend.transAxes,
+            fontsize=self.config.font_sizes["default"] - 1,
+            verticalalignment="top",
+            zorder=3,
+        )
+        y_pos -= line_height * 0.8
+        ax_legend.text(
+            left + 0.06,
+            y_pos,
+            "|d| ≥ 1.0: Large effect",
+            transform=ax_legend.transAxes,
+            fontsize=self.config.font_sizes["default"] - 1,
+            verticalalignment="top",
+            zorder=3,
+        )
 
         # Adjust layout
         plt.tight_layout()
@@ -972,69 +1034,10 @@ class VisualizationGenerator:
 
         return output_path
 
-    def _configure_emoji_fonts(self):
-        """Configure matplotlib fonts with robust emoji fallback strategy."""
-        import platform
-        import matplotlib.font_manager as fm
-
-        # Test if system can actually render emojis in matplotlib
-        self._test_emoji_support()
-
-        # Get available system fonts
-        available_fonts = [f.name for f in fm.fontManager.ttflist]
-        system = platform.system()
-
-        # For macOS, try to use system fonts that handle Unicode better
-        if system == "Darwin":
-            # Use fonts known to work well with Unicode on macOS
-            font_candidates = [
-                "Arial Unicode MS",  # Best Unicode support
-                "Lucida Grande",  # macOS system font with good Unicode
-                "Menlo",  # Monospace with Unicode support
-                "SF Pro Display",  # Modern macOS font
-                "Helvetica",  # Fallback
-            ]
-        elif system == "Windows":
-            font_candidates = [
-                "Arial Unicode MS",
-                "Segoe UI Symbol",
-                "Microsoft YaHei",
-                "Segoe UI",
-                "Calibri",
-            ]
-        else:  # Linux
-            font_candidates = [
-                "Noto Sans",
-                "DejaVu Sans",
-                "Liberation Sans",
-                "Ubuntu",
-                "Arial",
-            ]
-
-        # Filter available fonts
-        available_unicode_fonts = [f for f in font_candidates if f in available_fonts]
-
-        # Always include basic fallbacks
-        if not available_unicode_fonts:
-            available_unicode_fonts = ["DejaVu Sans", "Arial"]
-
+    def _configure_fonts(self):
+        """Configure matplotlib fonts for professional charts."""
         plt.rcParams["font.family"] = "sans-serif"
-        plt.rcParams["font.sans-serif"] = available_unicode_fonts
-
-        # Suppress warnings for better UX
-        import warnings
-
-        warnings.filterwarnings(
-            "ignore", category=UserWarning, message=r".*Glyph.*missing from font.*"
-        )
-
-        print(f"🔤 Using fonts: {available_unicode_fonts[:2]}...")
-
-    def _test_emoji_support(self):
-        """Test and configure emoji display strategy."""
-        # Since matplotlib emoji support is inconsistent, use Unicode symbols instead
-        # This ensures cross-platform compatibility
-        self._use_unicode_symbols = True
+        plt.rcParams["font.sans-serif"] = ["DejaVu Sans", "Arial", "sans-serif"]
 
 
 def main() -> None:
