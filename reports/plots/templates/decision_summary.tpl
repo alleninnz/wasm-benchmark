@@ -143,6 +143,114 @@
             color: #2d3748;
         }
 
+        /* Enhanced styles for the Statistical Significance panel */
+        .stats-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .stat-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 1.25rem;
+            padding: 1rem 1.25rem;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(180deg, #4299e1 0%, #63b3ed 100%);
+            border-radius: 0 4px 4px 0;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            border-color: #cbd5e0;
+        }
+
+        .stat-label {
+            color: #4a5568;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-value {
+            color: #1a202c;
+            font-weight: 700;
+            font-size: 1.05rem;
+            text-align: right;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            max-width: 60ch;
+            background: rgba(255, 255, 255, 0.6);
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-value.multiline {
+            white-space: normal;
+            text-align: right;
+            overflow-wrap: anywhere;
+            line-height: 1.4;
+        }
+
+        /* Special styling for p-values */
+        .stat-item:nth-child(1) .stat-value,
+        .stat-item:nth-child(2) .stat-value {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 1rem;
+            background: linear-gradient(135deg, #fef5e7 0%, #fdf2f8 100%);
+            border-color: #fbbf24;
+        }
+
+        .stat-item:nth-child(1)::before,
+        .stat-item:nth-child(2)::before {
+            background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+        }
+
+        /* Special styling for effect size */
+        .stat-item:nth-child(3) .stat-value {
+            background: linear-gradient(135deg, #f0fff4 0%, #e6fffa 100%);
+            border-color: #48bb78;
+            color: #22543d;
+        }
+
+        .stat-item:nth-child(3)::before {
+            background: linear-gradient(180deg, #48bb78 0%, #38a169 100%);
+        }
+
+        /* Special styling for confidence level */
+        .stat-item:nth-child(4) .stat-value {
+            background: linear-gradient(135deg, #ebf8ff 0%, #e6fffa 100%);
+            border-color: #4299e1;
+            color: #2a4365;
+        }
+
+        .stat-item:nth-child(4)::before {
+            background: linear-gradient(180deg, #4299e1 0%, #3182ce 100%);
+        }
+
         .section {
             background: white;
             margin: 1.5rem 0;
@@ -559,6 +667,16 @@
             .technical-grid {
                 grid-template-columns: 1fr;
             }
+
+            /* On small screens, stack label above value for better readability */
+            .stat-item {
+                grid-template-columns: 1fr;
+                gap: 0.25rem;
+            }
+
+            .stat-value {
+                text-align: left;
+            }
         }
     </style>
 </head>
@@ -607,22 +725,27 @@
 
             <div class="summary-card">
                 <h3>📊 Statistical Significance</h3>
-                <div class="metric">
-                    <span class="label">Execution Time p-value:</span>
-                    <span class="value">{{ execution_time_p_value }}</span>
-                </div>
-                <div class="metric">
-                    <span class="label">Memory Usage p-value:</span>
-                    <span class="value">{{ memory_usage_p_value }}</span>
-                </div>
-                <div class="metric">
-                    <span class="label">Effect Size:</span>
-                    <span class="value">{{ overall_effect_size }}</span>
-                </div>
-                <div class="metric">
-                    <span class="label">Confidence Level:</span>
-                    <span class="value">95%</span>
-                </div>
+                    <div class="stats-panel">
+                        <div class="stat-item">
+                            <div class="stat-label">Execution Time p-value</div>
+                            <div class="stat-value">{{ execution_time_p_value }}</div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-label">Memory Usage p-value</div>
+                            <div class="stat-value">{{ memory_usage_p_value }}</div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-label">Effect Size</div>
+                            <div class="stat-value multiline">{{ overall_effect_size }}</div>
+                        </div>
+
+                        <div class="stat-item">
+                            <div class="stat-label">Confidence Level</div>
+                            <div class="stat-value">95%</div>
+                        </div>
+                    </div>
             </div>
         </div>
 
