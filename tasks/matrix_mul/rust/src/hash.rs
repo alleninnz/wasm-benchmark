@@ -26,8 +26,8 @@ pub fn fnv1a_hash_matrix(matrix: &Vec<Vec<f32>>) -> u32 {
 
 /// Round f32 to specified decimal places and convert to i32
 pub fn round_f32_to_precision(value: f32, precision_digits: u32) -> i32 {
-    let multiplier = 10_f32.powi(precision_digits as i32);
-    (value * multiplier).round() as i32
+    let multiplier = 10.0_f64.powi(precision_digits as i32);
+    ((value as f64) * multiplier).round() as i32
 }
 
 #[cfg(test)]
