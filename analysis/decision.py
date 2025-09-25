@@ -76,7 +76,7 @@ class DecisionSummaryGenerator:
         )
 
         return {
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "timestamp": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z"),
             "comparison_results": comparison_results_data,
             "charts": {
                 "execution_time": os.path.basename(chart_paths["execution_time"]),
