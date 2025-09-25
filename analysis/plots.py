@@ -963,6 +963,100 @@ class VisualizationGenerator:
 
         return output_path
 
+    def _create_distribution_variance_analysis(
+        self,
+        comparisons: list[ComparisonResult],
+        output_path: str = "reports/plots/distribution_variance_analysis.png",
+    ) -> str:
+        """
+        Generate distribution and variance analysis using side-by-side box plots.
+
+        Creates comprehensive visualization of data distribution patterns and performance
+        variance to support engineering decision-making beyond simple mean comparisons.
+        Essential for assessing performance consistency and stability characteristics.
+
+        Args:
+            comparisons: Statistical comparison results with complete five-number summaries
+            output_path: Path for saving the generated distribution analysis chart
+
+        Returns:
+            str: Path to the generated chart file
+
+        Raises:
+            ValueError: If required statistical summary data is missing
+            NotImplementedError: Method implementation pending
+
+        Design Specifications:
+        =====================
+
+        Layout Structure:
+        -----------------
+        • Dual subplot layout: [Execution Time | Memory Usage]
+        • Each subplot: side-by-side box plots (Rust vs TinyGo)
+        • X-axis: task_scale combinations (mandelbrot_small, json_parse_medium, etc.)
+        • Y-axis: metric values (ms for time, KB for memory)
+
+        Box Plot Components:
+        -------------------
+        • Box: IQR (Q1 to Q3) - core 50% of data distribution
+        • Median line: robust central tendency measure
+        • Mean marker: diamond symbol inside box for comparison with median
+        • Whiskers: extend to 1.5×IQR or min/max (whichever is closer)
+        • Outliers: individual points beyond whiskers (if any in statistical summary)
+
+        Visual Encoding:
+        ---------------
+        • Colors: Rust (orange), TinyGo (blue) - consistent with existing charts
+        • Box edge: normal thickness, high variance (CV>0.1) gets red warning border
+        • Transparency: 0.7 for boxes to show overlapping distributions
+        • Text annotations: CV values displayed above each box
+
+        Statistical Insights:
+        --------------------
+        • Box height = IQR = measure of data spread/variance
+        • Median-mean offset = indication of distribution skewness
+        • Whisker length = range of "normal" performance variation
+        • Small boxes = consistent performance, large boxes = variable performance
+
+        Engineering Value:
+        -----------------
+        • Performance consistency assessment for production deployment decisions
+        • Identify which language provides more predictable runtime behavior
+        • Support risk analysis: high variance = higher performance uncertainty
+        • Complement mean-based comparisons with stability analysis
+
+        Implementation TODOs:
+        --------------------
+        1. Validate statistical summary completeness (median, q1, q3, min, max)
+        2. Extract box plot data from comparison results
+        3. Create dual subplot layout with proper sizing
+        4. Generate side-by-side box plots for each metric
+        5. Add mean markers and coefficient of variation annotations
+        6. Apply variance-based visual warnings (red borders for CV>0.1)
+        7. Create comprehensive legend explaining box plot components
+        8. Add statistical summary note about distribution characteristics
+        9. Integrate with main visualization pipeline
+        10. Add unit tests for edge cases (single values, extreme outliers)
+
+        Data Requirements:
+        -----------------
+        • Must have: median, q1, q3 for box construction
+        • Should have: min, max for whisker calculation
+        • Optional: mean for comparison marker
+        • Enhancement: coefficient_variation for variance assessment
+
+        Cross-references:
+        ----------------
+        • Complements _create_execution_time_comparison() with variance info
+        • Supports _create_effect_size_heatmap() interpretation (high variance affects Cohen's d)
+        • Enhances _create_decision_summary_panel() with stability considerations
+        """
+        # TODO: Remove this when implementing the method
+        raise NotImplementedError(
+            "Distribution and variance analysis chart generation not yet implemented. "
+            "See method docstring for detailed implementation specifications."
+        )
+
     def _create_decision_summary_panel(
         self,
         comparisons: list[ComparisonResult],
@@ -1475,6 +1569,16 @@ def _generate_all_visualizations(
         )
         generated_files.append(generated_heatmap)
         print(f"  ✅ Saved effect size heatmap: {generated_heatmap}")
+
+        # TODO: Add distribution and variance analysis chart generation
+        # Uncomment when _create_distribution_variance_analysis() is implemented:
+        # print("📊 Creating distribution and variance analysis...")
+        # distribution_path = str(output_dir / "distribution_variance_analysis.png")
+        # generated_distribution = viz_generator._create_distribution_variance_analysis(
+        #     comparison_results, distribution_path
+        # )
+        # generated_files.append(generated_distribution)
+        # print(f"  ✅ Saved distribution analysis: {generated_distribution}")
 
         # Generate decision summary panel HTML
         print("📊 Creating decision summary panel...")
