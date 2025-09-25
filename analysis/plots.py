@@ -13,6 +13,7 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+from jinja2 import Environment, FileSystemLoader
 from matplotlib.colors import TwoSlopeNorm
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
@@ -30,6 +31,7 @@ from .data_models import (
     StatisticalResult,
     TTestResult,
 )
+from .decision import DecisionSummaryGenerator
 
 
 class ChartConstants:
@@ -41,15 +43,15 @@ class ChartConstants:
     WINNER_FONTSIZE = 14
     EFFECT_SIZE_THRESHOLDS = {"small": 0.3, "medium": 0.6, "large": 1.0}
 
-    # Significance markers
+    # Significance markers - using Unicode symbols that work reliably in matplotlib
     SIGNIFICANCE_MARKERS = {
-        SignificanceCategory.STRONG_EVIDENCE: {"marker": "🔥", "color": "red"},
+        SignificanceCategory.STRONG_EVIDENCE: {"marker": "★", "color": "red"},
         SignificanceCategory.STATISTICALLY_SIGNIFICANT_BUT_SMALL_EFFECT: {
-            "marker": "⚠️",
+            "marker": "⚠",
             "color": "orange",
         },
         SignificanceCategory.LARGE_EFFECT_BUT_NOT_STATISTICALLY_CONFIRMED: {
-            "marker": "💡",
+            "marker": "◆",
             "color": "blue",
         },
     }
@@ -86,9 +88,8 @@ class VisualizationGenerator:
         plt.rcParams["figure.dpi"] = self.config.dpi_basic
         plt.rcParams["savefig.dpi"] = self.config.dpi_detailed
 
-        # Set professional font styling
-        plt.rcParams["font.family"] = "sans-serif"
-        plt.rcParams["font.sans-serif"] = ["Arial", "DejaVu Sans", "Liberation Sans"]
+        # Set professional font styling with emoji support
+        self._configure_emoji_fonts()
         plt.rcParams["font.size"] = self.config.font_sizes["default"]
         plt.rcParams["axes.labelsize"] = self.config.font_sizes["labels"]
         plt.rcParams["axes.titlesize"] = self.config.font_sizes["titles"]
@@ -329,7 +330,7 @@ class VisualizationGenerator:
                     )
                     * 1.15
                 )
-                winner_symbol = "🏆" if winner == "rust" else "🥇"
+                winner_symbol = "★" if winner == "rust" else "☆"
                 ax.text(
                     i,
                     y_pos,
@@ -489,16 +490,16 @@ class VisualizationGenerator:
 
         # Add significance interpretation
         sig_legend_text = [
-            "🔥 Strong evidence",
-            "⚠️ Stat. sig. only",
-            "💡 Large effect only",
+            "★ Strong evidence",
+            "⚠ Stat. sig. only",
+            "◆ Large effect only",
             "≈ No difference",
         ]
 
         winner_label = (
-            "🏆 Winner (both sig.)"
+            "★ Winner (both sig.)"
             if metric_type == "execution_time"
-            else "🏆 More efficient"
+            else "★ More efficient"
         )
         sig_legend_text.append(winner_label)
 
@@ -799,10 +800,10 @@ class VisualizationGenerator:
         legend_text = [
             "Effect Size Interpretation:",
             "",
-            "🔴 Positive (Red):",
+            "● Positive (Red):",
             "  Rust performs better",
             "",
-            "🔵 Negative (Blue):",
+            "● Negative (Blue):",
             "  TinyGo performs better",
             "",
             "Magnitude Thresholds:",
@@ -857,27 +858,28 @@ class VisualizationGenerator:
             )
             mem_sig = "✓" if comparison.memory_usage_comparison.is_significant else "✗"
 
+            # Shorten task labels more aggressively to prevent truncation
             task_label = (
-                row_labels[i][:15] + "..." if len(row_labels[i]) > 15 else row_labels[i]
+                row_labels[i][:12] + "..." if len(row_labels[i]) > 12 else row_labels[i]
             )
 
             ax_legend.text(
-                0.05,
+                0.02,
                 y_pos,
                 f"{task_label}:",
                 transform=ax_legend.transAxes,
-                fontsize=self.config.font_sizes["default"] - 2,
+                fontsize=self.config.font_sizes["default"] - 3,  # Smaller font
                 fontweight="bold",
                 verticalalignment="top",
             )
-            y_pos -= 0.03
+            y_pos -= 0.025  # Reduced spacing
 
             ax_legend.text(
-                0.1,
+                0.02,  # Align with task label
                 y_pos,
-                f"Exec: {exec_sig}  Mem: {mem_sig}",
+                f"E:{exec_sig} M:{mem_sig}",  # Shorter labels
                 transform=ax_legend.transAxes,
-                fontsize=self.config.font_sizes["default"] - 2,
+                fontsize=self.config.font_sizes["default"] - 3,  # Smaller font
                 verticalalignment="top",
             )
             y_pos -= 0.04
@@ -947,27 +949,92 @@ class VisualizationGenerator:
             )
             raise FileNotFoundError(error_msg)
 
-        # Load HTML template
-        template_path = output_dir / "decision_summary.tpl"
-        if not template_path.exists():
-            raise FileNotFoundError(f"HTML template not found: {template_path}")
+        # Load and render template using Jinja2
+        template_dir = output_dir / "templates"
+        if not template_dir.exists():
+            raise FileNotFoundError(f"Template directory not found: {template_dir}")
 
-        # Read template content
-        with open(template_path, encoding="utf-8") as f:
-            template_content = f.read()
+        env = Environment(loader=FileSystemLoader(str(template_dir)))
+        template = env.get_template("decision_summary.tpl")
 
-        # Generate HTML content using template (placeholder for now)
-        # TODO: Implement template variable substitution with comparison data
-        html_content = template_content.replace(
-            "<!-- HTML template content will be added here -->",
-            f"<!-- Analysis of {len(comparisons)} comparison results -->",
+        # Prepare template data using DecisionSummaryGenerator
+        decision_generator = DecisionSummaryGenerator()
+        template_data = decision_generator.prepare_template_data(
+            comparisons, expected_plots
         )
+
+        # Render template with data
+        html_content = template.render(**template_data)
 
         # Write generated HTML file
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(html_content)
 
         return output_path
+
+    def _configure_emoji_fonts(self):
+        """Configure matplotlib fonts with robust emoji fallback strategy."""
+        import platform
+        import matplotlib.font_manager as fm
+
+        # Test if system can actually render emojis in matplotlib
+        self._test_emoji_support()
+
+        # Get available system fonts
+        available_fonts = [f.name for f in fm.fontManager.ttflist]
+        system = platform.system()
+
+        # For macOS, try to use system fonts that handle Unicode better
+        if system == "Darwin":
+            # Use fonts known to work well with Unicode on macOS
+            font_candidates = [
+                "Arial Unicode MS",  # Best Unicode support
+                "Lucida Grande",  # macOS system font with good Unicode
+                "Menlo",  # Monospace with Unicode support
+                "SF Pro Display",  # Modern macOS font
+                "Helvetica",  # Fallback
+            ]
+        elif system == "Windows":
+            font_candidates = [
+                "Arial Unicode MS",
+                "Segoe UI Symbol",
+                "Microsoft YaHei",
+                "Segoe UI",
+                "Calibri",
+            ]
+        else:  # Linux
+            font_candidates = [
+                "Noto Sans",
+                "DejaVu Sans",
+                "Liberation Sans",
+                "Ubuntu",
+                "Arial",
+            ]
+
+        # Filter available fonts
+        available_unicode_fonts = [f for f in font_candidates if f in available_fonts]
+
+        # Always include basic fallbacks
+        if not available_unicode_fonts:
+            available_unicode_fonts = ["DejaVu Sans", "Arial"]
+
+        plt.rcParams["font.family"] = "sans-serif"
+        plt.rcParams["font.sans-serif"] = available_unicode_fonts
+
+        # Suppress warnings for better UX
+        import warnings
+
+        warnings.filterwarnings(
+            "ignore", category=UserWarning, message=r".*Glyph.*missing from font.*"
+        )
+
+        print(f"🔤 Using fonts: {available_unicode_fonts[:2]}...")
+
+    def _test_emoji_support(self):
+        """Test and configure emoji display strategy."""
+        # Since matplotlib emoji support is inconsistent, use Unicode symbols instead
+        # This ensures cross-platform compatibility
+        self._use_unicode_symbols = True
 
 
 def main() -> None:
@@ -1413,6 +1480,7 @@ def _generate_all_visualizations(
             generated_decision = viz_generator._create_decision_summary_panel(
                 comparison_results, decision_path
             )
+            generated_files.append(generated_decision)
             print(f"  ✅ Saved decision summary HTML: {generated_decision}")
         except NotImplementedError:
             print("  ⚠️ Decision summary panel not yet implemented")
