@@ -64,8 +64,16 @@ class DecisionSummaryGenerator:
                         result, "memory"
                     ),
                     "overall_recommendation": result.overall_recommendation,
+                    "recommendation_level": result.recommendation_level.value or "neutral",
                 }
             )
+
+        # Sort comparison_results_data: group by task, then sort by scale within each group
+        scale_order = {"small": 0, "medium": 1, "large": 2}
+        comparison_results_data = sorted(
+            comparison_results_data,
+            key=lambda x: (x["task"], scale_order.get(x["scale"], 99))
+        )
 
         return {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
@@ -250,16 +258,16 @@ class DecisionSummaryGenerator:
             return "No significant difference"
 
         if winner == "rust":
-            advantage_pct = ((tinygo_mean - rust_mean) / tinygo_mean) * 100
+            advantage_pct = ((tinygo_mean - rust_mean) / tinygo_mean) * 100 if tinygo_mean != 0 else 0
             return (
-                f"{advantage_pct:.1f}% faster"
+                f"Rust {advantage_pct:.1f}% faster"
                 if metric_type == "execution_time"
-                else f"{advantage_pct:.1f}% less memory"
+                else f"Rust {advantage_pct:.1f}% less memory"
             )
-        else:
-            advantage_pct = ((rust_mean - tinygo_mean) / rust_mean) * 100
+        else:  # tinygo
+            advantage_pct = ((rust_mean - tinygo_mean) / rust_mean) * 100 if rust_mean != 0 else 0
             return (
-                f"{advantage_pct:.1f}% faster"
+                f"TinyGo {advantage_pct:.1f}% faster"
                 if metric_type == "execution_time"
-                else f"{advantage_pct:.1f}% less memory"
+                else f"TinyGo {advantage_pct:.1f}% less memory"
             )

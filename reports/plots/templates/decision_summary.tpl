@@ -186,7 +186,7 @@
         .comparison-table th,
         .comparison-table td {
             padding: 1rem;
-            text-align: left;
+            text-align: center;
             border-bottom: 1px solid #e2e8f0;
         }
 
@@ -194,6 +194,7 @@
             background: #f7fafc;
             font-weight: 600;
             color: #4a5568;
+            text-align: center;
         }
 
         .comparison-table tr:hover {
@@ -228,9 +229,29 @@
             color: #97266d;
         }
 
-        .badge-average {
-            background: #fed7d7;
-            color: #9c4221;
+        .badge-moderate {
+            background: #fbbf24;
+            color: #92400e;
+        }
+
+        .badge-strong {
+            background: #10b981;
+            color: #064e3b;
+        }
+
+        .badge-noclearwinner {
+            background: #6b7280;
+            color: #1f2937;
+        }
+
+        .badge-weak {
+            background: #f59e0b;
+            color: #78350f;
+        }
+
+        .badge-neutral {
+            background: #6b7280;
+            color: #1f2937;
         }
 
         .decision-matrix {
@@ -455,7 +476,7 @@
                             <th>TinyGo (ms)</th>
                             <th>Speed Advantage</th>
                             <th>Memory Advantage</th>
-                            <th>Overall Winner</th>
+                            <th>Overall Recommendation</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -472,8 +493,18 @@
                                 {{ result.memory_advantage }}
                             </td>
                             <td>
-                                <span class="performance-badge {{ 'badge-excellent' if result.overall_winner == 'rust' else 'badge-good' }}">
-                                    {{ result.overall_winner|upper }}
+                                {% if result.recommendation_level == 'strong' %}
+                                <span class="performance-badge badge-strong">
+                                {% elif result.recommendation_level == 'moderate' %}
+                                <span class="performance-badge badge-moderate">
+                                {% elif result.recommendation_level == 'weak' %}
+                                <span class="performance-badge badge-weak">
+                                {% elif result.recommendation_level == 'neutral' %}
+                                <span class="performance-badge badge-neutral">
+                                {% else %}
+                                <span class="performance-badge badge-tradeoff">
+                                {% endif %}
+                                    {{ result.overall_recommendation }}
                                 </span>
                             </td>
                         </tr>
