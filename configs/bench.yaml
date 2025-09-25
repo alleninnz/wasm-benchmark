@@ -39,9 +39,9 @@ tasks:
       small:
         record_count: 5000
       medium:
-        record_count: 10000
+        record_count: 15000
       large:
-        record_count: 20000
+        record_count: 30000
     schema:
       fields: ["id", "value", "flag", "name"]
       id_sequential: true
@@ -57,7 +57,7 @@ tasks:
       medium:
         dimension: 384
       large:
-        dimension: 512
+        dimension: 576
 
 # Simplified language configurations
 languages:
