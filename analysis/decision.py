@@ -292,9 +292,28 @@ class DecisionSummaryGenerator:
             return "N/A"
 
         try:
-            max_p = max(p_values)
-            return f"< {max_p:.3f}"
-        except (TypeError, ValueError):
+            arr = np.array(p_values, dtype=float)
+            # remove NaNs if present
+            arr = arr[~np.isnan(arr)]
+            if arr.size == 0:
+                return "N/A"
+
+            n = arr.size
+            alpha = 0.05
+            n_significant = int((arr < alpha).sum())
+
+            min_p = float(arr.min())
+            median_p = float(np.median(arr))
+
+            # Display very small p-values compactly
+            if min_p < 0.001:
+                min_str = "<0.001"
+            else:
+                min_str = f"{min_p:.3f}"
+
+            return f"min {min_str}; median {median_p:.3f}; {n_significant}/{n} significant"
+
+        except (TypeError, ValueError, Exception):
             return "N/A"
 
     def _categorize_effect_size(self, effect_sizes: List[float]) -> str:
@@ -311,9 +330,23 @@ class DecisionSummaryGenerator:
             return "N/A"
 
         try:
-            # Calculate absolute mean effect size
-            abs_effect_sizes = [abs(d) for d in effect_sizes]
-            mean_effect_size = np.mean(abs_effect_sizes)
+            # Work with absolute values for magnitude classification
+            arr = np.array([abs(float(d)) for d in effect_sizes], dtype=float)
+            arr = arr[~np.isnan(arr)]
+            if arr.size == 0:
+                return "N/A"
+
+            mean_effect_size = float(np.mean(arr))
+            median_effect_size = float(np.median(arr))
+            min_effect_size = float(np.min(arr))
+            max_effect_size = float(np.max(arr))
+
+            # Counts per magnitude bucket
+            n_total = arr.size
+            n_negligible = int((arr < self.SMALL_EFFECT_SIZE).sum())
+            n_small = int(((arr >= self.SMALL_EFFECT_SIZE) & (arr < self.MEDIUM_EFFECT_SIZE)).sum())
+            n_medium = int(((arr >= self.MEDIUM_EFFECT_SIZE) & (arr < self.LARGE_EFFECT_SIZE)).sum())
+            n_large = int((arr >= self.LARGE_EFFECT_SIZE).sum())
 
             if mean_effect_size >= self.LARGE_EFFECT_SIZE:
                 category = "Large"
@@ -324,7 +357,14 @@ class DecisionSummaryGenerator:
             else:
                 category = "Negligible"
 
-            return f"{category} (avg d = {mean_effect_size:.1f})"
+            # Build a concise but informative summary
+            summary = (
+                f"{category} (avg d={mean_effect_size:.2f}; med={median_effect_size:.2f}; "
+                f"min={min_effect_size:.2f}; max={max_effect_size:.2f}; "
+                f"n_large={n_large}/{n_total})"
+            )
+
+            return summary
 
         except (TypeError, ValueError) as e:
             self._logger.error(f"Error categorizing effect size: {e}")
