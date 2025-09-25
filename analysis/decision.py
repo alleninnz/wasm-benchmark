@@ -3,14 +3,19 @@ Decision summary generator for WebAssembly benchmark analysis.
 
 Generates engineering-focused decision support reports comparing Rust vs TinyGo
 performance characteristics for WebAssembly applications.
+
+This module provides comprehensive analysis and recommendation generation based on
+statistical comparisons of performance metrics across multiple benchmark scenarios.
 """
 
+import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
+from numpy.typing import NDArray
 
 from .data_models import ComparisonResult
 
@@ -19,137 +24,481 @@ class DecisionSummaryGenerator:
     """
     Generates comprehensive decision support reports for Rust vs TinyGo WebAssembly selection.
 
-    Focuses on engineering practicality over academic rigor, providing actionable
-    insights for technical decision-making.
+    This class analyzes benchmark comparison results and generates engineering-focused
+    decision support reports. It focuses on engineering practicality over academic rigor,
+    providing actionable insights for technical decision-making.
+
+    Attributes:
+        _logger: Logger instance for this class
     """
 
-    def prepare_template_data(
+    # Configuration constants
+    DEFAULT_CONFIDENCE_LEVEL = 0.95
+    DEFAULT_SAMPLES_PER_RESULT = 10
+    RANDOM_SEED = 42
+    MEMORY_UNIT_CONVERSION = 1024  # KB to MB
+    SCALE_ORDER = {"small": 0, "medium": 1, "large": 2}
+
+    # Effect size thresholds
+    SMALL_EFFECT_SIZE = 0.3
+    MEDIUM_EFFECT_SIZE = 0.6
+    LARGE_EFFECT_SIZE = 1.0
+
+    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
+        """
+        Initialize the DecisionSummaryGenerator.
+
+        Args:
+            logger: Optional logger instance. If None, creates a default logger.
+        """
+        self._logger = logger or logging.getLogger(__name__)
+        self._logger.debug("Initialized DecisionSummaryGenerator")
+
+    def _validate_inputs(
         self, comparisons: List[ComparisonResult], chart_paths: Dict[str, Path]
-    ) -> Dict[str, Any]:
-        """Prepare data for decision summary template rendering."""
+    ) -> None:
+        """
+        Validate input parameters for template data preparation.
 
-        # Calculate aggregate metrics
-        rust_metrics = self._calculate_language_metrics(comparisons, "rust")
-        tinygo_metrics = self._calculate_language_metrics(comparisons, "tinygo")
+        Args:
+            comparisons: List of comparison results to validate
+            chart_paths: Dictionary of chart file paths to validate
 
-        # Statistical analysis
-        statistical_analysis = self._calculate_statistical_metrics(comparisons)
+        Raises:
+            ValueError: If input data is invalid or insufficient
+            TypeError: If input types are incorrect
+        """
+        if not isinstance(comparisons, list):
+            raise TypeError("comparisons must be a list")
 
-        # Generate recommendations
-        recommendations = self._generate_recommendations(comparisons)
+        if not comparisons:
+            raise ValueError("comparisons list cannot be empty")
 
-        # Technical implementation notes
-        technical_notes = self._generate_technical_notes()
+        if not isinstance(chart_paths, dict):
+            raise TypeError("chart_paths must be a dictionary")
 
-        # Methodology information
-        methodology = self._generate_methodology_info(comparisons)
+        # Validate comparison results (duck typing for flexibility with mocks)
+        for i, comparison in enumerate(comparisons):
+            # Check for required attributes instead of strict type checking
+            required_attrs = [
+                'rust_performance', 'tinygo_performance',
+                'execution_time_comparison', 'memory_usage_comparison',
+                'task', 'scale'
+            ]
+            for attr in required_attrs:
+                if not hasattr(comparison, attr):
+                    raise ValueError(f"Comparison result at index {i} missing required attribute: {attr}")
 
-        # Prepare comparison results data for table display
+            # Additional validation for performance data structure
+            try:
+                # Check that performance objects have required structure
+                for perf_attr in ['rust_performance', 'tinygo_performance']:
+                    perf_obj = getattr(comparison, perf_attr)
+                    if not all(hasattr(perf_obj, req_attr) for req_attr in ['execution_time', 'memory_usage', 'success_rate']):
+                        raise ValueError(f"Invalid performance data structure at index {i}")
+
+            except AttributeError as e:
+                raise ValueError(f"Invalid comparison result structure at index {i}: {e}")
+
+        # Validate chart paths
+        required_charts = ['execution_time', 'memory_usage', 'effect_size']
+        for chart_name in required_charts:
+            if chart_name not in chart_paths:
+                raise ValueError(f"Missing required chart path: {chart_name}")
+
+            chart_path = chart_paths[chart_name]
+            if not isinstance(chart_path, Path):
+                raise TypeError(f"chart_paths['{chart_name}'] must be a Path instance")
+
+        self._logger.debug(f"Input validation passed for {len(comparisons)} comparisons")
+
+    def _prepare_comparison_results_data(self, comparisons: List[ComparisonResult]) -> List[Dict[str, str]]:
+        """
+        Prepare comparison results data for table display.
+
+        Args:
+            comparisons: List of comparison results to process
+
+        Returns:
+            List of dictionaries containing formatted comparison data
+
+        Raises:
+            AttributeError: If required attributes are missing from comparison results
+        """
         comparison_results_data = []
-        for result in comparisons:
-            comparison_results_data.append(
-                {
-                    "task": result.task,
-                    "scale": result.scale,
+
+        for i, result in enumerate(comparisons):
+            try:
+                # Safely access attributes with error handling
+                data_entry = {
+                    "task": getattr(result, 'task', 'unknown'),
+                    "scale": getattr(result, 'scale', 'unknown'),
                     "rust_time_ms": f"{result.rust_performance.execution_time.mean:.1f}",
                     "tinygo_time_ms": f"{result.tinygo_performance.execution_time.mean:.1f}",
                     "rust_memory_mb": f"{result.rust_performance.memory_usage.mean:.1f}",
                     "tinygo_memory_mb": f"{result.tinygo_performance.memory_usage.mean:.1f}",
-                    "time_winner": result.execution_time_winner or "neutral",
-                    "memory_winner": result.memory_usage_winner or "neutral",
-                    "time_advantage": self._calculate_advantage_text(
-                        result, "execution_time"
-                    ),
-                    "memory_advantage": self._calculate_advantage_text(
-                        result, "memory"
-                    ),
-                    "overall_recommendation": result.overall_recommendation,
-                    "recommendation_level": result.recommendation_level.value or "neutral",
+                    "time_winner": getattr(result, 'execution_time_winner', None) or "neutral",
+                    "memory_winner": getattr(result, 'memory_usage_winner', None) or "neutral",
+                    "time_advantage": self._calculate_advantage_text(result, "execution_time"),
+                    "memory_advantage": self._calculate_advantage_text(result, "memory"),
+                    "overall_recommendation": getattr(result, 'overall_recommendation', 'No recommendation'),
+                    "recommendation_level": getattr(
+                        getattr(result, 'recommendation_level', None),
+                        'value',
+                        'neutral'
+                    ) or "neutral",
                 }
+                comparison_results_data.append(data_entry)
+
+            except (AttributeError, TypeError) as e:
+                self._logger.warning(f"Error processing comparison result at index {i}: {e}")
+                # Add placeholder data to maintain table structure
+                comparison_results_data.append({
+                    "task": "error",
+                    "scale": "unknown",
+                    "rust_time_ms": "N/A",
+                    "tinygo_time_ms": "N/A",
+                    "rust_memory_mb": "N/A",
+                    "tinygo_memory_mb": "N/A",
+                    "time_winner": "neutral",
+                    "memory_winner": "neutral",
+                    "time_advantage": "N/A",
+                    "memory_advantage": "N/A",
+                    "overall_recommendation": "Data unavailable",
+                    "recommendation_level": "neutral",
+                })
+
+        return comparison_results_data
+
+    def _extract_performance_data(
+        self, results: List[ComparisonResult], language: str
+    ) -> Tuple[List[float], List[float], List[float]]:
+        """
+        Extract performance data arrays for a specific language.
+
+        Args:
+            results: List of comparison results
+            language: Language to extract data for
+
+        Returns:
+            Tuple of (execution_times, memory_values, success_rates)
+        """
+        times = []
+        memory_values = []
+        success_rates = []
+
+        for result in results:
+            try:
+                if language == "rust":
+                    performance = result.rust_performance
+                else:  # tinygo
+                    performance = result.tinygo_performance
+
+                times.append(performance.execution_time.mean)
+                memory_values.append(performance.memory_usage.mean)
+                success_rates.append(performance.success_rate)
+
+            except AttributeError as e:
+                self._logger.warning(f"Missing performance data for {language}: {e}")
+                continue
+
+        return times, memory_values, success_rates
+
+    def _safe_average(
+        self,
+        values: List[float],
+        metric_name: str,
+        scale_factor: Optional[float] = None,
+        as_percentage: bool = False,
+        decimal_places: int = 2
+    ) -> str:
+        """
+        Calculate average with safe error handling and formatting.
+
+        Args:
+            values: List of numeric values to average
+            metric_name: Name of the metric for logging
+            scale_factor: Optional scaling factor to apply
+            as_percentage: Whether to format as percentage
+            decimal_places: Number of decimal places for formatting
+
+        Returns:
+            Formatted average value or "N/A" if calculation fails
+        """
+        if not values:
+            self._logger.warning(f"No values provided for {metric_name} calculation")
+            return "N/A"
+
+        try:
+            average = sum(values) / len(values)
+
+            if scale_factor:
+                average = average / scale_factor
+
+            if as_percentage:
+                average = average * 100
+                return f"{average:.{decimal_places-1}f}%"
+
+            return f"{average:.{decimal_places}f}"
+
+        except (TypeError, ZeroDivisionError) as e:
+            self._logger.error(f"Error calculating average for {metric_name}: {e}")
+            return "N/A"
+
+    def _extract_statistical_values(
+        self, results: List[ComparisonResult], metric_type: str, value_type: str
+    ) -> List[float]:
+        """
+        Extract statistical values from comparison results.
+
+        Args:
+            results: List of comparison results
+            metric_type: Type of metric ('execution_time' or 'memory_usage')
+            value_type: Type of value ('p_value' or 'cohens_d')
+
+        Returns:
+            List of extracted statistical values
+        """
+        values = []
+        for result in results:
+            try:
+                if metric_type == "execution_time":
+                    comparison = result.execution_time_comparison
+                else:  # memory_usage
+                    comparison = result.memory_usage_comparison
+
+                if value_type == "p_value":
+                    values.append(comparison.t_test.p_value)
+                else:  # cohens_d
+                    values.append(comparison.effect_size.cohens_d)
+
+            except AttributeError as e:
+                self._logger.warning(f"Missing {metric_type} {value_type} data: {e}")
+                continue
+
+        return values
+
+    def _format_p_value(self, p_values: List[float]) -> str:
+        """
+        Format p-values for display.
+
+        Args:
+            p_values: List of p-values to format
+
+        Returns:
+            Formatted p-value string
+        """
+        if not p_values:
+            return "N/A"
+
+        try:
+            max_p = max(p_values)
+            return f"< {max_p:.3f}"
+        except (TypeError, ValueError):
+            return "N/A"
+
+    def _categorize_effect_size(self, effect_sizes: List[float]) -> str:
+        """
+        Categorize overall effect size based on Cohen's d thresholds.
+
+        Args:
+            effect_sizes: List of Cohen's d values
+
+        Returns:
+            Categorized effect size description
+        """
+        if not effect_sizes:
+            return "N/A"
+
+        try:
+            # Calculate absolute mean effect size
+            abs_effect_sizes = [abs(d) for d in effect_sizes]
+            mean_effect_size = np.mean(abs_effect_sizes)
+
+            if mean_effect_size >= self.LARGE_EFFECT_SIZE:
+                category = "Large"
+            elif mean_effect_size >= self.MEDIUM_EFFECT_SIZE:
+                category = "Medium"
+            elif mean_effect_size >= self.SMALL_EFFECT_SIZE:
+                category = "Small"
+            else:
+                category = "Negligible"
+
+            return f"{category} (avg d = {mean_effect_size:.1f})"
+
+        except (TypeError, ValueError) as e:
+            self._logger.error(f"Error categorizing effect size: {e}")
+            return "N/A"
+
+    def prepare_template_data(
+        self, comparisons: List[ComparisonResult], chart_paths: Dict[str, Path]
+    ) -> Dict[str, Any]:
+        """
+        Prepare comprehensive data for decision summary template rendering.
+
+        Args:
+            comparisons: List of performance comparison results to analyze
+            chart_paths: Dictionary mapping chart types to their file paths
+
+        Returns:
+            Dictionary containing all template data including metrics, recommendations,
+            and supporting information
+
+        Raises:
+            ValueError: If input data is invalid or insufficient
+            TypeError: If input types are incorrect
+        """
+        self._logger.info(f"Preparing template data for {len(comparisons)} comparisons")
+
+        # Validate inputs
+        self._validate_inputs(comparisons, chart_paths)
+
+        try:
+            # Calculate aggregate metrics with error handling
+            self._logger.debug("Calculating language metrics")
+            rust_metrics = self._calculate_language_metrics(comparisons, "rust")
+            tinygo_metrics = self._calculate_language_metrics(comparisons, "tinygo")
+
+            # Statistical analysis
+            self._logger.debug("Calculating statistical metrics")
+            statistical_analysis = self._calculate_statistical_metrics(comparisons)
+
+            # Generate recommendations
+            self._logger.debug("Generating recommendations")
+            recommendations = self._generate_recommendations(comparisons)
+
+            # Technical implementation notes
+            self._logger.debug("Generating technical notes")
+            technical_notes = self._generate_technical_notes()
+
+            # Methodology information
+            self._logger.debug("Generating methodology information")
+            methodology = self._generate_methodology_info(comparisons)
+
+            # Prepare comparison results data for table display
+            self._logger.debug("Preparing comparison results data")
+            comparison_results_data = self._prepare_comparison_results_data(comparisons)
+
+            # Sort comparison_results_data: group by task, then sort by scale within each group
+            comparison_results_data = sorted(
+                comparison_results_data,
+                key=lambda x: (x["task"], self.SCALE_ORDER.get(x["scale"], 99))
             )
 
-        # Sort comparison_results_data: group by task, then sort by scale within each group
-        scale_order = {"small": 0, "medium": 1, "large": 2}
-        comparison_results_data = sorted(
-            comparison_results_data,
-            key=lambda x: (x["task"], scale_order.get(x["scale"], 99))
-        )
+            # Prepare final template data
+            template_data = {
+                "timestamp": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "comparison_results": comparison_results_data,
+                "charts": {
+                    "execution_time": os.path.basename(chart_paths["execution_time"]),
+                    "memory_usage": os.path.basename(chart_paths["memory_usage"]),
+                    "effect_size": os.path.basename(chart_paths["effect_size"]),
+                },
+                **rust_metrics,
+                **tinygo_metrics,
+                **statistical_analysis,
+                **recommendations,
+                **technical_notes,
+                **methodology,
+            }
 
-        return {
-            "timestamp": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z"),
-            "comparison_results": comparison_results_data,
-            "charts": {
-                "execution_time": os.path.basename(chart_paths["execution_time"]),
-                "memory_usage": os.path.basename(chart_paths["memory_usage"]),
-                "effect_size": os.path.basename(chart_paths["effect_size"]),
-            },
-            **rust_metrics,
-            **tinygo_metrics,
-            **statistical_analysis,
-            **recommendations,
-            **technical_notes,
-            **methodology,
-        }
+            self._logger.info("Successfully prepared template data")
+            return template_data
+
+        except Exception as e:
+            self._logger.error(f"Error preparing template data: {e}")
+            raise RuntimeError(f"Failed to prepare template data: {e}") from e
 
     def _calculate_language_metrics(
         self, results: List[ComparisonResult], language: str
-    ) -> Dict[str, Any]:
-        """Calculate aggregate performance metrics for a specific language."""
+    ) -> Dict[str, str]:
+        """
+        Calculate aggregate performance metrics for a specific language.
 
-        if language == "rust":
-            times = [r.rust_performance.execution_time.mean for r in results]
-            memory_values = [r.rust_performance.memory_usage.mean for r in results]
-            success_rates = [r.rust_performance.success_rate for r in results]
-        else:  # tinygo
-            times = [r.tinygo_performance.execution_time.mean for r in results]
-            memory_values = [r.tinygo_performance.memory_usage.mean for r in results]
-            success_rates = [r.tinygo_performance.success_rate for r in results]
+        Args:
+            results: List of comparison results to analyze
+            language: Language to analyze ('rust' or 'tinygo')
 
-        return {
-            f"{language}_avg_execution_time": (
-                f"{sum(times) / len(times):.2f}" if times else "N/A"
-            ),
-            f"{language}_avg_memory_usage": (
-                f"{sum(memory_values) / (1024*len(memory_values)):.2f}"
-                if memory_values
-                else "N/A"
-            ),
-            f"{language}_success_rate": (
-                f"{sum(success_rates) / len(success_rates) * 100:.1f}"
-                if success_rates
-                else "N/A"
-            ),
-        }
+        Returns:
+            Dictionary containing formatted aggregate metrics for the language
+
+        Raises:
+            ValueError: If language is not supported
+        """
+        if language not in ("rust", "tinygo"):
+            raise ValueError(f"Unsupported language: {language}. Must be 'rust' or 'tinygo'")
+
+        self._logger.debug(f"Calculating metrics for {language}")
+
+        try:
+            # Extract performance data based on language
+            performance_data = self._extract_performance_data(results, language)
+            times, memory_values, success_rates = performance_data
+
+            # Calculate aggregate metrics with safe division
+            avg_execution_time = self._safe_average(times, "execution time")
+            avg_memory_usage = self._safe_average(
+                memory_values, "memory usage", scale_factor=self.MEMORY_UNIT_CONVERSION
+            )
+            success_rate = self._safe_average(success_rates, "success rate", as_percentage=True)
+
+            return {
+                f"{language}_avg_execution_time": avg_execution_time,
+                f"{language}_avg_memory_usage": avg_memory_usage,
+                f"{language}_success_rate": success_rate,
+            }
+
+        except Exception as e:
+            self._logger.error(f"Error calculating {language} metrics: {e}")
+            return {
+                f"{language}_avg_execution_time": "N/A",
+                f"{language}_avg_memory_usage": "N/A",
+                f"{language}_success_rate": "N/A",
+            }
 
     def _calculate_statistical_metrics(
         self, results: List[ComparisonResult]
-    ) -> Dict[str, Any]:
-        """Calculate statistical significance metrics."""
+    ) -> Dict[str, str]:
+        """
+        Calculate statistical significance metrics from comparison results.
 
-        # Average p-values and effect sizes
-        exec_p_values = [r.execution_time_comparison.t_test.p_value for r in results]
-        mem_p_values = [r.memory_usage_comparison.t_test.p_value for r in results]
-        exec_effect_sizes = [
-            r.execution_time_comparison.effect_size.cohens_d for r in results
-        ]
-        mem_effect_sizes = [
-            r.memory_usage_comparison.effect_size.cohens_d for r in results
-        ]
+        Args:
+            results: List of comparison results containing statistical tests
 
-        return {
-            "execution_time_p_value": (
-                f"< {max(exec_p_values):.3f}" if exec_p_values else "N/A"
-            ),
-            "memory_usage_p_value": (
-                f"< {max(mem_p_values):.3f}" if mem_p_values else "N/A"
-            ),
-            "overall_effect_size": (
-                f"Large (avg d = {np.mean(exec_effect_sizes + mem_effect_sizes):.1f})"
-                if exec_effect_sizes and mem_effect_sizes
-                else "N/A"
-            ),
-            "confidence_level": "95%",
-        }
+        Returns:
+            Dictionary containing formatted statistical metrics
+
+        Raises:
+            AttributeError: If statistical data is missing from results
+        """
+        self._logger.debug("Calculating statistical metrics")
+
+        try:
+            # Extract statistical values with error handling
+            exec_p_values = self._extract_statistical_values(results, "execution_time", "p_value")
+            mem_p_values = self._extract_statistical_values(results, "memory_usage", "p_value")
+            exec_effect_sizes = self._extract_statistical_values(results, "execution_time", "cohens_d")
+            mem_effect_sizes = self._extract_statistical_values(results, "memory_usage", "cohens_d")
+
+            # Calculate overall effect size
+            all_effect_sizes = exec_effect_sizes + mem_effect_sizes
+            overall_effect_size = self._categorize_effect_size(all_effect_sizes) if all_effect_sizes else "N/A"
+
+            return {
+                "execution_time_p_value": self._format_p_value(exec_p_values),
+                "memory_usage_p_value": self._format_p_value(mem_p_values),
+                "overall_effect_size": overall_effect_size,
+                "confidence_level": f"{int(self.DEFAULT_CONFIDENCE_LEVEL * 100)}%",
+            }
+
+        except Exception as e:
+            self._logger.error(f"Error calculating statistical metrics: {e}")
+            return {
+                "execution_time_p_value": "N/A",
+                "memory_usage_p_value": "N/A",
+                "overall_effect_size": "N/A",
+                "confidence_level": f"{int(self.DEFAULT_CONFIDENCE_LEVEL * 100)}%",
+            }
 
     def _generate_recommendations(
         self, results: List[ComparisonResult]
