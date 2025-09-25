@@ -19,10 +19,32 @@
             min-height: 100vh;
         }
 
+        :root {
+            --bg-gradient-start: #f7fafc;
+            --bg-gradient-end: #edf2f7;
+            --text-color: #2d3748;
+            --muted-color: #718096;
+            --card-bg: #ffffff;
+            --accent: #4299e1;
+            --rust-color: #e53e3e;
+            --tinygo-color: #00a5d6;
+            --success: #48bb78;
+            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 1rem 1.5rem;
+        }
+
+        /* Responsive utility for wide tables */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            background: transparent;
+            border-radius: 8px;
         }
 
         .header {
@@ -143,9 +165,41 @@
 
         .chart-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: 1fr;
             gap: 1.5rem;
             margin: 1.5rem 0;
+        }
+
+        .chart-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #718096;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab-button:hover {
+            color: #4299e1;
+            background: #f7fafc;
+        }
+
+        .tab-button.active {
+            color: #4299e1;
+            border-bottom-color: #4299e1;
+            background: white;
+            font-weight: 600;
         }
 
         .chart-container {
@@ -154,6 +208,11 @@
             padding: 1rem;
             border-radius: 8px;
             border: 1px solid #e2e8f0;
+            display: none;
+        }
+
+        .chart-container.active {
+            display: block;
         }
 
         .chart-container img {
@@ -199,6 +258,15 @@
 
         .comparison-table tr:hover {
             background: #f7fafc;
+        }
+
+        /* Zebra striping for readability */
+        .comparison-table tbody tr:nth-child(odd) {
+            background: #ffffff;
+        }
+
+        .comparison-table tbody tr:nth-child(even) {
+            background: #fbfcfd;
         }
 
         .winner-rust {
@@ -329,31 +397,135 @@
             opacity: 0.9;
         }
 
-        .technical-details {
+        .methodology-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .methodology-card {
             background: #f8f9fa;
-            padding: 1rem;
+            padding: 1.5rem;
             border-radius: 8px;
-            border-left: 4px solid #6c757d;
-            margin: 1rem 0;
+            border-left: 4px solid #4299e1;
+            transition: transform 0.2s ease;
+        }
+
+        .methodology-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .methodology-card h4 {
+            color: #2d3748;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .methodology-card ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .methodology-card li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .methodology-card li:last-child {
+            border-bottom: none;
+        }
+
+        .methodology-card li strong {
+            color: #4a5568;
+            font-weight: 600;
+        }
+
+        .technical-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .technical-details {
+            background: linear-gradient(135deg, #f8f9fa 0%, #f1f5f9 100%);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 4px solid #4299e1;
+            margin: 0;
+            transition: transform 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .technical-details::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #4299e1, #63b3ed);
+        }
+
+        .technical-details:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
         }
 
         .technical-details h4 {
-            color: #495057;
-            margin-bottom: 0.5rem;
+            color: #2d3748;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
         }
 
-        .technical-details code {
-            background: #e9ecef;
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+        .technical-details p {
+            margin: 0.5rem 0;
+            color: #4a5568;
+            line-height: 1.6;
+        }
+
+        .technical-details ul {
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .technical-details li {
+            margin: 0.5rem 0;
+            color: #4a5568;
+            line-height: 1.5;
+        }
+
+        .technical-details strong {
+            color: #2d3748;
+            font-weight: 600;
         }
 
         .footer {
             text-align: center;
-            padding: 2rem;
-            color: #718096;
-            font-size: 0.9rem;
+            padding: 2rem 1rem;
+            background: var(--bg-gradient-start);
+            border-top: 1px solid #e2e8f0;
+            margin-top: 2rem;
+        }
+
+        .footer p {
+            margin: 0.5rem 0;
+            color: var(--text-color);
+        }
+
+        .footer p:first-child {
+            font-weight: 600;
         }
 
         @media (max-width: 768px) {
@@ -365,11 +537,26 @@
                 font-size: 2rem;
             }
 
+            .chart-tabs {
+                flex-wrap: wrap;
+            }
+
+            .tab-button {
+                flex: 1;
+                min-width: 0;
+                padding: 0.5rem 0.75rem;
+                font-size: 0.85rem;
+            }
+
             .decision-matrix {
                 grid-template-columns: 1fr;
             }
 
             .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .technical-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -443,21 +630,23 @@
         <div class="section">
             <div class="section-header">📈 Performance Comparison Charts</div>
             <div class="section-content">
+                <div class="chart-tabs">
+                    <button class="tab-button active" data-chart="execution-time">Execution Time</button>
+                    <button class="tab-button" data-chart="memory-usage">Memory Usage</button>
+                    <button class="tab-button" data-chart="effect-size">Effect Size</button>
+                </div>
                 <div class="chart-grid">
-                    <div class="chart-container">
+                    <div class="chart-container active" id="execution-time-chart">
+                        <h4>Execution Time Comparison: Rust vs TinyGo (Mean ± SE with Medians)</h4>
                         <img src="{{ charts.execution_time }}" alt="Execution Time Comparison">
-                        <h4>Execution Time Analysis</h4>
-                        <p>Runtime performance across different workload scales</p>
                     </div>
-                    <div class="chart-container">
+                    <div class="chart-container" id="memory-usage-chart">
+                        <h4>Memory Usage Comparison: Rust vs TinyGo (Mean ± SE with Medians)</h4>
                         <img src="{{ charts.memory_usage }}" alt="Memory Usage Comparison">
-                        <h4>Memory Usage Analysis</h4>
-                        <p>Memory consumption patterns and efficiency</p>
                     </div>
-                    <div class="chart-container">
+                    <div class="chart-container" id="effect-size-chart">
+                        <h4>Cohen's d Effect Size Heatmap</h4>
                         <img src="{{ charts.effect_size }}" alt="Effect Size Heatmap">
-                        <h4>Statistical Effect Size</h4>
-                        <p>Magnitude of performance differences across tasks</p>
                     </div>
                 </div>
             </div>
@@ -467,6 +656,7 @@
         <div class="section">
             <div class="section-header">📋 Detailed Performance Breakdown</div>
             <div class="section-content">
+                <div class="table-wrapper">
                 <table class="comparison-table">
                     <thead>
                         <tr>
@@ -511,6 +701,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
 
@@ -568,62 +759,64 @@
         <div class="section">
             <div class="section-header">🔧 Technical Implementation Notes</div>
             <div class="section-content">
-                <div class="technical-details">
-                    <h4>�️ Experimental Environment</h4>
-                    <p><strong>Hardware:</strong> MacBook Pro M4 10Core CPU 16GB RAM</p>
-                    <p><strong>Operating System:</strong> macOS 15.6+</p>
-                    <p><strong>Browser:</strong> Headless Chromium 140+ (Puppeteer 24+)</p>
-                    <p><strong>Language Toolchains:</strong></p>
-                    <ul>
-                        <li>Rust 1.89+ (stable) targeting wasm32-unknown-unknown</li>
-                        <li>TinyGo 0.39+ + Go 1.25+ targeting WebAssembly</li>
-                        <li>Node.js 22 LTS, Python 3.13+</li>
-                    </ul>
-                </div>
+                <div class="technical-grid">
+                    <div class="technical-details">
+                        <h4>🖥️ Experimental Environment</h4>
+                        <p><strong>Hardware:</strong> MacBook Pro M4 10Core CPU 16GB RAM</p>
+                        <p><strong>Operating System:</strong> macOS 15.6+</p>
+                        <p><strong>Browser:</strong> Headless Chromium 140+ (Puppeteer 24+)</p>
+                        <p><strong>Language Toolchains:</strong></p>
+                        <ul>
+                            <li>Rust 1.89+ (stable) targeting wasm32-unknown-unknown</li>
+                            <li>TinyGo 0.39+ + Go 1.25+ targeting WebAssembly</li>
+                            <li>Node.js 22 LTS, Python 3.13+</li>
+                        </ul>
+                    </div>
 
-                <div class="technical-details">
-                    <h4>�📦 Build Configuration</h4>
-                    <p><strong>Rust (Bare Interface):</strong></p>
-                    <ul>
-                        <li>Optimization: opt-level=3, lto="fat", codegen-units=1</li>
-                        <li>Panic: abort, Strip: debuginfo</li>
-                        <li>Post-processing: wasm-strip + wasm-opt -O3</li>
-                    </ul>
-                    <p><strong>TinyGo:</strong></p>
-                    <ul>
-                        <li>Build flags: -opt=2, -panic=trap, -no-debug, -scheduler=none, -gc=conservative</li>
-                        <li>Post-processing: wasm-strip + wasm-opt -Oz</li>
-                    </ul>
-                </div>
+                    <div class="technical-details">
+                        <h4>⚙️ Build Configuration</h4>
+                        <p><strong>Rust (Bare Interface):</strong></p>
+                        <ul>
+                            <li>Optimization: opt-level=3, lto="fat", codegen-units=1</li>
+                            <li>Panic: abort, Strip: debuginfo</li>
+                            <li>Post-processing: wasm-strip + wasm-opt -O3</li>
+                        </ul>
+                        <p><strong>TinyGo:</strong></p>
+                        <ul>
+                            <li>Build flags: -opt=2, -panic=trap, -no-debug, -scheduler=none, -gc=conservative</li>
+                            <li>Post-processing: wasm-strip + wasm-opt -Oz</li>
+                        </ul>
+                    </div>
 
-                <div class="technical-details">
-                    <h4>🎯 Benchmark Tasks</h4>
-                    <p><strong>Mandelbrot:</strong> CPU floating-point intensive (256×256 to 1024×1024)</p>
-                    <p><strong>JSON Parsing:</strong> Structured data processing (6K to 50K records)</p>
-                    <p><strong>Matrix Multiplication:</strong> Dense numerical computation (256×256 to 512×512)</p>
-                    <p><strong>Verification:</strong> FNV-1a hash consistency across languages</p>
-                </div>
+                    <div class="technical-details">
+                        <h4>🎯 Benchmark Tasks</h4>
+                        <p><strong>Mandelbrot:</strong> CPU floating-point intensive (256×256 to 1024×1024)</p>
+                        <p><strong>JSON Parsing:</strong> Structured data processing (5K to 30K records)</p>
+                        <p><strong>Matrix Multiplication:</strong> Dense numerical computation (256×256 to 576×576)</p>
+                        <p><strong>Verification:</strong> FNV-1a hash consistency across languages</p>
+                    </div>
 
-                <div class="technical-details">
-                    <h4>🚀 Deployment Considerations</h4>
-                    <p><strong>Rust:</strong> Zero-cost abstractions, compile-time memory management, no GC overhead</p>
-                    <p><strong>TinyGo:</strong> Garbage collector with GC pauses and allocation overhead</p>
-                </div>
+                    <div class="technical-details">
+                        <h4>📈 Scalability Analysis</h4>
+                        <p>Progressive GC pressure design across scales:</p>
+                        <ul>
+                            <li><strong>Small:</strong> No GC trigger (< 1MB usage)</li>
+                            <li><strong>Medium:</strong> Light GC trigger (2-4MB usage)</li>
+                            <li><strong>Large:</strong> Moderate GC trigger (6-10MB usage)</li>
+                        </ul>
+                    </div>
 
-                <div class="technical-details">
-                    <h4>📈 Scalability Analysis</h4>
-                    <p>Progressive GC pressure design across scales:</p>
-                    <ul>
-                        <li><strong>Small:</strong> No GC trigger (< 1MB usage)</li>
-                        <li><strong>Medium:</strong> Light GC trigger (2-4MB usage)</li>
-                        <li><strong>Large:</strong> Moderate GC trigger (6-10MB usage)</li>
-                    </ul>
-                </div>
+                    <div class="technical-details">
+                        <h4>🚀 Deployment Considerations</h4>
+                        <p><strong>Rust:</strong> Zero-cost abstractions, compile-time memory management, no GC overhead</p>
+                        <p><strong>TinyGo:</strong> Garbage collector with GC pauses and allocation overhead</p>
+                    </div>
 
-                <div class="technical-details">
-                    <h4>⚠️ Limitations & Trade-offs</h4>
-                    <p><strong>Rust:</strong> Steeper learning curve, longer compile times, complex dependency management</p>
-                    <p><strong>TinyGo:</strong> GC pauses affect latency-critical applications, limited Go standard library</p>
+                    <div class="technical-details">
+                        <h4>⚠️ Limitations & Trade-offs</h4>
+                        <p><strong>Rust:</strong> Steeper learning curve, longer compile times, complex dependency management</p>
+                        <p><strong>TinyGo:</strong> GC pauses affect latency-critical applications, limited Go standard library</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -632,31 +825,67 @@
         <div class="section">
             <div class="section-header">🔬 Methodology & Validation</div>
             <div class="section-content">
-                <p><strong>Benchmark Tasks:</strong> Mandelbrot, JSON parsing, matrix multiplication across small/medium/large scales</p>
-                <p><strong>Test Environment:</strong> Headless Chromium with Puppeteer automation</p>
-                <p><strong>Data Collection:</strong> 15 warmup runs + 50 measurement runs per configuration</p>
-                <p><strong>Repetitions:</strong> 3 full cycles with statistical aggregation</p>
-                <p><strong>Statistical Methods:</strong></p>
-                <ul>
-                    <li>Welch's t-test for significance (p < 0.05)</li>
-                    <li>Cohen's d effect size (small: 0.3, medium: 0.6, large: 1.0)</li>
-                    <li>95% confidence intervals</li>
-                </ul>
-                <p><strong>Quality Control:</strong></p>
-                <ul>
-                    <li>IQR outlier detection (1.5×IQR multiplier)</li>
-                    <li>Coefficient of variation < 15%</li>
-                    <li>Minimum 30 valid samples per dataset</li>
-                    <li>Cross-language hash consistency verification</li>
-                </ul>
-                <p><strong>Verification Mechanisms:</strong></p>
-                <ul>
-                    <li>FNV-1a hash algorithm for result validation</li>
-                    <li>Fixed random seed (42) for reproducibility</li>
-                    <li>Memory usage monitoring via browser performance API</li>
-                    <li>Execution timing via performance.now()</li>
-                </ul>
-                <p><strong>Reproducibility:</strong> All results reproducible with seed 42, environment fingerprinting</p>
+                <div class="methodology-grid">
+                    <div class="methodology-card">
+                        <h4>📊 Benchmark Design</h4>
+                        <ul>
+                            <li><strong>Tasks:</strong> Mandelbrot, JSON parsing, matrix multiplication</li>
+                            <li><strong>Scales:</strong> Small, medium, large across all tasks</li>
+                            <li><strong>Environment:</strong> Headless Chromium with Puppeteer</li>
+                            <li><strong>Verification:</strong> FNV-1a hash consistency</li>
+                        </ul>
+                    </div>
+
+                    <div class="methodology-card">
+                        <h4>🔄 Reproducibility & Environment</h4>
+                        <ul>
+                            <li><strong>Environment Fingerprinting:</strong> Toolchain version locking</li>
+                            <li><strong>Deterministic Execution:</strong> Fixed random seeds</li>
+                            <li><strong>Hardware Consistency:</strong> Controlled test environment</li>
+                            <li><strong>Version Control:</strong> Git-based artifact tracking</li>
+                        </ul>
+                    </div>
+
+                    <div class="methodology-card">
+                        <h4>📈 Data Collection</h4>
+                        <ul>
+                            <li><strong>Warmup:</strong> 15 runs (discarded)</li>
+                            <li><strong>Measurement:</strong> 50 runs per configuration</li>
+                            <li><strong>Repetitions:</strong> 3 full cycles</li>
+                            <li><strong>Timing:</strong> performance.now() API</li>
+                        </ul>
+                    </div>
+
+                    <div class="methodology-card">
+                        <h4>✅ Quality Control</h4>
+                        <ul>
+                            <li><strong>CV Threshold:</strong> < 15% variation</li>
+                            <li><strong>Min Samples:</strong> 30 per dataset</li>
+                            <li><strong>Hash Verification:</strong> Cross-language consistency</li>
+                            <li><strong>Seed:</strong> Fixed random seed (42)</li>
+                        </ul>
+                    </div>
+
+                    <div class="methodology-card">
+                        <h4>🧮 Statistical Analysis</h4>
+                        <ul>
+                            <li><strong>Significance:</strong> Welch's t-test (p < 0.05)</li>
+                            <li><strong>Effect Size:</strong> Cohen's d (0.3/0.6/1.0 thresholds)</li>
+                            <li><strong>Confidence:</strong> 95% intervals</li>
+                            <li><strong>Outliers:</strong> IQR method (1.5×IQR)</li>
+                        </ul>
+                    </div>
+
+                    <div class="methodology-card">
+                        <h4>🎯 Validation Mechanisms</h4>
+                        <ul>
+                            <li><strong>Cross-Language Verification:</strong> Identical hash outputs</li>
+                            <li><strong>Memory Monitoring:</strong> Browser performance API</li>
+                            <li><strong>Execution Stability:</strong> Coefficient of variation checks</li>
+                            <li><strong>Result Integrity:</strong> SHA256 checksum validation</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -665,5 +894,38 @@
         <p>Generated by WebAssembly Benchmark Analysis System | Engineering Decision Support</p>
         <p>For questions or technical details, consult the full benchmark report and methodology documentation.</p>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const chartContainers = document.querySelectorAll('.chart-container');
+
+            function switchChart(chartType) {
+                // Remove active class from all tabs and containers
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                chartContainers.forEach(container => container.classList.remove('active'));
+
+                // Add active class to selected tab and container
+                const selectedTab = document.querySelector(`[data-chart="${chartType}"]`);
+                const selectedContainer = document.getElementById(`${chartType}-chart`);
+
+                if (selectedTab && selectedContainer) {
+                    selectedTab.classList.add('active');
+                    selectedContainer.classList.add('active');
+                }
+            }
+
+            // Add click event listeners to tab buttons
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const chartType = this.getAttribute('data-chart');
+                    switchChart(chartType);
+                });
+            });
+
+            // Initialize with execution time chart active
+            switchChart('execution-time');
+        });
+    </script>
 </body>
 </html>
