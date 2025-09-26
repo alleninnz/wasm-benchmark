@@ -416,7 +416,7 @@ class VisualizationGenerator:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         # Adjust layout to prevent overlapping with more bottom space
-        plt.tight_layout(rect=(0, 0.18, 1, 1))  # Leave 18% space at bottom
+        plt.tight_layout(rect=(0, 0.15, 1, 1))  # Leave 15% space at bottom
 
         # Save the plot with high quality settings
         plt.savefig(
@@ -946,8 +946,8 @@ class VisualizationGenerator:
             zorder=3,
         )
 
-        # Adjust layout
-        plt.tight_layout()
+        # Layout handled by bbox_inches="tight" in savefig below
+        # No manual tight_layout needed
 
         # Create output directory if it doesn't exist
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -1035,7 +1035,23 @@ class VisualizationGenerator:
         # Add statistical summary note (will be placed inside the reserved bottom area)
         self._add_distribution_summary_note(fig, comparisons)
 
-        return self._save_plot(output_path)
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+        # Layout is already optimally managed by subplots_adjust() above
+        # No additional tight_layout needed - manual positioning handles complex elements
+
+        # Save the plot with high quality settings
+        # Suppress matplotlib tight_layout warnings for complex manual layouts
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="This figure includes Axes that are not compatible with tight_layout")
+            plt.savefig(
+                output_path,
+                dpi=self.config.dpi_detailed,
+                format=self.config.output_format,
+            )
+        plt.close()
+
+        return output_path
 
     def _extract_box_plot_data(self, comparisons: list[ComparisonResult]) -> dict:
         """
