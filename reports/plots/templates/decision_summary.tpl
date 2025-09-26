@@ -81,9 +81,11 @@
 
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            /* Two items per row on wider screens; media query will collapse to 1 column on small screens */
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 1.5rem;
             margin-bottom: 2rem;
+            align-items: start;
         }
 
         .summary-card {
@@ -724,6 +726,22 @@
             </div>
 
             <div class="summary-card">
+                <h3>⚖️ Performance Stability</h3>
+                <div class="metric">
+                    <span class="label">Stability Score:</span>
+                    <span class="value">{{ "%.1f%%" | format(stability_insights.stability_score * 100) if stability_insights else "N/A" }}</span>
+                </div>
+                <div class="metric">
+                    <span class="label">Consistency Leader:</span>
+                    <span class="value">{{ stability_insights.consistency_winner.title() if stability_insights and stability_insights.consistency_winner != 'tie' else 'Tied' if stability_insights else 'N/A' }}</span>
+                </div>
+                <div class="metric">
+                    <span class="label">Risk Assessment:</span>
+                    <span class="value">{{ stability_insights.risk_assessment.title() if stability_insights else 'N/A' }}</span>
+                </div>
+            </div>
+
+            <div class="summary-card">
                 <h3>📊 Statistical Significance</h3>
                     <div class="stats-panel">
                         <div class="stat-item">
@@ -754,12 +772,18 @@
             <div class="section-header">📈 Performance Comparison Charts</div>
             <div class="section-content">
                 <div class="chart-tabs">
-                    <button class="tab-button active" data-chart="execution-time">Execution Time</button>
+                    <button class="tab-button active" data-chart="distribution-analysis">Distribution Analysis</button>
+                    <button class="tab-button" data-chart="execution-time">Execution Time</button>
                     <button class="tab-button" data-chart="memory-usage">Memory Usage</button>
                     <button class="tab-button" data-chart="effect-size">Effect Size</button>
                 </div>
                 <div class="chart-grid">
-                    <div class="chart-container active" id="execution-time-chart">
+                    <div class="chart-container active" id="distribution-analysis-chart">
+                        <h4>Distribution & Variance Analysis: Performance Consistency</h4>
+                        <img src="{{ charts.distribution_variance_analysis }}" alt="Distribution and Variance Analysis">
+                        <p>Box plots show data distribution, variance, and stability patterns for engineering decision-making.</p>
+                    </div>
+                    <div class="chart-container" id="execution-time-chart">
                         <h4>Execution Time Comparison: Rust vs TinyGo (Mean ± SE with Medians)</h4>
                         <img src="{{ charts.execution_time }}" alt="Execution Time Comparison">
                     </div>
@@ -774,6 +798,49 @@
                 </div>
             </div>
         </div>
+
+        <!-- Performance Stability Analysis -->
+        {% if stability_insights %}
+        <div class="section">
+            <div class="section-header">📊 Performance Stability Analysis</div>
+            <div class="section-content">
+                <div class="technical-grid">
+                    <div class="technical-details">
+                        <h4>🎯 Overall Stability Assessment</h4>
+                        <p><strong>Stability Score:</strong> {{ "%.1f%%" | format(stability_insights.stability_score * 100) }}</p>
+                        <p><strong>High Variance Ratio:</strong> {{ "%.1f%%" | format(stability_insights.high_variance_ratio * 100) }}</p>
+                        <p><strong>Risk Level:</strong> {{ stability_insights.risk_assessment.title() }}</p>
+                        <p><strong>Consistency Leader:</strong> {{ stability_insights.consistency_winner.title() if stability_insights.consistency_winner != 'tie' else 'Neither (tied)' }}</p>
+                    </div>
+
+                    <div class="technical-details">
+                        <h4>🦀 Rust Performance Consistency</h4>
+                        <p><strong>Stability Score:</strong> {{ "%.1f%%" | format(stability_insights.detailed_metrics.rust.stability_score * 100) }}</p>
+                        <p><strong>Avg Execution CV:</strong> {{ "%.3f" | format(stability_insights.detailed_metrics.rust.avg_exec_cv) }}</p>
+                        <p><strong>Avg Memory CV:</strong> {{ "%.3f" | format(stability_insights.detailed_metrics.rust.avg_mem_cv) }}</p>
+                        <p><strong>High Variance Count:</strong> {{ stability_insights.detailed_metrics.rust.high_variance_count }}</p>
+                    </div>
+
+                    <div class="technical-details">
+                        <h4>🐹 TinyGo Performance Consistency</h4>
+                        <p><strong>Stability Score:</strong> {{ "%.1f%%" | format(stability_insights.detailed_metrics.tinygo.stability_score * 100) }}</p>
+                        <p><strong>Avg Execution CV:</strong> {{ "%.3f" | format(stability_insights.detailed_metrics.tinygo.avg_exec_cv) }}</p>
+                        <p><strong>Avg Memory CV:</strong> {{ "%.3f" | format(stability_insights.detailed_metrics.tinygo.avg_mem_cv) }}</p>
+                        <p><strong>High Variance Count:</strong> {{ stability_insights.detailed_metrics.tinygo.high_variance_count }}</p>
+                    </div>
+
+                    <div class="technical-details">
+                        <h4>📋 Engineering Insights</h4>
+                        <ul>
+                            {% for insight in stability_insights.engineering_insights %}
+                            <li>{{ insight }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Detailed Comparison Table -->
         <div class="section">
@@ -1046,8 +1113,8 @@
                 });
             });
 
-            // Initialize with execution time chart active
-            switchChart('execution-time');
+            // Initialize with distribution analysis chart active
+            switchChart('distribution-analysis');
         });
     </script>
 </body>

@@ -426,6 +426,7 @@ class DecisionSummaryGenerator:
                 "timestamp": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z"),
                 "comparison_results": comparison_results_data,
                 "charts": {
+                    "distribution_variance_analysis": os.path.basename(chart_paths["distribution_variance_analysis"]),
                     "execution_time": os.path.basename(chart_paths["execution_time"]),
                     "memory_usage": os.path.basename(chart_paths["memory_usage"]),
                     "effect_size": os.path.basename(chart_paths["effect_size"]),

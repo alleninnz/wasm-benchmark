@@ -8,6 +8,7 @@ support graphics with configurable styling and engineering-focused presentation.
 import json
 import os
 import sys
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -983,78 +984,456 @@ class VisualizationGenerator:
 
         Raises:
             ValueError: If required statistical summary data is missing
-            NotImplementedError: Method implementation pending
-
-        Design Specifications:
-        =====================
-
-        Layout Structure:
-        -----------------
-        • Dual subplot layout: [Execution Time | Memory Usage]
-        • Each subplot: side-by-side box plots (Rust vs TinyGo)
-        • X-axis: task_scale combinations (mandelbrot_small, json_parse_medium, etc.)
-        • Y-axis: metric values (ms for time, KB for memory)
-
-        Box Plot Components:
-        -------------------
-        • Box: IQR (Q1 to Q3) - core 50% of data distribution
-        • Median line: robust central tendency measure
-        • Mean marker: diamond symbol inside box for comparison with median
-        • Whiskers: extend to 1.5×IQR or min/max (whichever is closer)
-        • Outliers: individual points beyond whiskers (if any in statistical summary)
-
-        Visual Encoding:
-        ---------------
-        • Colors: Rust (orange), TinyGo (blue) - consistent with existing charts
-        • Box edge: normal thickness, high variance (CV>0.1) gets red warning border
-        • Transparency: 0.7 for boxes to show overlapping distributions
-        • Text annotations: CV values displayed above each box
-
-        Statistical Insights:
-        --------------------
-        • Box height = IQR = measure of data spread/variance
-        • Median-mean offset = indication of distribution skewness
-        • Whisker length = range of "normal" performance variation
-        • Small boxes = consistent performance, large boxes = variable performance
-
-        Engineering Value:
-        -----------------
-        • Performance consistency assessment for production deployment decisions
-        • Identify which language provides more predictable runtime behavior
-        • Support risk analysis: high variance = higher performance uncertainty
-        • Complement mean-based comparisons with stability analysis
-
-        Implementation TODOs:
-        --------------------
-        1. Validate statistical summary completeness (median, q1, q3, min, max)
-        2. Extract box plot data from comparison results
-        3. Create dual subplot layout with proper sizing
-        4. Generate side-by-side box plots for each metric
-        5. Add mean markers and coefficient of variation annotations
-        6. Apply variance-based visual warnings (red borders for CV>0.1)
-        7. Create comprehensive legend explaining box plot components
-        8. Add statistical summary note about distribution characteristics
-        9. Integrate with main visualization pipeline
-        10. Add unit tests for edge cases (single values, extreme outliers)
-
-        Data Requirements:
-        -----------------
-        • Must have: median, q1, q3 for box construction
-        • Should have: min, max for whisker calculation
-        • Optional: mean for comparison marker
-        • Enhancement: coefficient_variation for variance assessment
-
-        Cross-references:
-        ----------------
-        • Complements _create_execution_time_comparison() with variance info
-        • Supports _create_effect_size_heatmap() interpretation (high variance affects Cohen's d)
-        • Enhances _create_decision_summary_panel() with stability considerations
         """
-        # TODO: Remove this when implementing the method
-        raise NotImplementedError(
-            "Distribution and variance analysis chart generation not yet implemented. "
-            "See method docstring for detailed implementation specifications."
+        # Validate input data and completeness
+        if not comparisons:
+            raise ValueError("No comparison results provided")
+
+        # Validate that required statistical data exists
+        for comparison in comparisons:
+            for lang in ['rust', 'tinygo']:
+                lang_perf = getattr(comparison, f"{lang}_performance")
+                for metric in ['execution_time', 'memory_usage']:
+                    stats = getattr(lang_perf, metric)
+                    required_fields = ['median', 'q1', 'q3', 'min', 'max', 'mean', 'coefficient_variation']
+                    for field in required_fields:
+                        if not hasattr(stats, field):
+                            raise ValueError(f"Missing {field} in {lang} {metric} statistics")
+
+        # Extract box plot data efficiently using vectorized operations
+        box_data = self._extract_box_plot_data(comparisons)
+
+        # Create dual subplot layout with optimized sizing
+        fig, (ax_exec, ax_mem) = plt.subplots(
+            1,
+            2,
+            figsize=(
+                self.config.figure_sizes["detailed"][0] * 1.4,
+                self.config.figure_sizes["detailed"][1],
+            ),
+            gridspec_kw={"wspace": 0.3},
         )
+
+        # Reserve bottom space so we can place the summary note below the axes
+        # This avoids overlaying x-axis tick labels. Use subplots_adjust to be
+        # explicit about reserved margins instead of relying only on tight_layout.
+        fig.subplots_adjust(bottom=0.22, top=0.95, left=0.06, right=0.98)
+
+        # Generate box plots for execution time
+        self._create_optimized_box_plots(
+            ax_exec, box_data["execution_time"], "Execution Time (ms)"
+        )
+
+        # Generate box plots for memory usage
+        self._create_optimized_box_plots(
+            ax_mem, box_data["memory_usage"], "Memory Usage (KB)"
+        )
+
+        # Add comprehensive legend
+        self._create_distribution_legend(fig)
+
+        # Add statistical summary note (will be placed inside the reserved bottom area)
+        self._add_distribution_summary_note(fig, comparisons)
+
+        return self._save_plot(output_path)
+
+    def _extract_box_plot_data(self, comparisons: list[ComparisonResult]) -> dict:
+        """
+        Extract box plot data efficiently using vectorized operations.
+
+        Returns:
+            Dict with 'execution_time' and 'memory_usage' keys, each containing
+            task labels and box plot statistics for Rust and TinyGo
+        """
+        # Pre-allocate data structures for efficiency
+        task_labels = [f"{comp.task}\n{comp.scale}" for comp in comparisons]
+
+        # Extract execution time data using list comprehensions (vectorized)
+        exec_time_data = {
+            'task_labels': task_labels,
+            'rust_stats': [self._create_box_stats(comp.rust_performance.execution_time)
+                          for comp in comparisons],
+            'tinygo_stats': [self._create_box_stats(comp.tinygo_performance.execution_time)
+                            for comp in comparisons],
+            'rust_cvs': [comp.rust_performance.execution_time.coefficient_variation
+                        for comp in comparisons],
+            'tinygo_cvs': [comp.tinygo_performance.execution_time.coefficient_variation
+                          for comp in comparisons],
+        }
+
+        # Extract memory usage data using list comprehensions (vectorized)
+        memory_data = {
+            'task_labels': task_labels,
+            'rust_stats': [self._create_box_stats(comp.rust_performance.memory_usage)
+                          for comp in comparisons],
+            'tinygo_stats': [self._create_box_stats(comp.tinygo_performance.memory_usage)
+                            for comp in comparisons],
+            'rust_cvs': [comp.rust_performance.memory_usage.coefficient_variation
+                        for comp in comparisons],
+            'tinygo_cvs': [comp.tinygo_performance.memory_usage.coefficient_variation
+                          for comp in comparisons],
+        }
+
+        return {
+            'execution_time': exec_time_data,
+            'memory_usage': memory_data
+        }
+
+    def _create_box_stats(self, stats) -> dict:
+        """Create box plot statistics dictionary from StatisticalResult."""
+        return {
+            'med': stats.median,
+            'q1': stats.q1,
+            'q3': stats.q3,
+            'whislo': stats.min,
+            'whishi': stats.max,
+            'mean': stats.mean,
+            'fliers': []  # No individual outlier points in our statistical summaries
+        }
+
+    def _create_optimized_box_plots(self, ax, data: dict, ylabel: str) -> None:
+        """
+        Create optimized box plots using matplotlib's built-in functionality.
+
+        Args:
+            ax: Matplotlib axes object
+            data: Box plot data dictionary
+            ylabel: Y-axis label
+        """
+        n_tasks = len(data['task_labels'])
+        x_positions = np.arange(n_tasks)
+
+        # Create box plots using matplotlib's bxp function for efficiency
+        rust_boxes = ax.bxp(
+            data['rust_stats'],
+            positions=x_positions - 0.2,  # Offset for side-by-side display
+            widths=0.3,
+            patch_artist=True,
+            showmeans=True,
+            meanline=False,
+            medianprops={'linewidth': 2, 'color': 'darkred'},
+            meanprops={'marker': 'D', 'markerfacecolor': 'darkred',
+                      'markeredgecolor': 'darkred', 'markersize': 6},
+            boxprops={'facecolor': self.rust_color, 'alpha': 0.7},
+            whiskerprops={'linewidth': 1.5},
+            capprops={'linewidth': 1.5}
+        )
+
+        tinygo_boxes = ax.bxp(
+            data['tinygo_stats'],
+            positions=x_positions + 0.2,  # Offset for side-by-side display
+            widths=0.3,
+            patch_artist=True,
+            showmeans=True,
+            meanline=False,
+            medianprops={'linewidth': 2, 'color': 'darkblue'},
+            meanprops={'marker': 'D', 'markerfacecolor': 'darkblue',
+                      'markeredgecolor': 'darkblue', 'markersize': 6},
+            boxprops={'facecolor': self.tinygo_color, 'alpha': 0.7},
+            whiskerprops={'linewidth': 1.5},
+            capprops={'linewidth': 1.5}
+        )
+
+        # Optimized variance warnings with red borders for high CV (>0.1)
+        cv_threshold = 0.1
+        # Vectorized threshold checking
+        rust_high_cv = np.array(data['rust_cvs']) > cv_threshold
+        tinygo_high_cv = np.array(data['tinygo_cvs']) > cv_threshold
+
+        # Batch styling operations for performance
+        for i, (rust_high, tinygo_high) in enumerate(zip(rust_high_cv, tinygo_high_cv)):
+            if rust_high:
+                rust_boxes['boxes'][i].set_edgecolor('red')
+                rust_boxes['boxes'][i].set_linewidth(2)
+            if tinygo_high:
+                tinygo_boxes['boxes'][i].set_edgecolor('red')
+                tinygo_boxes['boxes'][i].set_linewidth(2)
+
+        # Optimized coefficient of variation annotations with proper spacing
+        # Vectorized max height calculation
+        rust_maxes = np.array([stats['whishi'] for stats in data['rust_stats']])
+        tinygo_maxes = np.array([stats['whishi'] for stats in data['tinygo_stats']])
+        max_heights = np.maximum(rust_maxes, tinygo_maxes)
+
+        # Pre-compute styling for batch operations
+        rust_cvs = np.array(data['rust_cvs'])
+        tinygo_cvs = np.array(data['tinygo_cvs'])
+
+        # Create staggered annotation heights to prevent overlap
+        # Place CV annotations for each task, ensuring Rust/TinyGo labels do not overlap
+        for i in range(n_tasks):
+            base_height = max_heights[i] * 1.02
+
+            rust_x = x_positions[i] - 0.2
+            tinygo_x = x_positions[i] + 0.2
+            rust_y = base_height
+            tinygo_y = base_height + max_heights[i] * 0.05
+
+            # Create the text objects so we can check for overlap and adjust if needed
+            fig = ax.figure
+
+            rust_text = ax.text(
+                rust_x,
+                rust_y,
+                f"CV:{rust_cvs[i]:.2f}",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+                color="darkred",
+                fontweight="bold" if rust_high_cv[i] else "normal",
+                bbox=dict(
+                    boxstyle="round,pad=0.2",
+                    facecolor="white",
+                    edgecolor="darkred",
+                    alpha=0.8,
+                    linewidth=0.5,
+                ),
+            )
+
+            tiny_text = ax.text(
+                tinygo_x,
+                tinygo_y,
+                f"CV:{tinygo_cvs[i]:.2f}",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+                color="darkblue",
+                fontweight="bold" if tinygo_high_cv[i] else "normal",
+                bbox=dict(
+                    boxstyle="round,pad=0.2",
+                    facecolor="white",
+                    edgecolor="darkblue",
+                    alpha=0.8,
+                    linewidth=0.5,
+                ),
+            )
+
+            # Try to detect overlap in rendered (pixel) space and shift TinyGo up if needed
+            try:
+                # Ensure renderer is available and layout is realized
+                # suppress warnings about tight_layout incompatibility during draw
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    fig.canvas.draw()
+                renderer = fig.canvas.get_renderer()
+
+                rust_bbox = rust_text.get_window_extent(renderer)
+                tiny_bbox = tiny_text.get_window_extent(renderer)
+
+                if rust_bbox.overlaps(tiny_bbox):
+                    # Shift tiny_text upward by the height of the rust bbox plus a small margin (pixels)
+                    shift_px = rust_bbox.height + 4
+                    # Convert pixel shift to data coordinates (y-direction)
+                    inv = ax.transData.inverted()
+                    _, dy0 = inv.transform((0, shift_px)) - inv.transform((0, 0))
+                    # Apply shift in data coordinates
+                    tiny_text.set_y(tinygo_y + dy0)
+            except Exception:
+                # Renderer may not be available (rare); fall back to an additional relative offset
+                tiny_text.set_y(tinygo_y + max_heights[i] * 0.05)
+
+        # Configure axes with consistent styling
+        ax.set_ylabel(ylabel, fontsize=self.config.font_sizes["labels"])
+        ax.set_xticks(x_positions)
+        ax.set_xticklabels(data['task_labels'], rotation=45, ha='right')
+        ax.grid(True, alpha=0.3)
+
+    def _create_distribution_legend(self, fig) -> None:
+        """Create comprehensive legend for distribution analysis."""
+        legend_elements = [
+            Rectangle((0, 0), 1, 1, facecolor=self.rust_color, alpha=0.7,
+                     edgecolor='black', label='Rust'),
+            Rectangle((0, 0), 1, 1, facecolor=self.tinygo_color, alpha=0.7,
+                     edgecolor='black', label='TinyGo'),
+            Line2D([0], [0], color='black', linewidth=2, label='Median'),
+            Line2D([0], [0], color='black', marker='D', linestyle='None',
+                  markersize=6, label='Mean'),
+            Line2D([0], [0], color='red', linewidth=2, label='High Variance (CV>0.1)'),
+        ]
+
+        fig.legend(handles=legend_elements, loc='upper center',
+                  bbox_to_anchor=(0.5, 1.10), ncol=5, frameon=True)
+
+    def _add_distribution_summary_note(self, fig, comparisons: list[ComparisonResult]) -> None:
+        """Add statistical summary note about distribution characteristics."""
+        # Optimized distribution statistics calculation using vectorized operations
+        cv_threshold = 0.1
+
+        # Extract all CV values efficiently
+        exec_cvs = []
+        mem_cvs = []
+        for comparison in comparisons:
+            exec_cvs.extend([
+                comparison.rust_performance.execution_time.coefficient_variation,
+                comparison.tinygo_performance.execution_time.coefficient_variation
+            ])
+            mem_cvs.extend([
+                comparison.rust_performance.memory_usage.coefficient_variation,
+                comparison.tinygo_performance.memory_usage.coefficient_variation
+            ])
+
+        # Vectorized threshold checking
+        exec_high_cv = np.array(exec_cvs) > cv_threshold
+        mem_high_cv = np.array(mem_cvs) > cv_threshold
+        high_variance_count = np.sum(exec_high_cv | mem_high_cv)
+        total_comparisons = len(comparisons) * 2  # 2 languages per comparison
+
+        # Calculate additional distribution insights
+        avg_exec_cv = np.mean(exec_cvs)
+        avg_mem_cv = np.mean(mem_cvs)
+
+        # Determine stability assessment
+        stability_assessment = "excellent" if high_variance_count == 0 else \
+                              "good" if high_variance_count < total_comparisons * 0.3 else \
+                              "moderate" if high_variance_count < total_comparisons * 0.6 else "poor"
+
+        summary_text = (
+            f"Distribution Analysis Summary ({stability_assessment} performance consistency):\n"
+            f"• Variance Assessment: {high_variance_count}/{total_comparisons} measurements show high variability (CV>0.1, red borders)\n"
+            f"• Average Coefficients: Execution {avg_exec_cv:.3f}, Memory {avg_mem_cv:.3f}\n"
+            f"• Statistical Interpretation: Mean markers (◊) offset from median indicate distribution skewness\n"
+            f"• Complements Execution Time Comparison: Variance affects reliability of mean-based performance conclusions\n"
+            f"• Supports Effect Size Analysis: High variance (CV>0.1) reduces Cohen's d reliability and practical significance\n"
+            f"• Engineering Decision Impact: Low variance = predictable performance, high variance = increased deployment risk"
+        )
+
+        # Place the summary box centered below the entire figure (full-width) so
+        # it sits directly under the chart area. This avoids overlapping the
+        # subplots and keeps the note visually centered under the composed plot.
+        try:
+            # Use a conservative y offset inside the reserved bottom area
+            center_x = 0.5
+            # Move further down so the box does not overlap x-axis tick labels
+            text_y = 0.01
+
+            fig.text(
+                center_x,
+                text_y,
+                summary_text,
+                fontsize=9,
+                ha="center",
+                va="bottom",
+                bbox=dict(
+                    boxstyle="round,pad=0.6",
+                    facecolor="#f8f9fa",
+                    edgecolor="#dee2e6",
+                    alpha=0.95,
+                ),
+                wrap=True,
+                fontweight="normal",
+                color="#212529",
+                linespacing=1.5,
+                transform=fig.transFigure,
+            )
+        except Exception:
+            # Fallback safe absolute placement
+            fig.text(
+                0.5,
+                0.005,
+                summary_text,
+                fontsize=9,
+                ha="center",
+                va="bottom",
+                bbox=dict(
+                    boxstyle="round,pad=0.6",
+                    facecolor="#f8f9fa",
+                    edgecolor="#dee2e6",
+                    alpha=0.95,
+                ),
+                wrap=True,
+                fontweight="normal",
+                color="#212529",
+                linespacing=1.5,
+                transform=fig.transFigure,
+            )
+
+    def _extract_stability_insights(self, comparisons: list[ComparisonResult]) -> dict:
+        """
+        Extract performance stability insights for decision summary integration.
+
+        This method provides quantitative stability metrics that enhance engineering
+        decision-making beyond simple mean performance comparisons.
+
+        Args:
+            comparisons: Statistical comparison results with variance data
+
+        Returns:
+            Dict containing stability insights:
+            - stability_score: Overall stability rating (0.0-1.0, higher = more stable)
+            - high_variance_ratio: Fraction of measurements with CV > 0.1
+            - consistency_winner: Language with better overall consistency
+            - risk_assessment: Deployment risk level based on variance patterns
+            - detailed_metrics: Per-language CV statistics
+        """
+        if not comparisons:
+            return {}
+
+        cv_threshold = 0.1
+
+        # Extract CV data efficiently
+        rust_exec_cvs = [comp.rust_performance.execution_time.coefficient_variation
+                        for comp in comparisons]
+        rust_mem_cvs = [comp.rust_performance.memory_usage.coefficient_variation
+                       for comp in comparisons]
+        tinygo_exec_cvs = [comp.tinygo_performance.execution_time.coefficient_variation
+                          for comp in comparisons]
+        tinygo_mem_cvs = [comp.tinygo_performance.memory_usage.coefficient_variation
+                         for comp in comparisons]
+
+        # Calculate language-specific stability metrics
+        rust_high_variance = (np.sum(np.array(rust_exec_cvs) > cv_threshold) +
+                             np.sum(np.array(rust_mem_cvs) > cv_threshold))
+        tinygo_high_variance = (np.sum(np.array(tinygo_exec_cvs) > cv_threshold) +
+                               np.sum(np.array(tinygo_mem_cvs) > cv_threshold))
+
+        total_measurements = len(comparisons) * 2  # 2 metrics per comparison
+
+        # Calculate stability scores (inverse of variance ratio)
+        rust_stability = 1.0 - (rust_high_variance / total_measurements)
+        tinygo_stability = 1.0 - (tinygo_high_variance / total_measurements)
+        overall_stability = 1.0 - ((rust_high_variance + tinygo_high_variance) / (total_measurements * 2))
+
+        # Determine consistency winner
+        consistency_winner = "rust" if rust_stability > tinygo_stability else \
+                           "tinygo" if tinygo_stability > rust_stability else "tie"
+
+        # Risk assessment based on overall stability
+        if overall_stability >= 0.9:
+            risk_level = "low"
+        elif overall_stability >= 0.7:
+            risk_level = "moderate"
+        elif overall_stability >= 0.5:
+            risk_level = "high"
+        else:
+            risk_level = "critical"
+
+        return {
+            'stability_score': overall_stability,
+            'high_variance_ratio': (rust_high_variance + tinygo_high_variance) / (total_measurements * 2),
+            'consistency_winner': consistency_winner,
+            'risk_assessment': risk_level,
+            'detailed_metrics': {
+                'rust': {
+                    'stability_score': rust_stability,
+                    'avg_exec_cv': np.mean(rust_exec_cvs),
+                    'avg_mem_cv': np.mean(rust_mem_cvs),
+                    'high_variance_count': rust_high_variance
+                },
+                'tinygo': {
+                    'stability_score': tinygo_stability,
+                    'avg_exec_cv': np.mean(tinygo_exec_cvs),
+                    'avg_mem_cv': np.mean(tinygo_mem_cvs),
+                    'high_variance_count': tinygo_high_variance
+                }
+            },
+            'engineering_insights': [
+                f"Performance consistency leader: {consistency_winner.title() if consistency_winner != 'tie' else 'Neither (tied)'}",
+                f"Deployment risk level: {risk_level.title()}",
+                f"Stability confidence: {overall_stability:.1%}",
+                "High variance reduces the reliability of mean-based performance comparisons",
+                "Effect size interpretations should account for variance heterogeneity"
+            ]
+        }
 
     def _create_decision_summary_panel(
         self,
@@ -1087,6 +1466,7 @@ class VisualizationGenerator:
         # Define expected plot file paths relative to output directory
         output_dir = Path(output_path).parent
         expected_plots = {
+            "distribution_variance_analysis": output_dir / "distribution_variance_analysis.png",
             "execution_time": output_dir / "execution_time_comparison.png",
             "memory_usage": output_dir / "memory_usage_comparison.png",
             "effect_size": output_dir / "effect_size_heatmap.png",
@@ -1112,11 +1492,17 @@ class VisualizationGenerator:
         env = Environment(loader=FileSystemLoader(str(template_dir)))
         template = env.get_template("decision_summary.tpl")
 
+        # Extract stability insights for enhanced decision making
+        stability_insights = self._extract_stability_insights(comparisons)
+
         # Prepare template data using DecisionSummaryGenerator
         decision_generator = DecisionSummaryGenerator()
         template_data = decision_generator.prepare_template_data(
             comparisons, expected_plots
         )
+
+        # Add stability insights to template data
+        template_data['stability_insights'] = stability_insights
 
         # Render template with data
         html_content = template.render(**template_data)
@@ -1569,15 +1955,14 @@ def _generate_all_visualizations(
         generated_files.append(generated_heatmap)
         print(f"  ✅ Saved effect size heatmap: {generated_heatmap}")
 
-        # TODO: Add distribution and variance analysis chart generation
-        # Uncomment when _create_distribution_variance_analysis() is implemented:
-        # print("📊 Creating distribution and variance analysis...")
-        # distribution_path = str(output_dir / "distribution_variance_analysis.png")
-        # generated_distribution = viz_generator._create_distribution_variance_analysis(
-        #     comparison_results, distribution_path
-        # )
-        # generated_files.append(generated_distribution)
-        # print(f"  ✅ Saved distribution analysis: {generated_distribution}")
+        # Generate distribution and variance analysis chart
+        print("📊 Creating distribution and variance analysis...")
+        distribution_path = str(output_dir / "distribution_variance_analysis.png")
+        generated_distribution = viz_generator._create_distribution_variance_analysis(
+            comparison_results, distribution_path
+        )
+        generated_files.append(generated_distribution)
+        print(f"  ✅ Saved distribution analysis: {generated_distribution}")
 
         # Generate decision summary panel HTML
         print("📊 Creating decision summary panel...")
