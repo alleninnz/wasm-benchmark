@@ -399,13 +399,13 @@ endif
 analyze: ## Run validation, quality control, statistical analysis, and plotting (use quick for quick mode)
 ifeq ($(QUICK_MODE),true)
 	$(call log_step,Running quick analysis pipeline: validate -> qc -> stats -> plots...)
-	$(MAKE) _validate quick
+	$(MAKE) validate quick
 	$(MAKE) qc quick
 	$(MAKE) stats quick
 	$(MAKE) plots quick
 else
 	$(call log_step,Running full analysis pipeline: validate -> qc -> stats -> plots...)
-	$(MAKE) _validate
+	$(MAKE) validate
 	$(MAKE) qc
 	$(MAKE) stats
 	$(MAKE) plots
