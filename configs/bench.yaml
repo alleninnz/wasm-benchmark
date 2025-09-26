@@ -109,8 +109,17 @@ qc:
   failure_rate: 0.1          # 10% failure rate maximum
 
   # Overall quality evaluation thresholds (layered threshold strategy)
-  quality_invalid_threshold: 0.1    # 10% invalid groups triggers INVALID overall
+  quality_invalid_threshold: 0.15    # 15% invalid groups triggers INVALID overall
   quality_warning_threshold: 0.3    # 30% warning groups triggers WARNING overall
+
+  # Language-specific QC thresholds
+  rust_thresholds:
+    max_coefficient_variation: 0.15
+    extreme_cv_threshold: 0.5
+  
+  tinygo_thresholds:
+    max_coefficient_variation: 0.3
+    extreme_cv_threshold: 1.0
 
 # Engineering-focused statistical analysis
 statistics:

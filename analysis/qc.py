@@ -8,21 +8,15 @@ and data quality assessment with configurable engineering-grade thresholds.
 import json
 import math
 import sys
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from . import common
-from .data_models import (
-    BenchmarkResult,
-    BenchmarkSample,
-    CleanedDataset,
-    DataQuality,
-    QCConfiguration,
-    QualityAssessment,
-    QualityMetrics,
-    TaskResult,
-)
+from .data_models import (BenchmarkResult, BenchmarkSample, CleanedDataset,
+                          DataQuality, MetricQuality, QCConfiguration,
+                          QualityAssessment, QualityMetrics, TaskResult)
 
 
 class QCConstants:
@@ -327,84 +321,119 @@ class QualityController:
             QualityMetrics: Detailed quality assessment with validation status
         """
 
-        # Extract execution times from clean samples
-        execution_times = [sample.executionTime for sample in task_result.samples]
-
+        # Extract samples and counts
         sample_count = len(task_result.samples)
-        # Use TaskResult's tracked metrics for failed samples
         failed_samples = task_result.failed_runs
         total_samples = sample_count + failed_samples
-
-        # Calculate basic statistics from execution times
-        if sample_count == 0:
-            mean_execution_time = 0.0
-            std_execution_time = 0.0
-            coefficient_variation = 0.0
-        elif sample_count == 1:
-            mean_execution_time = execution_times[0]
-            std_execution_time = 0.0
-            coefficient_variation = 0.0
-        else:
-            mean_execution_time = sum(execution_times) / sample_count
-            variance = sum((t - mean_execution_time) ** 2 for t in execution_times) / (
-                sample_count - 1
-            )
-            std_execution_time = math.sqrt(variance)
-
-            # Calculate coefficient of variation (handle near-zero mean)
-            if abs(mean_execution_time) < QCConstants.DIVISION_BY_ZERO_EPSILON:
-                coefficient_variation = 0.0
-            else:
-                coefficient_variation = std_execution_time / mean_execution_time
-
-        # Calculate failure rate and success rate
-        failure_rate = failed_samples / total_samples if total_samples > 0 else 0.0
         success_rate = task_result.success_rate
 
-        # Assess data quality using hierarchical criteria - configuration-driven
-        quality_issues = []
-        data_quality = DataQuality.VALID  # Start optimistic
+        # Helper to compute basic stats for a numeric series
+        def _compute_stats(values: list[float]) -> tuple[float, float, float]:
+            if not values:
+                return 0.0, 0.0, 0.0
+            n = len(values)
+            if n == 1:
+                return values[0], 0.0, 0.0
+            mean_v = sum(values) / n
+            variance = sum((v - mean_v) ** 2 for v in values) / (n - 1)
+            std_v = math.sqrt(variance)
+            if abs(mean_v) < QCConstants.DIVISION_BY_ZERO_EPSILON:
+                cv = 0.0
+            else:
+                cv = std_v / mean_v
+            return mean_v, std_v, cv
 
-        # INVALID conditions (data is not usable for engineering decisions)
-        if sample_count < self.config.min_valid_samples:
-            quality_issues.append(
-                f"Insufficient samples: {sample_count} < {self.config.min_valid_samples} (minimum required)"
-            )
-            data_quality = DataQuality.INVALID
+        # Execution time stats
+        execution_times = [sample.executionTime for sample in task_result.samples]
+        (
+            mean_exec,
+            std_exec,
+            cv_exec,
+        ) = _compute_stats(execution_times)
 
-        if failure_rate > self.config.failure_rate:
-            quality_issues.append(
-                f"High failure rate: {failure_rate:.1%} > {self.config.failure_rate:.1%} (maximum allowed)"
-            )
-            data_quality = DataQuality.INVALID
+        # Memory usage stats (MB)
+        memory_values = [sample.memoryUsageMb for sample in task_result.samples]
+        mean_mem, std_mem, cv_mem = _compute_stats(memory_values)
 
-        # Only mark as INVALID for extreme variability (CV > 1.0 means std > mean)
-        extreme_cv_threshold = 1.0
-        if coefficient_variation > extreme_cv_threshold:
-            quality_issues.append(
-                f"Extremely high variability: CV={coefficient_variation:.3f} > {extreme_cv_threshold:.3f} (std > mean)"
-            )
-            data_quality = DataQuality.INVALID
+        # Failure / sample-based checks (shared)
+        failure_rate = failed_samples / total_samples if total_samples > 0 else 0.0
 
-        # WARNING conditions (concerning but potentially usable - only if not already INVALID)
-        if data_quality != DataQuality.INVALID:
-            if coefficient_variation > self.config.max_coefficient_variation:
-                quality_issues.append(
-                    f"High variability: CV={coefficient_variation:.3f} > {self.config.max_coefficient_variation:.3f} (threshold)"
+        # Build per-metric issues and quality using similar rules for each metric
+        def _assess_metric_quality(sample_count: int, cv: float, language: str, metric_name: str) -> tuple[DataQuality, list[str]]:
+            issues: list[str] = []
+            quality = DataQuality.VALID
+            if sample_count < self.config.min_valid_samples:
+                issues.append(
+                    f"Insufficient samples: {sample_count} < {self.config.min_valid_samples} (minimum required)"
                 )
-                data_quality = DataQuality.WARNING
+                quality = DataQuality.INVALID
 
-        return QualityMetrics(
+            if failure_rate > self.config.failure_rate:
+                issues.append(
+                    f"High failure rate: {failure_rate:.1%} > {self.config.failure_rate:.1%} (maximum allowed)"
+                )
+                quality = DataQuality.INVALID
+
+            # Determine thresholds from per-language configuration when present.
+            warning_threshold = self.config.max_coefficient_variation
+            extreme_cv_threshold = 1.0
+
+            lang_key = language.lower() if isinstance(language, str) else None
+            lang_thresholds = None
+            if lang_key == "rust":
+                lang_thresholds = self.config.rust_thresholds
+            elif lang_key == "tinygo":
+                lang_thresholds = self.config.tinygo_thresholds
+
+            if lang_thresholds:
+                if lang_thresholds.max_coefficient_variation is not None:
+                    warning_threshold = float(lang_thresholds.max_coefficient_variation)
+                if lang_thresholds.extreme_cv_threshold is not None:
+                    extreme_cv_threshold = float(lang_thresholds.extreme_cv_threshold)
+
+            if cv > extreme_cv_threshold:
+                issues.append(
+                    f"Extremely high variability: CV={cv:.3f} > {extreme_cv_threshold:.3f} (std > mean)"
+                )
+                quality = DataQuality.INVALID
+
+            if quality != DataQuality.INVALID and cv > warning_threshold:
+                issues.append(
+                    f"High variability: CV={cv:.3f} > {warning_threshold:.3f} (threshold)"
+                )
+                quality = DataQuality.WARNING
+
+            return quality, issues
+
+        exec_quality, exec_issues = _assess_metric_quality(sample_count, cv_exec, task_result.language, "execution_time")
+        mem_quality, mem_issues = _assess_metric_quality(sample_count, cv_mem, task_result.language, "memory_usage")
+
+        # Unknown outliers are tracked elsewhere; set counts to 0 here for simplicity
+        exec_metric = MetricQuality(
             sample_count=sample_count,
-            mean_execution_time=mean_execution_time,
-            std_execution_time=std_execution_time,
-            coefficient_variation=coefficient_variation,
-            outlier_count=0,  # Outliers already removed in pipeline, tracked separately
+            mean=mean_exec,
+            std=std_exec,
+            coefficient_variation=cv_exec,
+            outlier_count=0,
             outlier_rate=0.0,
             success_rate=success_rate,
-            data_quality=data_quality,
-            quality_issues=quality_issues,
+            data_quality=exec_quality,
+            quality_issues=exec_issues,
         )
+
+        mem_metric = MetricQuality(
+            sample_count=sample_count,
+            mean=mean_mem,
+            std=std_mem,
+            coefficient_variation=cv_mem,
+            outlier_count=0,
+            outlier_rate=0.0,
+            success_rate=success_rate,
+            data_quality=mem_quality,
+            quality_issues=mem_issues,
+        )
+
+        return QualityMetrics(execution_time=exec_metric, memory_usage=mem_metric)
 
     def calculate_overall_quality(
         self, task_results: list[TaskResult]
@@ -447,8 +476,14 @@ class QualityController:
             DataQuality.VALID: 0,
         }
 
+    # Use execution time only for group-level quality decisions.
+    # - Each group's quality is set equal to the execution_time metric's quality.
+    # - Memory usage is intentionally ignored at the group level to avoid
+    #   penalizing groups for transient GC/noise in memory measurements.
         for metrics in quality_summary.values():
-            quality_counts[metrics.data_quality] += 1
+            exec_q = metrics.execution_time.data_quality
+            group_quality = exec_q
+            quality_counts[group_quality] += 1
 
         # Calculate ratios
         invalid_count = quality_counts[DataQuality.INVALID]
@@ -656,6 +691,13 @@ def _generate_qc_report(
             "iqr_multiplier": qc_config.outlier_iqr_multiplier,
             "min_samples": qc_config.min_valid_samples,
             "failure_rate": qc_config.failure_rate,
+            # Serialize dataclass instances to plain dicts for JSON compatibility
+            "rust_thresholds": asdict(qc_config.rust_thresholds)
+            if qc_config.rust_thresholds is not None
+            else None,
+            "tinygo_thresholds": asdict(qc_config.tinygo_thresholds)
+            if qc_config.tinygo_thresholds is not None
+            else None,
         },
         "data_summary": {
             "total_task_results": len(cleaned_dataset.task_results),
@@ -679,18 +721,23 @@ def _convert_quality_metrics_to_dict(
     """Convert quality metrics to dictionary format for JSON serialization."""
     if not quality_assessment.quality_summary:
         return {}
+    def _metric_to_dict(m):
+        return {
+            "sample_count": m.sample_count,
+            "mean": m.mean,
+            "std": m.std,
+            "coefficient_variation": m.coefficient_variation,
+            "outlier_count": m.outlier_count,
+            "outlier_rate": m.outlier_rate,
+            "success_rate": m.success_rate,
+            "data_quality": m.data_quality.value,
+            "quality_issues": m.quality_issues,
+        }
 
     return {
         key: {
-            "sample_count": metrics.sample_count,
-            "mean_execution_time": metrics.mean_execution_time,
-            "std_execution_time": metrics.std_execution_time,
-            "coefficient_variation": metrics.coefficient_variation,
-            "outlier_count": metrics.outlier_count,
-            "outlier_rate": metrics.outlier_rate,
-            "success_rate": metrics.success_rate,
-            "data_quality": metrics.data_quality.value,
-            "quality_issues": metrics.quality_issues,
+            "execution_time": _metric_to_dict(metrics.execution_time),
+            "memory_usage": _metric_to_dict(metrics.memory_usage),
         }
         for key, metrics in quality_assessment.quality_summary.items()
     }

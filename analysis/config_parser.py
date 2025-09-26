@@ -10,13 +10,9 @@ from typing import Optional
 
 import yaml
 
-from .data_models import (
-    ConfigurationData,
-    PlotsConfiguration,
-    QCConfiguration,
-    StatisticsConfiguration,
-    ValidationConfiguration,
-)
+from .data_models import (ConfigurationData, LanguageThresholds,
+                          PlotsConfiguration, QCConfiguration,
+                          StatisticsConfiguration, ValidationConfiguration)
 
 
 class ConfigParser:
@@ -71,6 +67,21 @@ class ConfigParser:
             quality_invalid_threshold=qc_section.get("quality_invalid_threshold", 0.1),
             quality_warning_threshold=qc_section.get("quality_warning_threshold", 0.3),
         )
+
+        # Optional per-language thresholds
+        rust_section = qc_section.get("rust_thresholds")
+        if isinstance(rust_section, dict):
+            qc_config.rust_thresholds = LanguageThresholds(
+                max_coefficient_variation=rust_section.get("max_coefficient_variation"),
+                extreme_cv_threshold=rust_section.get("extreme_cv_threshold"),
+            )
+
+        tinygo_section = qc_section.get("tinygo_thresholds")
+        if isinstance(tinygo_section, dict):
+            qc_config.tinygo_thresholds = LanguageThresholds(
+                max_coefficient_variation=tinygo_section.get("max_coefficient_variation"),
+                extreme_cv_threshold=tinygo_section.get("extreme_cv_threshold"),
+            )
 
         # Parse statistics configuration
         stats_section = config_data["statistics"]

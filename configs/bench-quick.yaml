@@ -96,6 +96,15 @@ qc:
   quality_invalid_threshold: 0.6    # 60% invalid groups triggers INVALID overall
   quality_warning_threshold: 0.7    # 70% warning groups triggers WARNING overall
 
+  # Language-specific QC thresholds
+  rust_thresholds:
+    max_coefficient_variation: 0.12
+    extreme_cv_threshold: 0.5
+  
+  tinygo_thresholds:
+    max_coefficient_variation: 0.2
+    extreme_cv_threshold: 1.0
+
 # Engineering-focused statistical analysis
 statistics:
   confidence_level: 0.95           # Standard 95% confidence

@@ -9,7 +9,7 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Optional
 
 from . import common
 from .data_models import (
@@ -664,7 +664,7 @@ def _print_validation_summary(
     passed_validations = len([r for r in validation_results if r.validation_passed])
     failed_validations = total_validations - passed_validations
 
-    print(f"\n📊 Validation Summary:")
+    print("\n📊 Validation Summary:")
     print(f"   • Total Validations: {total_validations}")
     print(f"   • Passed: {passed_validations}")
     print(f"   • Failed: {failed_validations}")
@@ -675,7 +675,7 @@ def _print_validation_summary(
     # Show failed validations details
     failed_results = [r for r in validation_results if not r.validation_passed]
     if failed_results:
-        print(f"\n⚠️  Failed Validations:")
+        print("\n⚠️  Failed Validations:")
         for result in failed_results[:5]:  # Show first 5 failures
             print(
                 f"   • {result.task}-{result.scale}: {', '.join(result.validation_issues)}"
@@ -683,7 +683,7 @@ def _print_validation_summary(
         if len(failed_results) > 5:
             print(f"   • ... and {len(failed_results) - 5} more failures")
 
-    print(f"\n🔍 Validation analysis complete!")
+    print("\n🔍 Validation analysis complete!")
     print(f"📁 Reports saved in {output_dir}")
 
     if failed_validations > 0:

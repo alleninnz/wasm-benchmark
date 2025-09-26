@@ -12,10 +12,9 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional
 
 import numpy as np
-from numpy.typing import NDArray
 
 from .data_models import ComparisonResult
 
@@ -55,7 +54,7 @@ class DecisionSummaryGenerator:
         self._logger.debug("Initialized DecisionSummaryGenerator")
 
     def _validate_inputs(
-        self, comparisons: List[ComparisonResult], chart_paths: Dict[str, Path]
+        self, comparisons: list[ComparisonResult], chart_paths: dict[str, Path]
     ) -> None:
         """
         Validate input parameters for template data preparation.
@@ -98,7 +97,7 @@ class DecisionSummaryGenerator:
                         raise ValueError(f"Invalid performance data structure at index {i}")
 
             except AttributeError as e:
-                raise ValueError(f"Invalid comparison result structure at index {i}: {e}")
+                raise ValueError(f"Invalid comparison result structure at index {i}: {e}") from e
 
         # Validate chart paths
         required_charts = ['execution_time', 'memory_usage', 'effect_size']
@@ -112,7 +111,7 @@ class DecisionSummaryGenerator:
 
         self._logger.debug(f"Input validation passed for {len(comparisons)} comparisons")
 
-    def _prepare_comparison_results_data(self, comparisons: List[ComparisonResult]) -> List[Dict[str, str]]:
+    def _prepare_comparison_results_data(self, comparisons: list[ComparisonResult]) -> list[dict[str, str]]:
         """
         Prepare comparison results data for table display.
 
@@ -171,8 +170,8 @@ class DecisionSummaryGenerator:
         return comparison_results_data
 
     def _extract_performance_data(
-        self, results: List[ComparisonResult], language: str
-    ) -> Tuple[List[float], List[float], List[float]]:
+        self, results: list[ComparisonResult], language: str
+    ) -> tuple[list[float], list[float], list[float]]:
         """
         Extract performance data arrays for a specific language.
 
@@ -206,7 +205,7 @@ class DecisionSummaryGenerator:
 
     def _safe_average(
         self,
-        values: List[float],
+        values: list[float],
         metric_name: str,
         scale_factor: Optional[float] = None,
         as_percentage: bool = False,
@@ -246,8 +245,8 @@ class DecisionSummaryGenerator:
             return "N/A"
 
     def _extract_statistical_values(
-        self, results: List[ComparisonResult], metric_type: str, value_type: str
-    ) -> List[float]:
+        self, results: list[ComparisonResult], metric_type: str, value_type: str
+    ) -> list[float]:
         """
         Extract statistical values from comparison results.
 
@@ -278,7 +277,7 @@ class DecisionSummaryGenerator:
 
         return values
 
-    def _format_p_value(self, p_values: List[float]) -> str:
+    def _format_p_value(self, p_values: list[float]) -> str:
         """
         Format p-values for display.
 
@@ -316,7 +315,7 @@ class DecisionSummaryGenerator:
         except (TypeError, ValueError, Exception):
             return "N/A"
 
-    def _categorize_effect_size(self, effect_sizes: List[float]) -> str:
+    def _categorize_effect_size(self, effect_sizes: list[float]) -> str:
         """
         Categorize overall effect size based on Cohen's d thresholds.
 
@@ -343,9 +342,6 @@ class DecisionSummaryGenerator:
 
             # Counts per magnitude bucket
             n_total = arr.size
-            n_negligible = int((arr < self.SMALL_EFFECT_SIZE).sum())
-            n_small = int(((arr >= self.SMALL_EFFECT_SIZE) & (arr < self.MEDIUM_EFFECT_SIZE)).sum())
-            n_medium = int(((arr >= self.MEDIUM_EFFECT_SIZE) & (arr < self.LARGE_EFFECT_SIZE)).sum())
             n_large = int((arr >= self.LARGE_EFFECT_SIZE).sum())
 
             if mean_effect_size >= self.LARGE_EFFECT_SIZE:
@@ -371,8 +367,8 @@ class DecisionSummaryGenerator:
             return "N/A"
 
     def prepare_template_data(
-        self, comparisons: List[ComparisonResult], chart_paths: Dict[str, Path]
-    ) -> Dict[str, Any]:
+        self, comparisons: list[ComparisonResult], chart_paths: dict[str, Path]
+    ) -> dict[str, Any]:
         """
         Prepare comprehensive data for decision summary template rendering.
 
@@ -450,8 +446,8 @@ class DecisionSummaryGenerator:
             raise RuntimeError(f"Failed to prepare template data: {e}") from e
 
     def _calculate_language_metrics(
-        self, results: List[ComparisonResult], language: str
-    ) -> Dict[str, str]:
+        self, results: list[ComparisonResult], language: str
+    ) -> dict[str, str]:
         """
         Calculate aggregate performance metrics for a specific language.
 
@@ -497,8 +493,8 @@ class DecisionSummaryGenerator:
             }
 
     def _calculate_statistical_metrics(
-        self, results: List[ComparisonResult]
-    ) -> Dict[str, str]:
+        self, results: list[ComparisonResult]
+    ) -> dict[str, str]:
         """
         Calculate statistical significance metrics from comparison results.
 
@@ -541,8 +537,8 @@ class DecisionSummaryGenerator:
             }
 
     def _generate_recommendations(
-        self, results: List[ComparisonResult]
-    ) -> Dict[str, str]:
+        self, results: list[ComparisonResult]
+    ) -> dict[str, str]:
         """Generate primary recommendation based on analysis."""
 
         # Count wins for each language
@@ -583,7 +579,7 @@ class DecisionSummaryGenerator:
 
         return {"primary_recommendation": primary}
 
-    def _generate_technical_notes(self) -> Dict[str, str]:
+    def _generate_technical_notes(self) -> dict[str, str]:
         """Generate technical implementation and deployment notes."""
 
         return {
@@ -614,11 +610,11 @@ class DecisionSummaryGenerator:
         }
 
     def _generate_methodology_info(
-        self, results: List[ComparisonResult]
-    ) -> Dict[str, str]:
+        self, results: list[ComparisonResult]
+    ) -> dict[str, str]:
         """Generate methodology and validation information."""
 
-        tasks = list(set(r.task for r in results))
+        tasks = list({r.task for r in results})
         total_measurements = len(results) * 10  # Assuming 10 samples per result
 
         return {

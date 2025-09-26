@@ -78,6 +78,22 @@ class QCConfiguration:
     failure_rate: float
     quality_invalid_threshold: float
     quality_warning_threshold: float
+    # Optional explicit thresholds for Rust and TinyGo. Use None when not provided.
+    rust_thresholds: Optional["LanguageThresholds"] = None
+    tinygo_thresholds: Optional["LanguageThresholds"] = None
+
+
+@dataclass
+class LanguageThresholds:
+    """Simple per-language thresholds applied to all metrics for compatibility.
+
+    Fields are optional; when None the global QCConfiguration values are used.
+    """
+
+    # Optional explicit maximum CV to treat as warning
+    max_coefficient_variation: float | None = None
+    # Optional CV value above which the metric is considered extreme/invalid
+    extreme_cv_threshold: float | None = None
 
 
 @dataclass
@@ -205,18 +221,35 @@ class CleanedDataset:
 
 
 @dataclass
-class QualityMetrics:
-    """Quality control metrics for dataset validation"""
+class MetricQuality:
+    """Per-metric quality control metrics for dataset validation.
+
+    This is a generic container used for specific metrics such as execution time
+    or memory usage. Field names are metric-agnostic (mean, std, etc.) so the
+    same structure can represent different performance metrics.
+    """
 
     sample_count: int
-    mean_execution_time: float
-    std_execution_time: float
+    mean: float
+    std: float
     coefficient_variation: float
     outlier_count: int
     outlier_rate: float
     success_rate: float
     data_quality: DataQuality
     quality_issues: list[str]
+
+
+@dataclass
+class QualityMetrics:
+    """Top-level quality metrics containing per-metric assessments.
+
+    Contains two fields: `execution_time` and `memory_usage`, each a
+    MetricQuality instance.
+    """
+
+    execution_time: MetricQuality
+    memory_usage: MetricQuality
 
 
 @dataclass

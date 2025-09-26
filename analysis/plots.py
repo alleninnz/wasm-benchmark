@@ -22,8 +22,7 @@ from matplotlib.patches import FancyBboxPatch, Rectangle
 from . import common
 from .data_models import (ComparisonResult, EffectSize, EffectSizeResult,
                           MetricComparison, MetricType, PerformanceStatistics,
-                          PlotsConfiguration, SignificanceCategory,
-                          StatisticalResult, TTestResult)
+                          PlotsConfiguration, StatisticalResult, TTestResult)
 from .decision import DecisionSummaryGenerator
 
 
@@ -391,7 +390,7 @@ class VisualizationGenerator:
         )
 
         if rust_wins > 0 or tinygo_wins > 0:
-            note_text += f"Performance advantage: Rust ({rust_wins}), TinyGo ({tinygo_wins})."
+            note_text += f"Rust ({rust_wins}), TinyGo ({tinygo_wins})."
         else:
             note_text += "No clear performance advantage found."
 
