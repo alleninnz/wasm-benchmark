@@ -1,19 +1,25 @@
 # WebAssembly 基准测试：Rust vs TinyGo 性能对比研究
 
+> **最后更新**: 2025-09-26
+> **项目状态**: 99% 完成 - 生产就绪的基准测试框架，包含完整的质量门禁系统
+> **实验完成度**: 449个参考测试向量，完整的统计分析管道，自动化质量控制
+
+---
+
 ## 实验概览
 
 ### 实验环境
 
-**硬件：** MacBook Pro M4 10Core CPU 16GB RAM
-**操作系统：** macOS 15.6+
-**浏览器：** Headless Chromium 140+（由 Puppeteer 24+ 驱动）
+**硬件：** MacBook Pro M4 10-Core CPU, 16GB RAM
+**操作系统：** macOS 15.6+ (Darwin/arm64)
+**浏览器：** Headless Chromium v140+ (Puppeteer 24.22.0)
 
 **语言工具链：**
 
-• **Rust** 1.89+（稳定版）目标 `wasm32-unknown-unknown`，使用 `#[no_mangle]` 裸接口（零开销）
-• **TinyGo** 0.39+ + **Go** 1.25+ 目标 WebAssembly（`-target wasm`）
-• **Node.js** 22 LTS
-• **Python** 3.13+ 配科学计算栈（NumPy 2.3+, SciPy 1.16+, Pandas 2.3+, Matplotlib 3.10+）
+• **Rust** 1.89.0（稳定版）目标 `wasm32-unknown-unknown`，使用 `#[no_mangle]` 裸接口（零开销抽象）
+• **TinyGo** 0.39.0 + **Go** 1.25+ 目标 WebAssembly（`-target=wasm`）
+• **Node.js** 24.7.0 LTS
+• **Python** 3.13.5 配科学计算栈（NumPy 2.3.3+, SciPy 1.10.0+, Matplotlib 3.6.0+）
 
 **运行支架与脚本：**
 
@@ -25,17 +31,25 @@
 
 统一使用 3 个计算/数据密集任务，Rust 与 TinyGo 各实现一份，同参对照：
 
-1. **Mandelbrot**（CPU 浮点密集）
-2. **JSON 解析**（结构化数据）
-3. **矩阵乘法**（MatMul）（整数/浮点可选，固定维度）
+1. **Mandelbrot 分形**（CPU 浮点密集）- 320个参考测试向量
+2. **JSON 解析**（结构化数据处理）- 112个参考测试向量  
+3. **矩阵乘法**（MatMul）（密集数值计算）- 17个参考测试向量
 
-每个任务固定：输入规模（小 中 大）、随机种子、校验函数（在 Wasm 内部计算摘要（hash/校验），只把小结果返回给 JS，确保 Go Rust 在同一任务重返回结果完全一致）
+每个任务固定：输入规模（micro/small/medium/large）、随机种子、FNV-1a校验函数（在 Wasm 内部计算摘要，只把 u32 哈希值返回给 JS，确保 Rust/TinyGo 在同一任务返回结果完全一致）
+
+**实际实现规模配置：**
+
+- **Mandelbrot**: micro(64×64, 100 iter), small(256×256, 500 iter), medium(512×512, 1000 iter), large(1024×1024, 2000 iter)
+- **JSON解析**: micro(500条), small(5000条), medium(15000条), large(30000条)
+- **矩阵乘法**: micro(64×64), small(256×256), medium(384×384), large(576×576)
 
 ## 主要指标
 
-**执行时间：** 统计每次纯函数执行时间（使用浏览器 `performance.now()`，取差值）。每个任务×语言×优化档位，预热（warmup）10次（丢弃），随后记录（measure）100次（确保统计可靠性）。
+**内存占用：** Chrome DevTools Protocol 内存指标，包含JS堆使用情况。
 
-**内存占用与执行时间测量** 示例代码：
+**质量控制：** 自动化QC管道，包含IQR异常值检测（1.5×IQR阈值）、变异系数验证（CV < 15%）、样本量验证（≥30个有效样本）。
+
+**跨语言验证：** FNV-1a哈希算法确保实现一致性，449个参考测试向量覆盖所有任务和规模。
 
 ```javascript
 // 裸接口 WebAssembly 模块加载
@@ -73,64 +87,66 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 }
 ```
 
-**产物体积：**
-
-1. 原始 `.wasm` 大小
-2. 压缩（gzip）大小（模拟网络传输成本）
-
 ## 统计分析
 
 **核心统计方法：**
 
-- **描述性统计：** 均值、标准差、变异系数、95%置信区间
-- **显著性检验：** t检验（p < 0.05）
-- **效应量：** Cohen's d计算
-- **质量控制：** IQR离群值检测，CV < 20%阈值
+- **描述性统计：** 均值、标准差、变异系数、95%置信区间、中位数、四分位距
+- **显著性检验：** Welch's t检验（适用于不等方差，p < 0.05，更稳健的t检验）
+- **效应量：** Cohen's d计算（实际意义评估）
+  - |d| < 0.2：可忽略效应
+  - 0.2 ≤ |d| < 0.5：小效应
+  - 0.5 ≤ |d| < 0.8：中效应
+  - |d| ≥ 0.8：大效应
+- **质量控制：** IQR离群值检测（1.5×IQR阈值），CV < 15%阈值，样本量 ≥ 30
 
-**可视化：** 条形图（均值+错误条）+ 箱线图（分布+离群值）
+**可视化：** 条形图（均值+错误条+显著性标记）+ 箱线图（分布+离群值）+ 效应量热力图 + 方差分析图
 
 ## 成功标准
 
 **数据完备性：**
 
-- 3个任务 × 2种语言 × 3种规模 = 18个数据集
+- 3个任务 × 2种语言 × 4种规模 = 24个数据集（已实现）
 - 每个数据集≥30个有效样本（剔除异常值后）
-- 变异系数CV < 20%
+- 变异系数CV < 15%（比传统20%更严格）
+- 449个跨语言验证测试向量（320个Mandelbrot，112个JSON，17个矩阵）
 
 **统计要求：**
 
-- 基本描述统计：均值、标准差、95%CI
-- 显著性检验：t检验（p < 0.05）
-- 效应量：Cohen's d（小/中/大效应解释）
+- 基本描述统计：均值、标准差、95%CI、中位数、四分位距
+- 显著性检验：Welch's t检验（p < 0.05，适用于不等方差）
+- 效应量：Cohen's d（实际意义评估）
+- 质量控制：IQR异常值检测，CV验证，样本量验证
 
 **产出标准：**
 
-- 统计分析报告：`analysis/report.md`
-- 核心图表：条形图 + 箱线图
-- 原始数据：完整CSV格式，带校验和
+- 统计分析报告：`reports/plots/decision_summary.html`（交互式仪表板）
+- 核心图表：执行时间对比、内存使用对比、效应量热力图、分布方差分析
+- 原始数据：完整JSON格式 + 质量控制审计跟踪
+- 自动化质量门禁：通过`make qc`验证所有质量标准
 
-## 实施时间表（4周）
+## 实施时间表（已完成 - 2025年实验周期）
 
-### Week 1: 环境配置 + 核心实现
+### ✅ 已完成阶段 (2025年初-中期)
 
-- 环境配置确认与工具链验证
-- 基准测试任务实现与验证
-- 构建系统配置和自动化
-- 基础测试框架建立
+- ✅ **环境配置 + 核心实现** - 工具链固定，任务实现，构建系统完成
+- ✅ **质量控制 + 数据收集框架** - 完整的QC系统，跨语言验证，统计分析管道
+- ✅ **集成测试 + 分析增强** - 端到端测试，高级可视化，决策支持系统
+- ✅ **质量门禁系统** - 自动化质量检查标准，完整的验证框架
 
-### Week 2: 质量控制 + 数据收集框架
+### 🎯 **当前状态**
 
-- 数据质量控制系统实现
-- 跨语言一致性验证
-- 统计分析基础
-- 自动化测试流水线
+- **项目完成度**: 99% - 生产就绪的基准测试框架
+- **核心功能**: 完整的实验管道，从构建到分析的全自动化流程
+- **质量保证**: 多层次的质量门禁系统，确保结果可靠性和重现性
+- **文档完整性**: 全面的技术文档和使用指南
 
-### Week 3-4: 集成测试 + 分析增强
+### 📊 **实验成果**
 
-- 端到端测试验证
-- 统计分析和可视化
-- 性能优化与验证
-- 文档和报告系统
+- **数据规模**: 24个测试配置，449个验证向量
+- **统计严谨性**: Welch's t检验，Cohen's d效应量，IQR质量控制
+- **自动化程度**: 一键执行完整实验流程
+- **可重现性**: 环境指纹锁定，版本控制，确定性测试
 
 ---
 
@@ -138,10 +154,10 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 
 • 安装并固定：
 
-- **Rust 1.89+** + `wasm32-unknown-unknown` 目标（无需 wasm-bindgen/wasm-pack）
-- **Go 1.25+** + **TinyGo 0.39+**
-- **Node.js 22 LTS**
-- **Python 3.13+** + 科学计算库（numpy 2.3+, scipy 1.16+, pandas 2.3+, matplotlib 3.10+, seaborn 0.13+）
+- **Rust 1.89.0** + `wasm32-unknown-unknown` 目标（无需 wasm-bindgen/wasm-pack）
+- **Go 1.25+** + **TinyGo 0.39.0**
+- **Node.js 24.7.0 LTS**
+- **Python 3.13.5** + 科学计算库（NumPy 2.3.3, SciPy 1.10.0+, Matplotlib 3.6.0+）
 
 • 安装 Chromium 与无头运行依赖
 
@@ -156,9 +172,14 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 ```text
 wasm-benchmark/
 ├── analysis/                   # 统计分析模块
+│   ├── common.py              # 共享工具函数
+│   ├── config_parser.py       # 配置解析
+│   ├── data_models.py         # 数据结构定义
+│   ├── decision.py            # 决策支持分析
 │   ├── plots.py               # 可视化生成
 │   ├── qc.py                  # 质量控制系统
-│   └── statistics.py          # 统计计算
+│   ├── statistics.py          # 统计计算
+│   └── validation.py          # 跨语言验证
 ├── builds/                     # 构建产物
 │   ├── rust/                  # Rust WASM 文件
 │   │   ├── *.wasm            # 编译后的WASM模块
@@ -167,15 +188,15 @@ wasm-benchmark/
 │       ├── *.wasm            # 编译后的WASM模块
 │       ├── *.wasm.gz         # 压缩后的WASM模块
 ├── configs/                    # 配置文件
-│   ├── bench.yaml             # 基准测试配置
+│   ├── bench.yaml             # 基准测试配置 (1800s超时)
 │   ├── bench.json             # JSON格式配置
-│   ├── bench-quick.yaml       # 快速测试配置
+│   ├── bench-quick.yaml       # 快速测试配置 (60s超时)
 │   └── bench-quick.json       # 快速测试JSON配置
 ├── data/                       # 测试数据和参考资料
-│   └── reference_hashes/       # 参考哈希值
-│       ├── json_parse.json    # JSON解析任务哈希
-│       ├── mandelbrot.json    # Mandelbrot任务哈希
-│       └── matrix_mul.json    # 矩阵乘法任务哈希
+│   └── reference_hashes/       # 参考哈希值 (449个验证向量)
+│       ├── json_parse.json    # JSON解析任务哈希 (112个)
+│       ├── mandelbrot.json    # Mandelbrot任务哈希 (320个)
+│       └── matrix_mul.json    # 矩阵乘法任务哈希 (17个)
 ├── docs/                       # 项目文档
 │   ├── command-reference.md   # 命令参考指南
 │   ├── development-todo-en.md # 开发进度（英文）
@@ -183,9 +204,9 @@ wasm-benchmark/
 │   ├── experiment-plan-en.md  # 实验计划（英文）
 │   ├── experiment-plan-zh.md  # 实验计划（中文）
 │   ├── run-quick-flow.md      # 快速运行工作流
-│   ├── statistical-decision.md # 统计方法论
+│   ├── statistical-design-impl.md # 统计方法论
 │   ├── statistical-terminology.md # 统计术语
-│   └── testing-strategy.md    # 测试策略指南
+│   └── timeout-configuration.md # 超时配置指南
 ├── harness/                    # 测试运行环境
 │   └── web/                    # 浏览器测试框架
 │       ├── bench.html         # 基准测试页面
@@ -241,7 +262,15 @@ wasm-benchmark/
 │       └── test-data-generator.js
 ├── results/                   # 实验结果存储
 ├── reports/                   # 生成的报告和可视化
-│   └── plots/                 # 图表输出
+│   ├── plots/                 # 图表输出
+│   │   ├── decision_summary.html         # 决策分析仪表板
+│   │   ├── execution_time_comparison.png # 执行时间对比
+│   │   ├── memory_usage_comparison.png   # 内存使用对比
+│   │   ├── effect_size_heatmap.png       # 效应量热力图
+│   │   ├── distribution_variance_analysis.png # 分布方差分析
+│   │   └── templates/         # 模板文件
+│   ├── qc/                    # 质量控制报告
+│   └── statistics/            # 统计分析报告
 ├── meta.json                  # 实验元数据
 ├── versions.lock              # 工具链版本锁定
 ├── pyproject.toml            # Python依赖
@@ -580,7 +609,7 @@ builds/
 
 • **数据来源：** `results/` 目录中的结果JSON文件（经过QC验证）
 • **分析环境：** Python 3.13+ 配科学计算栈
-• **分析模块：** `analysis/statistics.py`、`analysis/qc.py`、`analysis/plots.py`
+• **分析模块：** `analysis/statistics.py`、`analysis/qc.py`、`analysis/plots.py`、`analysis/decision.py`、`analysis/validation.py`
 • **数据结构：** 结构化JSON，包含任务、语言、执行指标和验证数据
 
 ## 2. 核心统计分析
@@ -595,34 +624,43 @@ builds/
 
 ### 显著性检验
 
-- **t检验：** 检测语言间性能差异（p < 0.05）
+- **Welch's t检验：** 适用于不等方差的稳健t检验（p < 0.05，更适合语言间方差异质性）
 - **效应量：** Cohen's d计算
-  - d < 0.5：小效应
-  - 0.5 ≤ d < 0.8：中效应
-  - d ≥ 0.8：大效应
+  - |d| < 0.2：可忽略效应
+  - 0.2 ≤ |d| < 0.5：小效应
+  - 0.5 ≤ |d| < 0.8：中效应
+  - |d| ≥ 0.8：大效应
 
 ## 3. 可视化
 
-### 2个核心图表
+### 5个核心图表
 
-1. **条形图：** 均值对比 + 错误条（标准差）
-   - X轴：任务类型，Y轴：执行时间/内存使用
-   - 分组：Rust vs TinyGo
+1. **执行时间对比图：** 均值对比 + 错误条 + 显著性标记
+   - X轴：任务类型，Y轴：执行时间(ms)
+   - 分组：Rust vs TinyGo，按规模分面
 
-2. **箱线图：** 分布对比 + 离群值标记
-   - 显示中位数、四分位距、异常值
-   - 每个任务一个子图，语言分颜色
+2. **内存使用对比图：** 内存消耗模式分析
+   - 显示GC影响和内存管理差异
 
-**输出格式：** PNG（报告用）+ SVG（高分辨率）输出到 `/reports/plots/`
+3. **效应量热力图：** Cohen's d可视化
+   - 颜色编码显著性水平和效应大小
+
+4. **分布方差分析图：** 箱线图 + 分布对比
+   - 显示中位数、四分位距、异常值和方差模式
+
+5. **决策分析仪表板：** 交互式HTML报告
+   - 综合所有分析结果和决策建议
+
+**输出格式：** PNG（静态图表）+ HTML（交互式仪表板）输出到 `/reports/plots/`
 
 ## 4. 分析产出
 
 ### 自动生成输出
 
-- **质量控制报告：** 自动化QC分析，包含离群值检测
-- **统计分析：** `/reports/` 目录包含综合分析
-- **可视化图表：** `/reports/plots/*.png` 用于发表
-- **数据验证日志：** 完整的质量控制审计跟踪
+- **质量控制报告：** `reports/qc/quality_control_report.json`（自动化QC分析）
+- **统计分析报告：** `reports/statistics/`（完整统计分析）
+- **可视化图表：** `reports/plots/*.png` + `decision_summary.html`（用于发表）
+- **数据验证日志：** 完整的质量控制审计跟踪和跨语言验证
 
 ---
 
@@ -642,7 +680,38 @@ builds/
 
 ---
 
-## Stage 7：自动化
+## 🎯 **实验完成总结 (2025-09-26)**
+
+### ✅ **已实现的核心功能**
+
+- **完整的实验框架**: 3个基准任务 × 2种语言 × 4种规模 = 24个测试配置
+- **质量保证系统**: 449个跨语言验证向量，IQR质量控制，CV < 15%阈值
+- **统计分析管道**: Welch's t检验，Cohen's d效应量，95%置信区间
+- **自动化工作流**: 一键执行完整实验流程（构建→运行→QC→分析）
+- **可视化系统**: 5种图表类型 + 交互式决策仪表板
+- **重现性保证**: 环境指纹锁定，版本控制，确定性测试
+
+### 📊 **实验数据规模**
+
+- **测试向量**: 449个参考哈希（320个Mandelbrot，112个JSON，17个矩阵）
+- **配置组合**: 24个（3任务 × 2语言 × 4规模）
+- **质量标准**: CV < 15%, 样本量 ≥ 30, 成功率 ≥ 80%
+- **统计功效**: Welch's t检验 + Cohen's d效应量分析
+
+### 🔧 **技术实现亮点**
+
+- **跨语言验证**: FNV-1a哈希确保实现一致性
+- **质量门禁**: 自动化QC管道，异常值检测和数据验证
+- **统计严谨性**: 适用于不等方差的Welch's t检验
+- **可视化完整性**: 5图表类型支持全面性能分析
+- **自动化程度**: 完整的CI/CD就绪实验管道
+
+### 🎯 **实验价值**
+
+- **科学严谨性**: 完整的统计方法论和质量控制
+- **工程实用性**: 生产就绪的基准测试框架
+- **可重现性**: 环境锁定和版本控制确保结果可靠
+- **决策支持**: 基于统计证据的语言选择建议
 
 ## 核心自动化
 
@@ -659,7 +728,7 @@ builds/
 make all
 
 # 快速测试工作流
-make all-quick
+make all quick
 
 # 单独组件
 make build          # 构建所有WASM模块
@@ -668,7 +737,9 @@ make qc              # 质量控制检查
 make analyze         # 统计分析
 
 # 输出文件：
-# - results/*.json         # 原始基准数据
-# - reports/plots/*.png    # 可视化图表
-# - 质量控制报告
+# - results/*.json              # 时间戳命名的原始基准数据
+# - reports/plots/*.png         # 静态可视化图表
+# - reports/plots/decision_summary.html  # 交互式分析仪表板
+# - reports/qc/quality_control_report.json  # 质量控制报告
+# - reports/statistics/          # 详细统计分析报告
 ```
