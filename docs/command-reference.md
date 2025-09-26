@@ -23,10 +23,12 @@ This project benchmarks WebAssembly performance by comparing Rust and TinyGo imp
 ### Key Technologies
 
 - WebAssembly (WASM) compilation targets
-- Rust and TinyGo implementations
-- Node.js test harness with Puppeteer
-- Python statistical analysis pipeline
-- Make-based automation system
+- Rust and TinyGo implementations with unified C-ABI interface
+- Node.js test harness with Puppeteer browser automation (v24.22.0)
+- Python statistical analysis pipeline with NumPy 2.3+, SciPy 1.10+, Matplotlib 3.6+
+- Make-based automation system with service-oriented architecture (5 core services)
+- Poetry for Python dependency management
+- Vitest for JavaScript testing framework (ConfigurationService, BrowserService, ResultsService)
 
 ### Project Structure
 
@@ -78,7 +80,7 @@ Set up development environment from scratch
 #### Setup Flow
 
 ```bash
-make check-deps → make init → make build → npm run test:smoke → make status
+make check deps → make init → make build → npm run test:smoke → make status
 ```
 
 #### Setup Timeline
@@ -118,7 +120,7 @@ Comprehensive validation before deployment
 #### Validation Flow
 
 ```bash
-make clean-all → make build → npm run test → make all-quick
+make clean all → make build → npm run test → make all quick
 ```
 
 #### Validation Timeline
@@ -142,7 +144,7 @@ Fast performance comparison for development
 #### Quick Analysis Flow
 
 ```bash
-make build → make run-quick
+make build → make run quick
 ```
 
 #### Quick Analysis Timeline
@@ -162,7 +164,7 @@ Full research-grade performance analysis
 #### Research Flow
 
 ```bash
-make clean-all → make all
+make clean all → make all
 ```
 
 #### Research Timeline
@@ -199,7 +201,7 @@ Detailed analysis of single benchmark task
 
 ### Makefile Commands
 
-#### **make check-deps**
+#### **make check deps**
 
 **Purpose**: Verify all required tools and dependencies are available
 **When to Use**: Before any other operations, especially in new environments
@@ -208,87 +210,83 @@ Detailed analysis of single benchmark task
 
 #### **make init**
 
-**Purpose**: Initialize development environment and install dependencies
+**Purpose**: Initialize development environment, install Node.js and Python dependencies, generate environment fingerprint
 **When to Use**: First-time setup or after clean-all
 **Prerequisites**: check-deps passed
-**Common Issues**: Network connectivity, permission issues with pip/npm
+
+**Dependencies Installed**:
+
+- Node.js packages via npm ci (chalk, puppeteer, yaml, eslint, express, vitest)
+- Python packages via Poetry (numpy, matplotlib, scipy, pyyaml, black, ruff)
+- Environment fingerprint (versions.lock, meta.json)
+
+**Common Issues**: Network connectivity, Poetry not installed, permission issues
 
 #### **make build**
 
-**Purpose**: Build all WebAssembly modules for both Rust and TinyGo
+**Purpose**: Build WebAssembly modules or config (use: make build [rust/tinygo/all/config])
 **When to Use**: After code changes, before testing or benchmarking
 **Prerequisites**: init completed
-**Common Issues**: Compilation errors, missing source files
 
-#### **make build-rust**
+**Options**:
 
-**Purpose**: Build only Rust WebAssembly modules
-**When to Use**: Working specifically on Rust implementations
-**Prerequisites**: Rust toolchain available
-**Common Issues**: Rust compilation errors, wasm-pack issues
+- `make build` - Build both Rust and TinyGo modules
+- `make build rust` - Build only Rust modules
+- `make build tinygo` - Build only TinyGo modules  
+- `make build all` - Build all with full pipeline and optimization analysis
+- `make build config` - Build configuration files from YAML
+- `make build config quick` - Build quick configuration for development
 
-#### **make build-tinygo**
+**Common Issues**: Compilation errors, missing source files, Rust/TinyGo toolchain issues
 
-**Purpose**: Build only TinyGo WebAssembly modules
-**When to Use**: Working specifically on TinyGo implementations
-**Prerequisites**: TinyGo toolchain available
-**Common Issues**: TinyGo compilation errors, WASM target issues
-
-#### **make build-all**
-
-**Purpose**: Build all modules with optimization and size reporting
-**When to Use**: Production builds with detailed optimization analysis
-**Prerequisites**: init completed
-**Common Issues**: Compilation errors, optimization tool availability
-
-#### **make build-config**
-
-**Purpose**: Build configuration file (bench.json) from YAML
-**When to Use**: After modifying bench.yaml configuration
-**Prerequisites**: bench.yaml exists
-**Common Issues**: YAML syntax errors, missing configuration fields
-
-#### **make build-config-quick**
-
-**Purpose**: Build quick configuration file (bench-quick.json) from YAML
-**When to Use**: After modifying bench-quick.yaml for development testing
-**Prerequisites**: bench-quick.yaml exists
-**Common Issues**: YAML syntax errors, missing configuration fields
+**Note**: Individual build targets have been replaced with flag-based commands:
+- `make build rust` - Build only Rust modules
+- `make build tinygo` - Build only TinyGo modules
+- `make build all` - Build all with full pipeline and optimization analysis
+- `make build config` - Build configuration files from YAML
+- `make build config quick` - Build quick configuration for development
 
 #### **make run**
 
-**Purpose**: Execute benchmark suite with default configuration
+**Purpose**: Run browser benchmark suite (use quick headed for options)
 **When to Use**: Performance testing and data collection
 **Prerequisites**: build completed
-**Common Issues**: Browser automation failures, timeout issues
 
-#### **make run-headed**
+**Options**:
 
-**Purpose**: Run benchmarks with visible browser (debugging mode)
-**When to Use**: Debugging benchmark issues, visual verification
-**Prerequisites**: build completed, display available
-**Common Issues**: Display/X11 forwarding issues in headless environments
+- `make run` - Run with default configuration
+- `make run quick` - Run quick benchmarks for development
+- `make run headed` - Run with visible browser for debugging
+- `make run quick headed` - Quick benchmarks with visible browser
 
-#### **make run-quick**
-
-**Purpose**: Run quick benchmarks for development (~2-3 min vs 30+ min full suite)
-**When to Use**: Development validation, verifying builds work correctly
-**Prerequisites**: build completed
-**Common Issues**: Build failures, validation script errors
+**Common Issues**: Browser automation failures, timeout issues, missing configuration
 
 #### **make qc**
 
-**Purpose**: Run quality control on benchmark data
+**Purpose**: Run quality control on benchmark data (use quick for quick mode)
 **When to Use**: After benchmark execution to validate data quality
 **Prerequisites**: benchmark results available
-**Common Issues**: Missing Python dependencies, no results data
+
+**Options**:
+
+- `make qc` - Full quality control analysis
+- `make qc quick` - Quick quality control for development
+
+**Common Issues**: Missing Python dependencies, no results data, Poetry environment issues
 
 #### **make analyze**
 
-**Purpose**: Run statistical analysis and generate plots
-**When to Use**: After benchmark execution
+**Purpose**: Run validation, quality control, statistical analysis, and plotting (use quick for quick mode)
+**When to Use**: After benchmark execution for complete analysis
 **Prerequisites**: benchmark results available
-**Common Issues**: Missing Python dependencies, no results data
+**Pipeline**: validate → qc → stats → plots
+
+**Options**:
+
+- `make analyze` - Full analysis pipeline
+- `make analyze quick` - Quick analysis for development
+
+**Common Issues**: Missing Python dependencies, Poetry not initialized, matplotlib display issues
 
 #### **make all**
 
@@ -297,7 +295,7 @@ Detailed analysis of single benchmark task
 **Prerequisites**: init completed
 **Common Issues**: Long execution time, any step failure stops pipeline
 
-#### **make all-quick**
+#### **make all quick**
 
 **Purpose**: Complete pipeline with quick settings for development/testing
 **When to Use**: Development verification, quick experimentation
@@ -306,59 +304,83 @@ Detailed analysis of single benchmark task
 
 #### **make clean**
 
-**Purpose**: Remove build artifacts and temporary files
+**Purpose**: Clean build artifacts and temporary files (use: make clean all for complete cleanup)
 **When to Use**: Build issues, disk space cleanup
-**Prerequisites**: None
-**Common Issues**: Permission issues on protected files
 
-#### **make clean-results**
+**Options**:
 
-**Purpose**: Clean all benchmark results (with confirmation)
-**When to Use**: Disk space cleanup, removing old experiment data
-**Prerequisites**: None
-**Common Issues**: Accidental data loss, permission issues
+- `make clean` - Clean generated artifacts (builds, configs, reports, results)
+- `make clean all` - Complete cleanup including dependencies, caches, logs (with confirmation)
 
-#### **make clean-all**
+**Cleaned Items**:
 
-**Purpose**: Complete cleanup including dependencies
-**When to Use**: Fresh start, resolving dependency conflicts
-**Prerequisites**: None
-**Common Issues**: Requires re-running init afterward
+- Build artifacts (*.wasm, checksums.txt, sizes.csv)
+- Configuration files (bench.json, bench-quick.json)
+- Reports and results directories
+- Cache files (.cache.*)
+- Temporary files (\*.tmp, \_\_pycache\_\_, \*.pyc)
 
-#### **make clean-cache**
+**Common Issues**: Permission issues on protected files, accidental data loss
 
-**Purpose**: Clean discovery cache files
-**When to Use**: Cache corruption, performance issues
-**Prerequisites**: None
-**Common Issues**: None (informational only)
+#### **make lint**
 
-#### **make cache-file-discovery**
+**Purpose**: Run code quality checks (use: make lint [python/rust/go/js])
+**When to Use**: Code quality assurance, pre-commit checks
+**Prerequisites**: Dependencies installed
 
-**Purpose**: Cache file discovery results for performance
-**When to Use**: Performance optimization for large codebases
-**Prerequisites**: None
-**Common Issues**: None (informational only)
+**Options**:
+
+- `make lint` - Run all language linters
+- `make lint python` - Python linting with ruff
+- `make lint rust` - Rust linting with cargo clippy
+- `make lint go` - Go linting with go vet and gofmt
+- `make lint js` - JavaScript linting with ESLint
+
+**Common Issues**: Missing linters, code formatting issues, linting rule violations
+
+#### **make format**
+
+**Purpose**: Format code (use: make format [python/rust/go])
+**When to Use**: Code formatting, consistent style
+**Prerequisites**: Dependencies installed
+
+**Options**:
+
+- `make format` - Format all supported languages
+- `make format python` - Python formatting with black
+- `make format rust` - Rust formatting with cargo fmt
+- `make format go` - Go formatting with gofmt
+
+**Common Issues**: Missing formatters, conflicting formatting rules
+
+#### **make test**
+
+**Purpose**: Run tests (use: make test [validate] or run all tests)
+**When to Use**: Test execution, validation
+**Prerequisites**: Dependencies installed
+
+**Options**:
+
+- `make test` - Run all available tests (JavaScript + Python)
+- `make test validate` - Run WASM task validation suite
+
+**Common Issues**: Missing test runners, environment setup issues
 
 #### **make status**
 
-**Purpose**: Display current project state and environment info
+**Purpose**: Show current project status
 **When to Use**: Debugging, status verification
-**Prerequisites**: None
+**Displays**: Environment status, build artifacts, results count, latest experiment
 **Common Issues**: None (informational only)
 
 #### **make info**
 
 **Purpose**: Show system information
 **When to Use**: Debugging environment issues
-**Prerequisites**: None
+**Displays**: OS, architecture, CPU cores, memory, tool versions
 **Common Issues**: None (informational only)
 
-#### **make validate**
-
-**Purpose**: Run WASM task validation suite
-**When to Use**: Verifying implementation correctness
-**Prerequisites**: build completed
-**Common Issues**: WASM module loading failures
+**Note**: This is the updated syntax for dependency checking (was `make check-deps`)
 
 ### NPM Script Commands
 
@@ -367,6 +389,7 @@ Detailed analysis of single benchmark task
 **Purpose**: Start development server with auto-opening browser
 **When to Use**: Interactive development and testing
 **Prerequisites**: Dependencies installed
+**Server**: Runs on port 2025, logs to dev-server.log
 **Common Issues**: Port conflicts, browser opening failures
 
 #### **npm run serve:port**
@@ -374,6 +397,7 @@ Detailed analysis of single benchmark task
 **Purpose**: Start development server on specified port (uses PORT environment variable)
 **When to Use**: Server-only mode with custom port configuration
 **Prerequisites**: Dependencies installed
+**Example**: `PORT=3000 npm run serve:port`
 **Common Issues**: Port already in use, environment variable issues
 
 #### **npm run test**
@@ -381,6 +405,7 @@ Detailed analysis of single benchmark task
 **Purpose**: Run full test suite (JavaScript and Python) with verbose output
 **When to Use**: Comprehensive testing and validation
 **Prerequisites**: Dependencies installed, build completed
+**Test Framework**: Vitest with 300s timeout
 **Common Issues**: Long execution time, environment dependencies
 
 #### **npm run test:smoke**
@@ -388,6 +413,7 @@ Detailed analysis of single benchmark task
 **Purpose**: Quick validation tests for core functionality
 **When to Use**: Fast development feedback
 **Prerequisites**: Build completed
+**Test Framework**: Vitest with 10s timeout
 **Common Issues**: Browser automation setup issues
 
 #### **npm run test:unit**
@@ -395,6 +421,7 @@ Detailed analysis of single benchmark task
 **Purpose**: Run isolated unit tests
 **When to Use**: Testing specific components
 **Prerequisites**: Dependencies installed
+**Test Framework**: Vitest with 5s timeout
 **Common Issues**: Test environment configuration
 
 #### **npm run test:integration**
@@ -402,28 +429,100 @@ Detailed analysis of single benchmark task
 **Purpose**: Run cross-language consistency tests
 **When to Use**: Validating language implementation consistency
 **Prerequisites**: Build completed, server running
+**Test Framework**: Vitest with 60s timeout
 **Common Issues**: Browser compatibility, timing issues
 
-#### **npm run build**
+### Python Script Commands
 
-**Purpose**: Build configuration and WebAssembly modules
-**When to Use**: Alternative to make build
-**Prerequisites**: Dependencies installed
-**Common Issues**: Build script execution failures
+#### **wasm-benchmark-qc**
 
-#### **npm run bench**
+**Purpose**: Quality control analysis of benchmark results
+**When to Use**: Validating data integrity and statistical assumptions
+**Prerequisites**: Results data available
+**Analysis**: Outlier detection, normality tests, variance analysis
+**Common Issues**: Missing data files, statistical assumption violations
 
-**Purpose**: Run benchmarks with custom configuration
-**When to Use**: Specific benchmark scenarios
+#### **wasm-benchmark-stats**
+
+**Purpose**: Statistical analysis of benchmark results
+**When to Use**: Computing significance tests and effect sizes
+**Prerequisites**: Results data available
+**Analysis**: Welch's t-test, Cohen's d effect size, confidence intervals
+**Common Issues**: Insufficient sample sizes, non-normal distributions
+
+#### **wasm-benchmark-plots**
+
+**Purpose**: Generate visualization plots for benchmark results
+**When to Use**: Creating publication-ready charts and graphs
+**Prerequisites**: Results data available
+**Output**: PNG files in reports/plots/ directory
+**Common Issues**: Matplotlib backend issues, missing data
+
+#### **wasm-benchmark-validate**
+
+**Purpose**: Cross-language validation of task implementations
+**When to Use**: Verifying WASM module correctness
 **Prerequisites**: Build completed
-**Common Issues**: Configuration parameter errors
+**Validation**: FNV-1a hash comparison across languages
+**Common Issues**: Hash mismatches, WASM loading failures
 
-#### **npm run validate**
+## Command Usage Patterns
 
-**Purpose**: Validate all task implementations
-**When to Use**: Verifying implementation correctness
-**Prerequisites**: Build completed
-**Common Issues**: WASM module loading failures
+### Typical Development Workflow
+
+```bash
+# Initial setup
+make init
+
+# Development cycle
+make build config quick
+npm run dev &
+make run quick
+make qc quick
+make analyze quick
+
+# Full validation
+make test
+npm run test
+```
+
+### Production Benchmarking Workflow
+
+```bash
+# Complete benchmark run
+make init
+make build all
+make run
+make qc
+make analyze
+make plots
+```
+
+### Troubleshooting Workflow
+
+```bash
+# Check system status
+make status
+make info
+
+# Clean and rebuild
+make clean all
+make init
+make build all
+
+# Validate components
+make validate
+npm run test:smoke
+```
+
+## Best Practices Summary
+
+- **Always run `make init`** before starting work
+- **Use quick modes** during development for faster feedback
+- **Run full validation** before publishing results
+- **Check logs** in dev-server.log for server issues
+- **Use `make status`** to verify system readiness
+- **Clean builds** with `make clean all` when switching toolchains
 
 ### Run Bench Script Options
 
@@ -532,7 +631,7 @@ node scripts/run_bench.js --failure-threshold=0.1
 
 - **Symptoms**: Version mismatches, installation failures
 - **Solutions**:
-  - Run `make clean-all` followed by `make init`
+  - Run `make clean all` followed by `make init`
   - Check Node.js version: `node --version` (>=18.0.0 required)
   - Verify Python version: `python3 --version`
   - Clear npm cache: `npm cache clean --force`
@@ -551,7 +650,7 @@ node scripts/run_bench.js --failure-threshold=0.1
 - **Symptoms**: Out of memory, slow performance
 - **Solutions**:
   - Monitor system resources during builds/tests
-  - Use `make all-quick` for resource-constrained environments
+  - Use `make all quick` for resource-constrained environments
   - Adjust timeout values in test configurations
   - Close unnecessary applications
 
@@ -583,7 +682,7 @@ node scripts/run_bench.js --failure-threshold=0.1
 
 ```mermaid
 flowchart TD
-    A[New Developer] --> B[make check-deps]
+    A[New Developer] --> B[make check deps]
     B --> C{Dependencies OK?}
     C -->|No| D[Install Missing Tools]
     D --> B
@@ -613,9 +712,9 @@ flowchart TD
 flowchart TD
     A[Research Analysis] --> B{Analysis Type?}
     B -->|Quick| C[make build]
-    B -->|Comprehensive| D[make clean-all]
+    B -->|Comprehensive| D[make clean all]
 
-    C --> E[make run-quick]
+    C --> E[make run quick]
     E --> G[Validation Results]
 
     D --> I[make all]
@@ -666,18 +765,18 @@ flowchart TD
 
 ---
 
-## Best Practices
+## Operational Best Practices
 
 ### Development Practices
 
-- Always run `make check-deps` in new environments
+- Always run `make check deps` in new environments
 - Use `make status` to verify project state
 - Run smoke tests after significant changes: `npm run test:smoke`
 - Keep builds clean with regular `make clean`
 
 ### Research Practices
 
-- Use `make run-quick` for quick validation, `make all` for full exploration
+- Use `make run quick` for quick validation, `make all` for full exploration
 - Run full experiments with `make all` for publication
 - Document experimental parameters and results
 - Validate cross-language consistency regularly
@@ -746,14 +845,6 @@ Common timeout errors and solutions:
    - Increase element wait timeout
    - Verify page loading completion
 
-For detailed timeout configuration, see `docs/run-quick-flow.md`.
+For detailed timeout configuration, see `docs/timeout-configuration.md`.
 
 ---
-
-## Additional Resources
-
-- **Project Repository**: <https://github.com/alleninnz/wasm-benchmark>
-- **Testing Strategy**: `docs/testing-strategy-guide.md`
-- **Development Plan**: `docs/development-plan.md`
-- **Experiment Plans**: `docs/experiment-plan_en.md`
-- **Timeout Configuration**: `docs/run-quick-flow.md` (详细超时配置)

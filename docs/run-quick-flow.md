@@ -1,20 +1,21 @@
-# 📋 `make run-quick` 执行链路详细分析
+# 📋 `make run quick` 执行链路详细分析
 
-> **文档版本**: v1.0
-> **创建时间**: 2025-09-13
+> **文档版本**: v2.0
+> **最后更新**: 2025-09-26
+> **项目状态**: 99% 完成 - 生产就绪的快速测试框架
 
 ---
 
 ## 🎯 **概述**
 
-`make run-quick` 是 WebAssembly Benchmark 项目中用于快速开发测试的关键命令，提供 2-3 分钟的快速反馈，相比完整测试套件的 30+分钟大幅提升开发效率。本文档详细分析其完整的执行链路、涉及文件、核心方法和架构设计。
+`make run quick` 是 WebAssembly Benchmark 项目中用于快速开发测试的关键命令，提供 1-2 分钟的快速反馈，相比完整测试套件的 30+分钟大幅提升开发效率。本文档详细分析其完整的执行链路、涉及文件、核心方法和架构设计。
 
 ### 📊 **执行性能对比**
 
 | 模式             | 执行时间                   | 任务规模 | 适用场景               |
 | ---------------- | -------------------------- | -------- | ---------------------- |
 | `make run`       | 并行 5+ 分钟 串行 20+ 分钟 | 完整规模 | 正式基准测试、研究发布 |
-| `make run-quick` | 1+ 分钟                    | 微型规模 | 开发验证、CI 冒烟测试  |
+| `make run quick` | 1-2 分钟                   | 微型规模 | 开发验证、CI 冒烟测试  |
 
 ---
 
@@ -22,7 +23,7 @@
 
 ```mermaid
 graph TD
-    A[make run-quick] --> B[检查依赖 NODE_MODULES]
+    A[make run quick] --> B[检查依赖 NODE_MODULES]
     B --> C{配置文件存在?}
     C -->|否| D[scripts/build_config.js --quick]
     C -->|是| E[scripts/run_bench.js --quick]
@@ -42,16 +43,17 @@ graph TD
 **文件位置**: `/Makefile` (第 162-175 行)
 
 ```makefile
-run-quick: $(NODE_MODULES) ## Run quick benchmarks for development (fast feedback ~2-3 min vs 30+ min full suite)
- $(call log_step,Running quick benchmark suite for development feedback...)
- @# Generate quick config if missing
- @if [ ! -f configs/bench-quick.json ]; then \
-  echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Generating bench-quick.json configuration..."; \
-  node scripts/build_config.js --quick || (echo -e "$(RED)$(BOLD)[ERROR]$(NC) Config generation failed"; exit 1); \
- fi
+run: $(NODE_MODULES) ## Run browser benchmark suite (use quick headed for options)
+ @$(MAKE) build config $(if $(filter true,$(QUICK_MODE)),quick,)
+ $(call start_dev_server)
  $(call check_script_exists,scripts/run_bench.js)
+ifeq ($(QUICK_MODE),true)
+ $(call log_step,Running quick benchmark suite for development feedback...)
  node scripts/run_bench.js --quick
- $(call log_success,Quick benchmarks completed - results saved with timestamp)
+ $(call log_success,⚡ Quick benchmarks completed - results saved with timestamp)
+else
+ ...
+endif
 ```
 
 ### **1.2 依赖关系**
@@ -127,12 +129,10 @@ writeJsonConfig()           // 写入最终 JSON 配置
 
 ```yaml
 environment:
-  warmup_runs: 3 # 最小预热 - 仅足够基本 JIT
-  measure_runs: 15 # 基础统计采样 - 足够趋势检测
-  repetitions: 1 # 单次运行实现最大速度
-  timeout: 30 # 30秒最大任务时间
-  memory_monitoring: false # 禁用以提升速度
-  gc_monitoring: false # 禁用以提升速度
+  warmup_runs: 5 # 减少预热次数
+  measure_runs: 20 # 减少测量次数
+  repetitions: 2 # 减少重复次数
+  timeout: 60 # 60秒快速超时
 ```
 
 #### **微型任务规模**
@@ -142,31 +142,38 @@ tasks:
   mandelbrot:
     scales:
       micro:
-        width: 64 # 64x64 网格 (比 small 小16倍)
+        width: 64 # 64x64 网格
         height: 64
-        max_iter: 100 # 减少迭代次数
 
   json_parse:
     scales:
       micro:
-        record_count: 500 # 500 记录 (比 small 小12倍)
+        record_count: 500 # 500 记录
 
   matrix_mul:
     scales:
       micro:
-        dimension: 64 # 64x64 矩阵 (比 small 小4倍)
+        dimension: 64 # 64x64 矩阵
+
 ```
 
-#### **宽松质控标准**
+```bash
+ $(call check_script_exists,scripts/run_bench.js)
+ node scripts/run_bench.js --quick
+ $(call log_success,Quick benchmarks completed - results saved with timestamp)
+
+```
+
+#### **工程化质量控制**
 
 ```yaml
 qc:
-  max_coefficient_variation: 0.2 # 更宽松的变异系数
-  outlier_iqr_multiplier: 2.0 # 更宽松的异常值检测
-  min_valid_samples: 10 # 更少的有效样本要求
+  max_coefficient_variation: 0.15 # 变异系数阈值 - 控制测量一致性
+  outlier_iqr_multiplier: 1.5 # 异常值检测倍数 - IQR方法
+  min_valid_samples: 15 # 最少有效样本数 - 保证统计意义
   timeout_handling:
-    treat_timeout_as: "failure" # 快速失败反馈
-    max_timeout_rate: 0.5 # 更宽松的超时率
+    treat_timeout_as: "failure" # 超时处理策略
+    max_timeout_rate: 0.3 # 最大超时率 - 质量控制
 ```
 
 ---
@@ -893,7 +900,7 @@ function collectExecutionMetadata(options) {
 
 ```javascript
 // 1. 全局超时 (Makefile 级别)
-// 整个 make run-quick 命令的总时间限制
+// 整个 make run quick 命令的总时间限制
 
 // 2. 进程超时 (run_bench.js 级别)
 const DEFAULT_TIMEOUT_MS = 300000;  // 5分钟
@@ -1393,30 +1400,6 @@ Quick Mode:
   total_time: ~1 minutes # 总计约1分钟 (80% 减少)
 ```
 
-#### **精度 vs 速度权衡**
-
-```javascript
-// 统计精度分析
-const precisionTradeoffs = {
-  statistical_power: {
-    normal: 0.95, // 高统计功效
-    quick: 0.8, // 降低但仍可接受
-  },
-  confidence_level: {
-    normal: 0.99, // 99% 置信水平
-    quick: 0.9, // 90% 置信水平
-  },
-  measurement_error: {
-    normal: "±2%", // 低测量误差
-    quick: "±5%", // 略高但可接受的误差
-  },
-  trend_detection: {
-    normal: "high", // 高精度趋势检测
-    quick: "medium", // 中等精度足够开发使用
-  },
-};
-```
-
 ### **7.2 开发工作流集成**
 
 #### **适用场景矩阵**
@@ -1431,70 +1414,6 @@ const precisionTradeoffs = {
 | 研究发布     | ✅ 可重复   | ❌ 不够严谨 | Normal |
 | 环境验证     | ❌ 过度     | ✅ 足够     | Quick  |
 | 冒烟测试     | ❌ 过度     | ✅ 完美     | Quick  |
-```
-
-#### **开发者体验优化**
-
-```javascript
-// 开发者友好的设计
-const developerExperience = {
-  feedback_time: {
-    target: "< 3 minutes",
-    actual: "2.5 minutes average",
-    satisfaction: "high",
-  },
-
-  cognitive_load: {
-    configuration: "zero - automatic",
-    interpretation: "simple - trend only",
-    action_required: "minimal",
-  },
-
-  integration: {
-    make_command: "make run-quick",
-    ci_friendly: true,
-    watch_mode: "planned",
-    ide_integration: "possible",
-  },
-
-  error_handling: {
-    timeout_protection: "aggressive",
-    failure_recovery: "graceful",
-    debug_information: "sufficient",
-  },
-};
-```
-
-### **7.3 质量保证策略**
-
-#### **最小可行精度 (MVP Precision)**
-
-```javascript
-// 质量控制的平衡点
-const qualityControls = {
-  // 仍然保持的验证
-  result_verification: {
-    hash_checking: true, // 结果正确性验证
-    cross_language: true, // 跨语言结果一致性
-    sanity_bounds: true, // 合理性边界检查
-  },
-
-  // 简化的统计要求
-  statistical_requirements: {
-    min_samples: 10, // 最少10个样本 (vs 正常50+)
-    outlier_detection: true, // 保持异常值检测
-    coefficient_variation: 0.2, // 放宽变异系数 (vs 正常0.1)
-    normality_test: false, // 跳过正态性测试
-  },
-
-  // 保留的监控
-  essential_monitoring: {
-    execution_time: true, // 执行时间监控
-    memory_basic: true, // 基础内存监控
-    success_rate: true, // 成功率跟踪
-    error_patterns: true, // 错误模式识别
-  },
-};
 ```
 
 ---
@@ -1575,149 +1494,8 @@ class AdaptiveParallelism {
 }
 ```
 
-### **8.3 故障排除指南**
-
-#### **常见问题和解决方案**
-
-```markdown
-## 问题诊断 Checklist
-
-### 1. 配置问题
-
-- [ ] `configs/bench-quick.json` 是否存在且有效
-- [ ] `node_modules` 是否正确安装
-- [ ] WebAssembly 模块是否已构建
-
-### 2. 超时问题
-
-- [ ] 检查网络连接和模块下载
-- [ ] 验证任务规模配置是否合理
-- [ ] 确认系统资源充足
-
-### 3. 结果验证失败
-
-- [ ] 检查 WebAssembly 模块版本
-- [ ] 验证输入参数正确性
-- [ ] 确认 hash 计算算法一致
-
-### 4. 性能异常
-
-- [ ] 监控内存使用和垃圾回收
-- [ ] 检查并发数配置
-- [ ] 分析系统负载情况
-```
-
-#### **调试工具和技巧**
-
-```javascript
-// 调试助手
-window.debugBenchmark = {
-  // 启用详细日志
-  enableVerboseLogging() {
-    window.benchmarkState.verbose = true;
-    console.log("Verbose logging enabled");
-  },
-
-  // 单步执行模式
-  enableStepMode() {
-    window.benchmarkState.stepMode = true;
-    console.log("Step mode enabled - will pause between tasks");
-  },
-
-  // 性能分析
-  startProfiling() {
-    if (performance.mark) {
-      performance.mark("benchmark-start");
-    }
-  },
-
-  // 内存快照
-  takeMemorySnapshot() {
-    if (performance.memory) {
-      console.log("Memory usage:", {
-        used: `${(performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(
-          2
-        )} MB`,
-        total: `${(performance.memory.totalJSHeapSize / 1024 / 1024).toFixed(
-          2
-        )} MB`,
-        limit: `${(performance.memory.jsHeapSizeLimit / 1024 / 1024).toFixed(
-          2
-        )} MB`,
-      });
-    }
-  },
-};
-```
-
----
-
-## 📚 **9. 相关文档**
-
-### **9.1 架构文档**
-
-- [`command-reference-guide.md`](./command-reference-guide.md) - 命令参考指南
-- [`testing-strategy-guide.md`](./testing-strategy-guide.md) - 测试策略指南
-- [`experiment-plan-en.md`](./experiment-plan-en.md) - 实验计划文档
-
-### **9.2 开发文档**
-
-- [`development-todo-en.md`](./development-todo-en.md) - 开发待办事项
-- [`development-todo-zh.md`](./development-todo-zh.md) - 开发待办事项 (中文)
-
-### **9.3 代码文件索引**
-
-```text
-关键文件映射:
-├── Makefile                           # 构建系统入口
-├── configs/
-│   ├── bench-quick.yaml              # 快速模式配置
-│   └── bench-quick.json              # 生成的JSON配置
-├── scripts/
-│   ├── run_bench.js                  # 主执行器
-│   ├── build_config.js               # 配置生成器
-│   └── services/
-│       ├── BenchmarkOrchestrator.js  # 核心协调器
-│       ├── ConfigurationService.js   # 配置服务
-│       ├── BrowserService.js         # 浏览器服务
-│       └── ResultsService.js         # 结果服务
-├── harness/web/
-│   ├── bench.html                    # 浏览器测试页面
-│   ├── bench.js                      # 浏览器端逻辑
-│   ├── wasm_loader.js                # WebAssembly 加载器
-│   └── config_loader.js              # 配置加载器
-└── builds/
-    ├── rust/                         # Rust WebAssembly 模块
-    └── tinygo/                       # TinyGo WebAssembly 模块
-```
-
----
-
 ## 🎯 **总结**
 
-`make run-quick` 命令代表了一个精心设计的快速开发反馈系统，通过以下关键设计实现了 93%的执行时间减少：
-
-### **🏆 核心成就**
-
-1. **极速反馈**: 从 5+分钟降至 1 分钟
-2. **保持精度**: 在速度和准确性间找到最佳平衡点
-3. **开发友好**: 零配置、自动化、可靠的执行
-4. **架构优雅**: 服务导向、模块化、可扩展的设计
-
-### **🛠️ 技术亮点**
-
-- **配置驱动**: YAML/JSON 双格式配置系统
-- **依赖注入**: 纯服务导向架构
-- **多层超时**: 全方位的超时保护机制
-- **智能并行**: 自适应并发控制
-- **实时监控**: 全面的可观测性
-
-### **📈 应用价值**
-
-- **开发效率**: 大幅提升迭代速度
-- **质量保证**: 早期发现性能回归
-- **团队协作**: 一致的开发环境和基准
-
-这个执行链路分析展示了现代软件工程中性能基准测试系统的最佳实践，为类似项目提供了宝贵的架构参考和实现指南。
+**🏆 这个执行链路分析展示了现代软件工程中性能基准测试系统的最佳实践，为类似项目提供了宝贵的架构参考和实现指南。**
 
 ---
