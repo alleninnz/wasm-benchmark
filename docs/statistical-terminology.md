@@ -1,7 +1,7 @@
-# 📊 WebAssembly基准测试项目统计学术语分析
+# 📊 WebAssembly基准测试项目统计学术语指南
 
-> **文档版本**: v1.0
-> **创建时间**: 2025-09-14
+> **文档版本**: v2.0 (基于真实实现优化)
+> **更新时间**: 2025-09-26
 > **目标读者**: 开发团队、数据分析人员、决策制定者
 > **项目范围**: WebAssembly Rust vs TinyGo 性能比较
 
@@ -15,14 +15,14 @@
 
 ## 📋 **统计学术语分布概览**
 
-项目中包含以下统计学概念类别：
+项目中实际实现的统计学概念类别：
 
 | 类别 | 术语数量 | 实现状态 | 主要文件 |
 |------|----------|----------|----------|
-| 描述性统计 | 8个 | 部分实现 | `ResultsService.js`, 配置文件 |
-| 推理统计 | 8个 | 设计完成 | `component-decision-analysis.md` |
-| 质量控制 | 8个 | 配置就绪 | 配置文件, 验证框架设计 |
-| 分布检验 | 3个 | 设计阶段 | 配置文件 |
+| 描述性统计 | 10个 | ✅ 完全实现 | `analysis/statistics.py`, `analysis/qc.py` |
+| 推理统计 | 6个 | ✅ 完全实现 | `analysis/statistics.py` (Welch's t-test, Cohen's d) |
+| 质量控制 | 4个 | ✅ 完全实现 | `analysis/qc.py` (IQR异常值检测, CV验证) |
+| 可视化支持 | 4个 | ✅ 完全实现 | `analysis/plots.py` |
 
 ---
 
@@ -39,14 +39,12 @@
 - **项目作用**: 衡量Rust和TinyGo的典型性能水平
 - **实现位置**:
 
-  ```javascript
-  // ResultsService.js:90
-  this.summary.averageTaskDuration = this.summary.totalTasks > 0
-  ```
-
-  ```javascript
-  // ResultsService.js:385
-  average: durations.reduce((a, b) => a + b, 0) / durations.length
+  ```python
+  # analysis/statistics.py:296-306 (Welford算法)
+  mean = 0.0
+  for i, x in enumerate(data, 1):
+      delta = x - mean
+      mean += delta / i  # 运行平均值更新
   ```
 
 - **应用场景**: 计算基准测试的平均执行时间，为开发者提供性能参考
@@ -58,15 +56,14 @@
 - **项目作用**: 提供更可靠的性能指标，避免极端值干扰
 - **实现位置**:
 
-  ```javascript
-  // ResultsService.js:398-404
-  calculateMedian(arr) {
-      const sorted = [...arr].sort((a, b) => a - b);
-      const mid = Math.floor(sorted.length / 2);
-      return sorted.length % 2 === 0
-          ? (sorted[mid - 1] + sorted[mid]) / 2
-          : sorted[mid];
-  }
+  ```python
+  # analysis/statistics.py:268-272
+  def _calculate_median_from_sorted(self, sorted_data: list[float]) -> float:
+      n = len(sorted_data)
+      if n % 2 == 0:
+          return (sorted_data[n // 2 - 1] + sorted_data[n // 2]) / 2
+      else:
+          return sorted_data[n // 2]
   ```
 
 - **应用场景**: 在存在性能异常值时提供更准确的典型性能表现
@@ -88,10 +85,10 @@
 - **项目作用**: 用于Welch's t-test中的统计计算
 - **实现位置**:
 
-  ```javascript
-  // component-decision-analysis.md:105-106
-  const var1 = sample1.reduce((sum, x) => sum + Math.pow(x - mean1, 2), 0) / (n1 - 1);
-  const var2 = sample2.reduce((sum, x) => sum + Math.pow(x - mean2, 2), 0) / (n2 - 1);
+  ```python
+  # analysis/statistics.py:305 (Welford算法中)
+  variance = m2 / (n - 1) if n > 1 else 0.0
+  # 其中 m2 为平方差累计值
   ```
 
 - **应用场景**: 比较两组性能数据的变异性差异
@@ -104,8 +101,10 @@
 - **配置位置**:
 
   ```yaml
-  # configs/bench-quick.yaml
+  # configs/bench-quick.yaml:145
   coefficient_of_variation_threshold: 0.15  # 15% threshold
+  # configs/bench.yaml:145
+  coefficient_of_variation_threshold: 0.10  # 10% threshold (更严格)
   ```
 
 - **应用场景**: 设置性能基线验证的阈值，识别不稳定的测试结果
@@ -120,9 +119,10 @@
 - **配置位置**:
 
   ```yaml
-  # configs/bench.yaml:146
+  # configs/bench.yaml:148
   outlier_iqr_multiplier: 1.5      # 标准IQR异常值检测
-  severe_outlier_iqr_multiplier: 4 # 严重异常值检测
+  # configs/bench-quick.yaml:148
+  outlier_iqr_multiplier: 2.0      # 快速模式更宽松阈值
   ```
 
 - **应用场景**: 识别和过滤异常的性能测试结果
@@ -134,10 +134,9 @@
 - **项目作用**: 确定性能范围，用于数据验证
 - **实现位置**:
 
-  ```javascript
-  // ResultsService.js:383-384
-  min: Math.min(...durations),
-  max: Math.max(...durations),
+  ```python
+  # analysis/statistics.py:920 (优化实现)
+  min_val, max_val = sorted_data[0], sorted_data[-1]  # O(1) from sorted data
   ```
 
 - **应用场景**: 性能基线验证，识别异常执行时间
@@ -203,22 +202,24 @@ const result = StatisticalValidator.performWelchTTest(rustTimes, tinygoTimes);
 - **定义**: 比较两个可能方差不等的样本均值的统计检验
 - **优势**: 比标准t-test更鲁棒，适合方差不等的情况
 - **项目作用**: 科学地比较Rust和TinyGo的性能差异
-- **实现位置**: `component-decision-analysis.md:76-157`
+- **实现位置**: `analysis/statistics.py:64-125`
 - **核心代码**:
 
-  ```javascript
-  static performWelchTTest(sample1, sample2, alpha = 0.05) {
-      // Welch's t-test 计算
-      const pooledSE = Math.sqrt(var1/n1 + var2/n2);
-      const tStatistic = (mean1 - mean2) / pooledSE;
+  ```python
+  def welch_t_test(self, group1: list[float], group2: list[float]) -> TTestResult:
+      # 计算样本统计量
+      n1, mean1, var1 = self._get_basic_stats(group1)
+      n2, mean2, var2 = self._get_basic_stats(group2)
 
-      // Welch-Satterthwaite 自由度
-      const degreesOfFreedom = Math.pow(var1/n1 + var2/n2, 2) /
-          (Math.pow(var1/n1, 2)/(n1-1) + Math.pow(var2/n2, 2)/(n2-1));
+      # Welch's t-统计量: t = (μ₁ - μ₂) / √(s₁²/n₁ + s₂²/n₂)
+      standard_error = math.sqrt(var1 / n1 + var2 / n2)
+      t_statistic = (mean1 - mean2) / standard_error
 
-      // 双尾 p-value 计算
-      const pValue = 2 * (1 - this.studentTCDF(Math.abs(tStatistic), degreesOfFreedom));
-  }
+      # Welch-Satterthwaite 自由度
+      degrees_freedom = self._calculate_welch_degrees_freedom(var1, var2, n1, n2)
+
+      # 使用 scipy 计算准确的双尾 p-value
+      p_value = 2 * (1 - t_dist.cdf(abs(t_statistic), degrees_freedom))
   ```
 
 - **t统计量解释**:
@@ -288,9 +289,9 @@ const result = StatisticalValidator.performWelchTTest(rustTimes, tinygoTimes);
 - **项目作用**: 判断Rust和TinyGo性能差异的统计显著性
 - **实现位置**:
 
-  ```javascript
-  // component-decision-analysis.md:135
-  const pValue = 2 * (1 - this.studentTCDF(Math.abs(tStatistic), degreesOfFreedom));
+  ```python
+  # analysis/statistics.py:475 (使用scipy精确计算)
+  p_value = 2 * (1 - t_dist.cdf(abs_t, df))
   ```
 
 #### **显著性水平 (Alpha/α)**
@@ -307,12 +308,13 @@ const result = StatisticalValidator.performWelchTTest(rustTimes, tinygoTimes);
 - **项目作用**: 为性能差异提供区间估计
 - **实现位置**:
 
-  ```javascript
-  // component-decision-analysis.md:142-145
-  const confidenceInterval = [
-      meanDiff - tCritical * standardError,
-      meanDiff + tCritical * standardError
-  ];
+  ```python
+  # analysis/statistics.py:538-578
+  def _confidence_interval(self, group1: list[float], group2: list[float]) -> tuple[float, float]:
+      # 使用scipy计算精确临界值
+      critical_t = float(t_dist.ppf(1 - alpha / 2, degrees_freedom))
+      margin_of_error = critical_t * standard_error
+      return (mean_difference - margin_of_error, mean_difference + margin_of_error)
   ```
 
 - **解释**: 95%置信区间意味着如果重复实验100次，约95次的区间会包含真实差异值
@@ -374,7 +376,7 @@ const taskAnalysis = {
 - **定义**: 标准化的效应量，量化两组差异的实际大小
 - **公式**: `d = (μ₁ - μ₂) / σ_pooled`
 - **项目作用**: 评估性能差异的实际重要性，而非仅仅统计显著性
-- **实现位置**: `component-decision-analysis.md:294-355`
+- **实现位置**: `analysis/statistics.py:127-194`
 - **解释标准**:
   - |d| < 0.2: 可忽略的效应
   - 0.2 ≤ |d| < 0.5: 小效应
@@ -383,8 +385,9 @@ const taskAnalysis = {
 - **配置位置**:
 
   ```yaml
-  # configs/bench-quick.yaml:117
+  # configs/bench-quick.yaml:150
   effect_size_metric: "cohens_d"
+  minimum_detectable_effect: 0.2  # 最小可检测效应量
   ```
 
 #### **效应量阈值 (Effect Size Thresholds)**
@@ -392,7 +395,7 @@ const taskAnalysis = {
 - **项目配置**:
 
   ```yaml
-  # configs/bench-quick.yaml:119
+  # configs/bench-quick.yaml:152-155
   effect_size_thresholds:
     small: 0.2
     medium: 0.5
@@ -512,7 +515,7 @@ const analysisResult = {
 - **定义**: 显著偏离数据集主体的观测值
 - **检测方法**:
   1. **IQR方法**: 超出 Q1-1.5×IQR 或 Q3+1.5×IQR 的值
-  2. **Z-score方法**: |Z| > 3 的值
+  
 - **项目配置**:
 
   ```yaml
@@ -521,22 +524,15 @@ const analysisResult = {
   severe_outlier_iqr_multiplier: 4     # 严重异常值检测
   ```
 
-  ```javascript
-  // component-decision-analysis.md:368
-  outlierThreshold: config.outlierThreshold || 3.0, // Z-score
-  ```
-
 - **应用场景**: 识别和处理异常的性能测试结果，确保数据质量
 
-#### **Z-score (标准分数)**
+#### **实际异常值检测方法**
 
-- **定义**: 表示数据点距离均值多少个标准差
-- **公式**: `Z = (x - μ) / σ`
-- **解释**:
-  - |Z| < 2: 正常值
-  - 2 ≤ |Z| < 3: 可疑值
-  - |Z| ≥ 3: 异常值
-- **项目应用**: 异常值检测的核心指标
+项目**不使用Z-score**进行异常值检测，而是采用更稳健的**IQR方法**：
+
+- **检测原理**: 基于四分位距的箱线图方法
+- **实现位置**: `analysis/qc.py` 质量控制模块
+- **优势**: 对非正态分布数据更稳健，不受极端值影响
 
 ### **2. 统计功效分析 (Statistical Power Analysis)**
 
@@ -545,12 +541,9 @@ const analysisResult = {
 - **定义**: 正确检测到真实效应的概率
 - **公式**: `Power = 1 - β` (β为第二类错误概率)
 - **理想值**: ≥ 0.8 (80%)
-- **项目配置**:
-
-  ```yaml
-  # configs/bench-quick.yaml:115
-  statistical_power: 0.8               # 80%功效要求
-  ```
+- **项目说明**: 当前实现**未包含**统计功效分析
+- **原因**: 基于实际观察的样本量设计（warmup_runs + measure_runs × repetitions）
+- **样本量**: 由配置文件控制，无需功效计算
 
 - **应用场景**: 确保有足够样本量检测性能差异
 
@@ -575,12 +568,9 @@ const analysisResult = {
 #### **执行时间范围验证**
 
 - **目的**: 检测异常的执行时间值
-- **配置示例**:
-
-  ```javascript
-  // component-decision-analysis.md
-  executionTimeRange: config.executionTimeRange || [0.1, 300000], // ms
-  ```
+- **配置说明**: 当前实现**未包含**执行时间范围验证
+- **质量控制**: 通过IQR异常值检测和变异系数验证确保数据质量
+- **超时机制**: 由浏览器和配置文件的timeout设置控制
 
 - **应用场景**: 识别测试环境问题或实现错误
 
@@ -596,19 +586,10 @@ const analysisResult = {
 - **常用方法**:
   - Shapiro-Wilk检验 (样本量 < 50)
   - Kolmogorov-Smirnov检验 (样本量 ≥ 50)
-- **项目配置**:
-
-  ```yaml
-  # configs/bench-quick.yaml:118
-  normality_test: "none"               # 跳过以提高速度
-  ```
-
-  ```yaml
-  # configs/bench.yaml (完整测试)
-  normality_test: "shapiro_wilk"       # 或 "kolmogorov_smirnov"
-  ```
-
-- **影响**: 决定使用参数统计方法 vs 非参数统计方法
+- **项目实现**: **不进行正态性检验**
+- **设计原因**: 使用Welch's t-test，对非正态分布具有良好的鲁棒性
+- **质量保证**: 通过大样本量和IQR异常值过滤确保数据质量
+- **效率考虑**: 避免不必要的分布检验，专注核心性能比较
 
 ### **分布形态 (Distribution Shape)**
 
@@ -659,42 +640,51 @@ const analysisResult = {
 ### **1. 快速测试配置 (bench-quick.yaml)**
 
 ```yaml
-statistics:
+quality_control:
   coefficient_of_variation_threshold: 0.15
   outlier_iqr_multiplier: 2.0
-  severe_outlier_iqr_multiplier: 4
-  statistical_power: 0.8
-  effect_size_metric: "cohens_d"
-  normality_test: "none"  # 跳过以提高速度
+  min_valid_samples: 5
+  failure_rate: 0.2
+
+statistics:
+  significance_alpha: 0.05
+  confidence_level: 0.95
+  effect_size_thresholds:
+    small: 0.2
+    medium: 0.5
+    large: 0.8
+  minimum_detectable_effect: 0.2
 ```
 
 ### **2. 完整测试配置 (bench.yaml)**
 
 ```yaml
-statistics:
-  coefficient_of_variation_threshold: 0.10  # 更严格
-  outlier_iqr_multiplier: 1.5              # 标准阈值
-  severe_outlier_iqr_multiplier: 3         # 更严格
-  statistical_power: 0.9                   # 更高功效
-  effect_size_metric: "cohens_d"
-  normality_test: "shapiro_wilk"           # 完整检验
+quality_control:
+  coefficient_of_variation_threshold: 0.10  # 更严格的变异系数
+  outlier_iqr_multiplier: 1.5              # 标准IQR阈值
+  min_valid_samples: 10                    # 更多最小样本
+  failure_rate: 0.1                        # 更严格的失败率
 
-sample_size:
-  measure_runs: 120                        # 足够的样本量
-  warmup_runs: 10                         # 充分预热
+statistics:
+  significance_alpha: 0.01                 # 更严格的显著性水平
+  confidence_level: 0.99                   # 更高的置信水平
+  minimum_detectable_effect: 0.15          # 更敏感的效应量检测
 ```
 
-### **3. 数据质量标准**
+### **3. 数据质量标准 (实际实现)**
 
-```javascript
-const qualityStandards = {
-    minSampleSize: 5,                      // 最小样本量
-    maxCoefficientOfVariation: 0.5,        // 最大变异系数
-    outlierThreshold: 3.0,                 // Z-score阈值
-    minSuccessRate: 0.8,                   // 最小成功率
-    executionTimeRange: [0.1, 300000],     // 合理时间范围(ms)
-    memoryUsageRange: [1024, 1024*1024*1024] // 合理内存范围(bytes)
-};
+```python
+# analysis/qc.py 中的质量控制常量
+class QCConstants:
+    Q1_PERCENTILE = 0.25
+    Q3_PERCENTILE = 0.75
+    EXTREME_CV_MULTIPLIER = 2.0
+    MINIMUM_IQR_SAMPLES = 4
+
+# analysis/statistics.py 中的统计常量
+MINIMUM_SAMPLES_FOR_TEST = 2
+COEFFICIENT_VARIATION_THRESHOLD = 1e-9
+DEFAULT_POOLED_STD = 1.0
 ```
 
 ---
@@ -710,16 +700,17 @@ const qualityStandards = {
 | Coefficient of Variation | 变异系数 | 相对变异性 | 测试质量控制 |
 | IQR | 四分位距 | 中间50%范围 | 异常值检测 |
 | Outlier | 异常值 | 极端观测值 | 数据质量控制 |
-| Welch's t-test | Welch t检验 | 不等方差t检验 | 性能比较核心 |
-| p-value | p值 | 统计显著性概率 | 差异显著性判断 |
-| Cohen's d | Cohen d值 | 标准化效应量 | 实际差异大小 |
-| Statistical Power | 统计功效 | 检测真实效应能力 | 样本量规划 |
-| Confidence Interval | 置信区间 | 参数估计范围 | 不确定性量化 |
-| Effect Size | 效应量 | 实际差异大小 | 实用意义评估 |
-| Alpha Level | 显著性水平 | 假阳性错误率 | 假设检验标准 |
-| Degrees of Freedom | 自由度 | 独立参数数量 | 检验准确性 |
-| Normality Test | 正态性检验 | 分布形态验证 | 方法选择依据 |
-| Z-score | 标准分数 | 标准化位置 | 异常值识别 |
+| Welch's t-test | Welch t检验 | 不等方差t检验 | ✅ 性能比较核心方法 |
+| p-value | p值 | 统计显著性概率 | ✅ 差异显著性判断 |
+| Cohen's d | Cohen d值 | 标准化效应量 | ✅ 实际差异大小评估 |
+| Confidence Interval | 置信区间 | 参数估计范围 | ✅ 不确定性量化 |
+| Effect Size | 效应量 | 实际差异大小 | ✅ 实用意义评估 |
+| Alpha Level | 显著性水平 | 假阳性错误率 | ✅ 假设检验标准 |
+| Degrees of Freedom | 自由度 | 独立参数数量 | ✅ 检验准确性 |
+| IQR | 四分位距 | 中间50%范围 | ✅ 异常值检测核心方法 |
+| Statistical Power | 统计功效 | 检测真实效应能力 | ❌ 未实现 - 基于观察设计 |
+| Normality Test | 正态性检验 | 分布形态验证 | ❌ 未实现 - Welch's t-test足够鲁棒 |
+| Z-score | 标准分数 | 标准化位置 | ❌ 未使用 - 采用IQR方法 |
 
 ---
 
@@ -783,9 +774,29 @@ const qualityStandards = {
 
 ---
 
-## 🔮 **未来扩展建议**
+## 🔮 **项目统计方法总结**
 
-暂无
+### **✅ 已实现的核心统计方法**
+
+1. **描述性统计**: 均值、中位数、标准差、四分位数、变异系数
+2. **推理统计**: Welch's t-test、Cohen's d效应量、95%置信区间
+3. **质量控制**: IQR异常值检测、变异系数验证、样本量检查
+4. **可视化分析**: 4种统计图表 + 交互式HTML报告
+
+### **❌ 未实现的统计方法(设计简化)**
+
+1. **Z-score异常值检测**: 使用更稳健的IQR方法替代
+2. **正态性检验**: Welch's t-test对非正态分布足够鲁棒
+3. **统计功效分析**: 基于实际观察确定样本量
+4. **执行时间范围验证**: 依赖超时机制和异常值检测
+
+### **🎯 设计哲学**
+
+项目采用**务实的统计方法组合**，专注于：
+- **工程实用性**: 选择对实际性能比较最有效的方法
+- **计算效率**: 避免不必要的统计检验，提高分析速度
+- **结果可靠性**: 通过多层质量控制确保统计结论的可信度
+- **决策支持**: 提供清晰的语言选择建议和置信度评估
 
 ---
 
