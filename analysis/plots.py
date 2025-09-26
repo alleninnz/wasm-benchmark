@@ -697,30 +697,52 @@ class VisualizationGenerator:
         # Create legend panel
         ax_legend.axis("off")
 
-        # Add effect size interpretation legend
-        legend_text = [
-            "Effect Size Interpretation:",
-            "",
-            "● Positive (Red):",
-            "  Rust performs better",
-            "",
-            "● Negative (Blue):",
-            "  TinyGo performs better",
-            "",
-            "Magnitude Thresholds:",
-            f"  Small: ±{effect_thresholds[0]:.1f}",
-            f"  Medium: ±{effect_thresholds[1]:.1f}",
-            f"  Large: ±{effect_thresholds[2]:.1f}",
-            "",
-            "Cohen's d Guidelines:",
-            "  |d| < 0.3: Negligible",
-            "  |d| ≥ 0.3: Small effect",
-            "  |d| ≥ 0.6: Medium effect",
-            "  |d| ≥ 1.0: Large effect",
-        ]
+        # NOTE: a legacy `legend_text` list used to live here. It did not
+        # participate in drawing the legend because the code below renders
+        # the legend explicitly with multiple `ax_legend.text` and
+        # `ax_legend.scatter` calls (which correctly use f-strings such as
+        # f"Small: ±{effect_thresholds[0]:.1f}").
+        #
+        # If you expect changes to the legend to affect the plot, edit the
+        # explicit `ax_legend.text` blocks below (or replace them with a
+        # rendering loop that consumes a formatted list). Keeping this note
+        # here to avoid confusion for future edits.
 
         # Draw a rounded panel with subtle shadow to contain the legend text
-        total_lines = len(legend_text)
+        # Use a structured `legend_items` list to drive rendering so editing
+        # the list will change the figure. This avoids duplicated manual
+        # text blocks and makes future edits easier.
+        legend_items = [
+            {"type": "title", "text": "Effect Size Interpretation"},
+            {"type": "spacer"},
+            {
+                "type": "marker",
+                "color": self.rust_color,
+                "label": "Positive",
+                "desc": "Rust performs better",
+            },
+            {"type": "spacer_small"},
+            {
+                "type": "marker",
+                "color": self.tinygo_color,
+                "label": "Negative",
+                "desc": "TinyGo performs better",
+            },
+            {"type": "spacer"},
+            {"type": "subheading", "text": "Magnitude Thresholds"},
+            {"type": "threshold", "text": f"    Small: ±{effect_thresholds[0]:.1f}"},
+            {"type": "threshold", "text": f"    Medium: ±{effect_thresholds[1]:.1f}"},
+            {"type": "threshold", "text": f"    Large: ±{effect_thresholds[2]:.1f}"},
+            {"type": "spacer"},
+            {"type": "subheading", "text": "Cohen's d Guidelines"},
+            {"type": "guideline", "text": "    |d| < 0.3: Negligible"},
+            {"type": "guideline", "text": "    |d| ≥ 0.3: Small effect"},
+            {"type": "guideline", "text": "    |d| ≥ 0.6: Medium effect"},
+            {"type": "guideline", "text": "    |d| ≥ 1.0: Large effect"},
+        ]
+
+        # Layout parameters
+        total_lines = len(legend_items)
         line_height = 0.05
         padding = 0.03
         top = 0.96
@@ -743,8 +765,7 @@ class VisualizationGenerator:
         )
         ax_legend.add_patch(shadow)
 
-        # Main rounded box (soft white fill, colored border matching Rust accent)
-        # Main rounded box: soft white fill with a subtle light-gray border
+        # Main rounded box (soft white fill, subtle light-gray border)
         panel = FancyBboxPatch(
             (left, bottom),
             width,
@@ -759,192 +780,108 @@ class VisualizationGenerator:
         )
         ax_legend.add_patch(panel)
 
-        # Write legend content inside the rounded panel with refined layout
+        # Render legend items driven by legend_items list
         y_pos = top - 0.02
-
-        # Title
-        ax_legend.text(
-            left + 0.03,
-            y_pos,
-            "Effect Size Interpretation:",
-            transform=ax_legend.transAxes,
-            fontsize=self.config.font_sizes["labels"],
-            fontweight="bold",
-            verticalalignment="top",
-            zorder=3,
-        )
-        y_pos -= line_height * 1.2
-
-        # Positive row: colored marker + bold label, then description line
         marker_x = left + 0.06
         label_x = left + 0.12
-        ax_legend.scatter(
-            [marker_x],
-            [y_pos],
-            transform=ax_legend.transAxes,
-            color=self.rust_color,
-            s=120,
-            marker="o",
-            edgecolors="#333333",
-            linewidths=0.6,
-            zorder=4,
-        )
-        ax_legend.text(
-            label_x,
-            y_pos,
-            "Positive (Red):",
-            transform=ax_legend.transAxes,
-            fontsize=self.config.font_sizes["default"],
-            fontweight="bold",
-            verticalalignment="center",
-            zorder=4,
-        )
-        y_pos -= line_height * 0.9
-        ax_legend.text(
-            label_x,
-            y_pos,
-            "Rust performs better",
-            transform=ax_legend.transAxes,
-            fontsize=self.config.font_sizes["default"] - 1,
-            color="#222222",
-            verticalalignment="top",
-            zorder=3,
-        )
 
-        # Space before next block
-        y_pos -= line_height * 1.1
+        for item in legend_items:
+            typ = item.get("type")
+            if typ == "title":
+                ax_legend.text(
+                    left + 0.03,
+                    y_pos,
+                    item["text"],
+                    transform=ax_legend.transAxes,
+                    fontsize=self.config.font_sizes["labels"],
+                    fontweight="bold",
+                    verticalalignment="top",
+                    zorder=3,
+                )
+                y_pos -= line_height * 1.2
 
-        # Negative row: colored marker + bold label, then description line
-        ax_legend.scatter(
-            [marker_x],
-            [y_pos],
-            transform=ax_legend.transAxes,
-            color=self.tinygo_color,
-            s=120,
-            marker="o",
-            edgecolors="#333333",
-            linewidths=0.6,
-            zorder=4,
-        )
-        ax_legend.text(
-            label_x,
-            y_pos,
-            "Negative (Blue):",
-            transform=ax_legend.transAxes,
-            fontsize=self.config.font_sizes["default"],
-            fontweight="bold",
-            verticalalignment="center",
-            zorder=4,
-        )
-        y_pos -= line_height * 0.9
-        ax_legend.text(
-            label_x,
-            y_pos,
-            "TinyGo performs better",
-            transform=ax_legend.transAxes,
-            fontsize=self.config.font_sizes["default"] - 1,
-            color="#222222",
-            verticalalignment="top",
-            zorder=3,
-        )
+            elif typ == "marker":
+                ax_legend.scatter(
+                    [marker_x],
+                    [y_pos],
+                    transform=ax_legend.transAxes,
+                    color=item.get("color"),
+                    s=120,
+                    marker="o",
+                    edgecolors="#333333",
+                    linewidths=0.6,
+                    zorder=4,
+                )
+                ax_legend.text(
+                    label_x,
+                    y_pos,
+                    item.get("label"),
+                    transform=ax_legend.transAxes,
+                    fontsize=self.config.font_sizes["default"],
+                    fontweight="bold",
+                    verticalalignment="center",
+                    zorder=4,
+                )
+                y_pos -= line_height * 0.9
+                ax_legend.text(
+                    label_x,
+                    y_pos,
+                    item.get("desc"),
+                    transform=ax_legend.transAxes,
+                    fontsize=self.config.font_sizes["default"] - 1,
+                    color="#222222",
+                    verticalalignment="top",
+                    zorder=3,
+                )
+                y_pos -= line_height * 1.1
 
-        # Space before thresholds
-        y_pos -= line_height * 1.2
+            elif typ == "subheading":
+                ax_legend.text(
+                    left + 0.03,
+                    y_pos,
+                    item.get("text"),
+                    transform=ax_legend.transAxes,
+                    fontsize=self.config.font_sizes["default"],
+                    fontweight="bold",
+                    verticalalignment="top",
+                    zorder=3,
+                )
+                y_pos -= line_height * 0.9
 
-        # Magnitude thresholds and guidelines (kept smaller)
-        ax_legend.text(
-            left + 0.03,
-            y_pos,
-            "Magnitude Thresholds:",
-            transform=ax_legend.transAxes,
-            fontsize=self.config.font_sizes["default"],
-            fontweight="bold",
-            verticalalignment="top",
-            zorder=3,
-        )
-        y_pos -= line_height * 0.9
-        ax_legend.text(
-            left + 0.06,
-            y_pos,
-            f"Small: ±{effect_thresholds[0]:.1f}",
-            transform=ax_legend.transAxes,
-            fontsize=self.config.font_sizes["default"] - 1,
-            verticalalignment="top",
-            zorder=3,
-        )
-        y_pos -= line_height * 0.85
-        ax_legend.text(
-            left + 0.06,
-            y_pos,
-            f"Medium: ±{effect_thresholds[1]:.1f}",
-            transform=ax_legend.transAxes,
-            fontsize=self.config.font_sizes["default"] - 1,
-            verticalalignment="top",
-            zorder=3,
-        )
-        y_pos -= line_height * 0.85
-        ax_legend.text(
-            left + 0.06,
-            y_pos,
-            f"Large: ±{effect_thresholds[2]:.1f}",
-            transform=ax_legend.transAxes,
-            fontsize=self.config.font_sizes["default"] - 1,
-            verticalalignment="top",
-            zorder=3,
-        )
+            elif typ == "threshold" or typ == "guideline":
+                ax_legend.text(
+                    left + 0.06,
+                    y_pos,
+                    item.get("text"),
+                    transform=ax_legend.transAxes,
+                    fontsize=self.config.font_sizes["default"] - 1,
+                    verticalalignment="top",
+                    zorder=3,
+                )
+                y_pos -= line_height * 0.85
 
-        # Space before Cohen guidelines
-        y_pos -= line_height * 1.05
-        ax_legend.text(
-            left + 0.03,
-            y_pos,
-            "Cohen's d Guidelines:",
-            transform=ax_legend.transAxes,
-            fontsize=self.config.font_sizes["default"],
-            fontweight="bold",
-            verticalalignment="top",
-            zorder=3,
-        )
-        y_pos -= line_height * 0.9
-        ax_legend.text(
-            left + 0.06,
-            y_pos,
-            "|d| < 0.3: Negligible",
-            transform=ax_legend.transAxes,
-            fontsize=self.config.font_sizes["default"] - 1,
-            verticalalignment="top",
-            zorder=3,
-        )
-        y_pos -= line_height * 0.8
-        ax_legend.text(
-            left + 0.06,
-            y_pos,
-            "|d| ≥ 0.3: Small effect",
-            transform=ax_legend.transAxes,
-            fontsize=self.config.font_sizes["default"] - 1,
-            verticalalignment="top",
-            zorder=3,
-        )
-        y_pos -= line_height * 0.8
-        ax_legend.text(
-            left + 0.06,
-            y_pos,
-            "|d| ≥ 0.6: Medium effect",
-            transform=ax_legend.transAxes,
-            fontsize=self.config.font_sizes["default"] - 1,
-            verticalalignment="top",
-            zorder=3,
-        )
-        y_pos -= line_height * 0.8
-        ax_legend.text(
-            left + 0.06,
-            y_pos,
-            "|d| ≥ 1.0: Large effect",
-            transform=ax_legend.transAxes,
-            fontsize=self.config.font_sizes["default"] - 1,
-            verticalalignment="top",
-            zorder=3,
-        )
+            elif typ == "guideline":
+                # handled above
+                pass
+
+            elif typ == "spacer":
+                y_pos -= line_height * 1.0
+
+            elif typ == "spacer_small":
+                y_pos -= line_height * 0.6
+
+            else:
+                # Unknown type: render as plain text
+                ax_legend.text(
+                    left + 0.03,
+                    y_pos,
+                    str(item),
+                    transform=ax_legend.transAxes,
+                    fontsize=self.config.font_sizes["default"] - 1,
+                    verticalalignment="top",
+                    zorder=3,
+                )
+                y_pos -= line_height * 0.9
 
         # Layout handled by bbox_inches="tight" in savefig below
         # No manual tight_layout needed
@@ -1009,7 +946,8 @@ class VisualizationGenerator:
             2,
             figsize=(
                 self.config.figure_sizes["detailed"][0] * 1.4,
-                self.config.figure_sizes["detailed"][1],
+                # Increase height to make room for the legend placed above the axes
+                self.config.figure_sizes["detailed"][1] * 1.25,
             ),
             gridspec_kw={"wspace": 0.3},
         )
@@ -1017,7 +955,9 @@ class VisualizationGenerator:
         # Reserve bottom space so we can place the summary note below the axes
         # This avoids overlaying x-axis tick labels. Use subplots_adjust to be
         # explicit about reserved margins instead of relying only on tight_layout.
-        fig.subplots_adjust(bottom=0.22, top=0.95, left=0.06, right=0.98)
+        # Lower `top` slightly to make layout stable when legends are placed above
+        # the axes; we still save with bbox_inches='tight' to include any overflow.
+        fig.subplots_adjust(bottom=0.22, top=0.90, left=0.06, right=0.98)
 
         # Generate box plots for execution time
         self._create_optimized_box_plots(
@@ -1048,6 +988,7 @@ class VisualizationGenerator:
                 output_path,
                 dpi=self.config.dpi_detailed,
                 format=self.config.output_format,
+                bbox_inches="tight",
             )
         plt.close()
 
@@ -1268,7 +1209,7 @@ class VisualizationGenerator:
         ]
 
         fig.legend(handles=legend_elements, loc='upper center',
-                  bbox_to_anchor=(0.5, 1.10), ncol=5, frameon=True)
+                  bbox_to_anchor=(0.5, 1.02), ncol=5, frameon=True)
 
     def _add_distribution_summary_note(self, fig, comparisons: list[ComparisonResult]) -> None:
         """Add statistical summary note about distribution characteristics."""
