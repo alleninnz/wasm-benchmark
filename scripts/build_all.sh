@@ -1,13 +1,15 @@
 #!/bin/bash
 
 # Build All WebAssembly Tasks
-# One-click build script for both Rust and TinyGo implementations
+# Optimized build script for both Rust and TinyGo implementations with parallel compilation
 
 # Source common utilities
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/common.sh"
 
 # Configuration (BUILDS_DIR already defined in common.sh)
+TASK_PARALLEL=false
+GENERATE_CHECKSUMS=true
 
 
 # Print usage
@@ -22,14 +24,18 @@ OPTIONS:
     -r, --rust-only     Build only Rust tasks
     -g, --tinygo-only   Build only TinyGo tasks
     -c, --clean         Clean build directories before building
-    -p, --parallel      Build Rust and TinyGo in parallel (experimental)
+    -p, --parallel      Build Rust and TinyGo in parallel
+    --task-parallel     Use parallel compilation within languages
+    --no-checksums      Disable checksum generation
     -v, --verbose       Enable verbose output
 
 EXAMPLES:
-    $0                  Build all tasks for both languages
-    $0 -r               Build only Rust tasks
-    $0 -g               Build only TinyGo tasks
-    $0 -c -p            Clean and build in parallel
+    $0                      Build all tasks for both languages
+    $0 -r                   Build only Rust tasks
+    $0 -g                   Build only TinyGo tasks
+    $0 -c -p                Clean and build languages in parallel
+    $0 --task-parallel      Build with parallel task compilation
+    $0 -p --task-parallel   Full parallel build (languages + tasks)
 EOF
 }
 
@@ -68,79 +74,158 @@ run_build_script() {
     fi
 }
 
-# Build Rust tasks
+# Build Rust tasks with options
 build_rust() {
     log_section "Building Rust WebAssembly Tasks"
-    run_build_script "build_rust.sh"
+
+    local rust_args=()
+    if [[ "${TASK_PARALLEL}" == "true" ]]; then
+        rust_args+=("--parallel")
+    fi
+    if [[ "${GENERATE_CHECKSUMS}" == "false" ]]; then
+        rust_args+=("--no-checksums")
+    fi
+
+    log_info "Running build_rust.sh with args: ${rust_args[*]:-}"
+
+    if [[ ${#rust_args[@]} -gt 0 ]]; then
+        "${SCRIPT_DIR}/build_rust.sh" "${rust_args[@]}"
+    else
+        run_build_script "build_rust.sh"
+    fi
 }
 
-# Build TinyGo tasks
+# Build TinyGo tasks with options
 build_tinygo() {
     log_section "Building TinyGo WebAssembly Tasks"
-    run_build_script "build_tinygo.sh"
+
+    local tinygo_args=()
+    if [[ "${TASK_PARALLEL}" == "true" ]]; then
+        tinygo_args+=("--parallel")
+    fi
+    if [[ "${GENERATE_CHECKSUMS}" == "false" ]]; then
+        tinygo_args+=("--no-checksums")
+    fi
+
+    log_info "Running build_tinygo.sh with args: ${tinygo_args[*]:-}"
+
+    if [[ ${#tinygo_args[@]} -gt 0 ]]; then
+        "${SCRIPT_DIR}/build_tinygo.sh" "${tinygo_args[@]}"
+    else
+        run_build_script "build_tinygo.sh"
+    fi
 }
 
-# Generate combined checksums
+# Generate combined checksums and metrics
 generate_checksums() {
-    log_info "Generating combined checksums..."
-    
-    local checksum_file="${BUILDS_DIR}/checksums.txt"
-    rm -f "${checksum_file}"
-    
+    if [[ "${GENERATE_CHECKSUMS}" == "false" ]]; then
+        log_info "Checksum generation disabled, skipping..."
+        return 0
+    fi
+
+    log_info "Generating unified checksums..."
+
+    local unified_checksum_file="${BUILDS_DIR}/checksums.txt"
+
+    # Generate unified checksums
     {
-        echo "# WebAssembly Build Checksums"
+        echo "# WebAssembly Build Checksums (Unified)"
         echo "# Generated on $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+        echo "# This file aggregates checksums from individual language builds"
         echo "#"
         echo "# Format: SHA256 *filename"
         echo ""
-        
-        # Rust checksums
-        if [[ -d "${BUILDS_DIR}/rust" ]]; then
-            echo "# Rust builds"
+
+        # Include Rust checksums if available
+        if [[ -f "${BUILDS_DIR}/rust/checksums.txt" ]]; then
+            echo "# ============================================"
+            echo "# Rust WebAssembly Builds"
+            echo "# ============================================"
+            cat "${BUILDS_DIR}/rust/checksums.txt"
+            echo ""
+        elif [[ -d "${BUILDS_DIR}/rust" ]]; then
+            echo "# Rust builds (generated on-demand)"
             find "${BUILDS_DIR}/rust" -name "*.wasm" -exec shasum -a 256 {} + | sed 's|.*/builds/|builds/|'
             echo ""
         fi
-        
-        # TinyGo checksums
-        if [[ -d "${BUILDS_DIR}/tinygo" ]]; then
-            echo "# TinyGo builds"
+
+        # Include TinyGo checksums if available
+        if [[ -f "${BUILDS_DIR}/tinygo/checksums.txt" ]]; then
+            echo "# ============================================"
+            echo "# TinyGo WebAssembly Builds"
+            echo "# ============================================"
+            cat "${BUILDS_DIR}/tinygo/checksums.txt"
+            echo ""
+        elif [[ -d "${BUILDS_DIR}/tinygo" ]]; then
+            echo "# TinyGo builds (generated on-demand)"
             find "${BUILDS_DIR}/tinygo" -name "*.wasm" -exec shasum -a 256 {} + | sed 's|.*/builds/|builds/|'
             echo ""
         fi
-    } > "${checksum_file}"
-    
-    log_success "Checksums generated: ${checksum_file}"
+    } > "${unified_checksum_file}"
+
+
+
+    log_success "Unified checksums generated: ${unified_checksum_file}"
 }
 
 
-# Display build summary
+# Display enhanced build summary
 display_summary() {
     log_section "Build Summary"
 
     local rust_count=0
     local tinygo_count=0
+    local rust_size=0
+    local tinygo_size=0
 
-    # Count Rust builds
+    # Count Rust builds and calculate total size
     if [[ -d "${BUILDS_DIR}/rust" ]]; then
         rust_count=$(find "${BUILDS_DIR}/rust" -name "*.wasm" | wc -l)
+        for wasm_file in "${BUILDS_DIR}/rust"/*.wasm; do
+            if [[ -f "${wasm_file}" ]]; then
+                rust_size=$((rust_size + $(wc -c < "${wasm_file}")))
+            fi
+        done
     fi
 
-    # Count TinyGo builds
+    # Count TinyGo builds and calculate total size
     if [[ -d "${BUILDS_DIR}/tinygo" ]]; then
         tinygo_count=$(find "${BUILDS_DIR}/tinygo" -name "*.wasm" | wc -l)
+        for wasm_file in "${BUILDS_DIR}/tinygo"/*.wasm; do
+            if [[ -f "${wasm_file}" ]]; then
+                tinygo_size=$((tinygo_size + $(wc -c < "${wasm_file}")))
+            fi
+        done
     fi
 
-    echo "Language    | Tasks"
-    echo "------------|-------"
-    printf "%-11s | %5d\n" "Rust" "${rust_count}"
-    printf "%-11s | %5d\n" "TinyGo" "${tinygo_count}"
-    echo "------------|-------"
-    printf "%-11s | %5d\n" "Total" "$((rust_count + tinygo_count))"
+    # Format sizes
+    local rust_size_kb=$((rust_size / 1024))
+    local tinygo_size_kb=$((tinygo_size / 1024))
+
+    echo "Language    | Tasks | Total Size"
+    echo "------------|-------|------------"
+    printf "%-11s | %5d | %7s KB\n" "Rust" "${rust_count}" "${rust_size_kb}"
+    printf "%-11s | %5d | %7s KB\n" "TinyGo" "${tinygo_count}" "${tinygo_size_kb}"
+    echo "------------|-------|------------"
+    printf "%-11s | %5d | %7s KB\n" "Total" "$((rust_count + tinygo_count))" "$(((rust_size + tinygo_size) / 1024))"
     echo
-    
-    
+
+    # Show available reports
     if [[ -f "${BUILDS_DIR}/checksums.txt" ]]; then
-        log_info "Build checksums available in: ${BUILDS_DIR}/checksums.txt"
+        log_info "📋 Unified checksums: ${BUILDS_DIR}/checksums.txt"
+    fi
+
+    if [[ -f "${BUILDS_DIR}/metrics.json" ]]; then
+        log_info "📊 Unified metrics: ${BUILDS_DIR}/metrics.json"
+    fi
+
+    # Show individual language reports
+    if [[ -f "${BUILDS_DIR}/rust/checksums.txt" ]]; then
+        log_info "🦀 Rust checksums: ${BUILDS_DIR}/rust/checksums.txt"
+    fi
+
+    if [[ -f "${BUILDS_DIR}/tinygo/checksums.txt" ]]; then
+        log_info "🐹 TinyGo checksums: ${BUILDS_DIR}/tinygo/checksums.txt"
     fi
 }
 
@@ -175,6 +260,14 @@ main() {
                 ;;
             -p|--parallel)
                 parallel=true
+                shift
+                ;;
+            --task-parallel)
+                TASK_PARALLEL=true
+                shift
+                ;;
+            --no-checksums)
+                GENERATE_CHECKSUMS=false
                 shift
                 ;;
             -v|--verbose)
