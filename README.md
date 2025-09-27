@@ -7,8 +7,6 @@
 ![Node.js](https://img.shields.io/badge/node-24.7.0-green.svg)
 ![Python](https://img.shields.io/badge/python-3.13.5-blue.svg)
 
-> **Project Status**: 98% Complete - Production-ready benchmarking framework with comprehensive statistical analysis
-
 A comprehensive benchmarking framework to evaluate the efficiency of **Rust** and **TinyGo** when compiled to WebAssembly across various computational workloads.
 
 ## 🎯 Overview
@@ -51,6 +49,44 @@ make all         # Complete research-grade pipeline
 ```
 
 **📋 Requirements**: Rust 1.89+, TinyGo 0.39+, Go 1.25+, Node.js 24+, Python 3.13+, WebAssembly tools
+
+## 🐳 Docker Setup (Recommended)
+
+For the easiest setup experience, use the provided Docker containerization:
+
+### 📋 Prerequisites
+
+- Docker Desktop installed and running
+- At least 4GB RAM allocated to Docker
+- At least 10GB free disk space
+
+### 🚀 Quick Docker Start
+
+```bash
+# Run complete pipeline in Docker
+./scripts/docker-run.sh full
+
+# Or step by step:
+./scripts/docker-run.sh start    # Build and start container
+./scripts/docker-run.sh init     # Initialize environment
+./scripts/docker-run.sh build    # Build WebAssembly modules
+./scripts/docker-run.sh run      # Run benchmarks
+./scripts/docker-run.sh analyze  # Run analysis
+```
+
+### 🛠️ Docker Development
+
+```bash
+# Enter container shell for development
+./scripts/docker-run.sh shell
+
+# Available commands
+./scripts/docker-run.sh help
+```
+
+**Benefits**: Isolated environment, consistent builds, data persistence, all dependencies pre-configured.
+
+See [`docs/docker-setup.md`](docs/docker-setup.md) for detailed Docker documentation.
 
 ## 📊 Benchmark Tasks
 
@@ -174,7 +210,7 @@ wasm-benchmark/
 
 This project includes comprehensive documentation in both English and Chinese to support different developer audiences:
 
-### **Core Documentation**
+### 📚 **Core Documentation**
 
 | Document | Language | Description | Link |
 |----------|----------|-------------|------|
@@ -185,7 +221,7 @@ This project includes comprehensive documentation in both English and Chinese to
 | **Statistical Design Implementation** | English | Detailed architecture and implementation of statistical analysis system | [`statistical-design-impl_en.md`](docs/statistical-design-impl_en.md) |
 | **统计设计实现架构** | 中文 | 统计分析系统的详细架构和实现说明 | [`statistical-design-impl.md`](docs/statistical-design-impl.md) |
 
-### **Development & Research Documentation**
+### 🔬 **Development & Research Documentation**
 
 | Document | Language | Description | Link |
 |----------|----------|-------------|------|
@@ -196,7 +232,7 @@ This project includes comprehensive documentation in both English and Chinese to
 | **Quick Flow Guide** | English | Fast development and testing workflow | [`run-quick-flow_en.md`](docs/run-quick-flow_en.md) |
 | **快速流程指南** | 中文 | 快速开发和测试工作流程 | [`run-quick-flow.md`](docs/run-quick-flow.md) |
 
-### **Configuration Documentation**
+### ⚙️ **Configuration Documentation**
 
 | Document | Language | Description | Link |
 |----------|----------|-------------|------|
@@ -209,15 +245,13 @@ This project includes comprehensive documentation in both English and Chinese to
 
 ## ⚙️ Installation & Setup
 
-### **System Requirements**
+### 💻 **System Requirements**
 
 - **macOS** 15+ (primary development platform)
 - **Linux** Ubuntu 20.04+ (manual setup required)
 - **Hardware**: 8GB+ RAM recommended for full benchmarks
 
-> **Note**: Docker support for Linux is planned for future releases to simplify cross-platform setup.
-
-### **Quick Setup**
+### ⚡ **Quick Setup**
 
 ```bash
 # 1. Install required toolchains
@@ -235,7 +269,7 @@ make check deps
 make init
 ```
 
-### **Required Components**
+### 🛠️ **Required Components**
 
 | Tool | Version | Purpose |
 |------|---------|----------|
@@ -248,7 +282,7 @@ make init
 
 ## 🏃 Running Benchmarks
 
-### **Development Workflow**
+### 🔄 **Development Workflow**
 
 ```bash
 # Quick validation (~2-3 minutes)
@@ -264,7 +298,7 @@ make run
 make all     # build → run → qc → analyze → plots
 ```
 
-### **Command Reference**
+### 📋 **Command Reference**
 
 | Command | Purpose | Duration | Use Case |
 |---------|---------|----------|----------|
@@ -274,7 +308,7 @@ make all     # build → run → qc → analyze → plots
 | `make all quick` | Complete pipeline (quick) | 5-8 min | CI/CD validation |
 | `make all` | Complete research pipeline | 45-60 min | Publication data |
 
-### **Advanced Options**
+### ⚙️ **Advanced Options**
 
 ```bash
 # Custom benchmark execution
@@ -288,7 +322,7 @@ node scripts/run_bench.js --timeout=120000
 
 ## 🔧 Technical Implementation
 
-### **WebAssembly Interface**
+### 🔗 **WebAssembly Interface**
 
 Both languages export a unified **C-style interface** for fair comparison:
 
@@ -298,27 +332,27 @@ uint32_t alloc(uint32_t n_bytes);       // Allocate memory
 uint32_t run_task(uint32_t params_ptr); // Execute & return result hash
 ```
 
-### **Optimization Settings**
+### ⚡ **Optimization Settings**
 
 | Language | Target | Flags | Post-processing |
 |----------|--------|-------|----------------|
 | **Rust** | `wasm32-unknown-unknown` | `-O3`, fat LTO, 1 codegen unit | `wasm-strip`, `wasm-opt -O3` |
 | **TinyGo** | `wasm` | `-opt=3`, panic trap, no debug | `wasm-strip`, `wasm-opt -Oz` |
 
-### **Result Verification**
+### ✅ **Result Verification**
 
 **FNV-1a Hash** ensures correctness across languages with **449 reference test vectors** (320 Mandelbrot, 112 JSON, 17 Matrix).
 
 ## 📊 Statistical Methodology
 
-### **Quality Control Pipeline**
+### 🔍 **Quality Control Pipeline**
 
 - **Outlier Detection**: IQR-based filtering (Q1-1.5×IQR, Q3+1.5×IQR)
 - **Stability Validation**: Coefficient of Variation < 15% threshold
 - **Sample Size**: Minimum 30 valid measurements per condition
 - **Cross-Language Verification**: Hash-based result consistency
 
-### **Statistical Analysis**
+### 📈 **Statistical Analysis**
 
 **Significance Testing**:
 
@@ -332,7 +366,7 @@ uint32_t run_task(uint32_t params_ptr); // Execute & return result hash
 - **Thresholds**: |d| < 0.2 (negligible), 0.2-0.5 (small), 0.5-0.8 (medium), ≥0.8 (large)
 - **Decision Framework**: Statistical significance + effect size → language recommendation
 
-### **Quality Standards**
+### ⭐ **Quality Standards**
 
 | Metric | Threshold | Purpose |
 |--------|-----------|----------|
@@ -343,7 +377,7 @@ uint32_t run_task(uint32_t params_ptr); // Execute & return result hash
 
 ## 🔬 Reproducibility & Validation
 
-### **Environment Fingerprinting**
+### 🖼️ **Environment Fingerprinting**
 
 ```bash
 # Generate reproducible environment snapshot
@@ -358,7 +392,7 @@ uint32_t run_task(uint32_t params_ptr); // Execute & return result hash
 - System information captured (`meta.json`)
 - Random seeds fixed for deterministic data generation
 
-### **Validation Framework**
+### ✅ **Validation Framework**
 
 - ✅ **Hash Verification**: FNV-1a algorithm ensures implementation correctness
 - ✅ **Cross-Language Consistency**: 449 reference test vectors
@@ -379,7 +413,7 @@ uint32_t run_task(uint32_t params_ptr); // Execute & return result hash
 | **Build System** | ✅ Complete | Rust/TinyGo optimized builds |
 | **Documentation** | ✅ Complete | Comprehensive guides and references |
 
-### **Getting Help**
+### ❓ **Getting Help**
 
 - **Command Reference**: `make help`
 - **System Check**: `make status` for environment validation
@@ -398,7 +432,7 @@ Generated in `reports/plots/`:
 - **`distribution_variance_analysis.png`**: Side-by-side box plots showing performance consistency and variance patterns
 - **`decision_summary.html`**: Interactive HTML dashboard with comprehensive analysis results
 
-### **Analysis Pipeline**
+### 🔄 **Analysis Pipeline**
 
 The analysis system provides comprehensive statistical evaluation:
 
@@ -415,7 +449,7 @@ python analysis/statistics.py  # Statistical significance testing
 python analysis/plots.py       # Matplotlib chart generation
 ```
 
-**Analysis Features:**
+**✨ Analysis Features:**
 
 - **Quality Control**: Coefficient of variation analysis, outlier detection, success rate validation
 - **Statistical Testing**: Welch's t-tests for unequal variances, 95% confidence intervals
@@ -425,13 +459,13 @@ python analysis/plots.py       # Matplotlib chart generation
 
 ## ⚠️ Limitations & Considerations
 
-### **Environmental Factors**
+### 🌍 **Environmental Factors**
 
 - **Single-platform Testing**: Results primarily from macOS/Chromium environment
 - **System Interference**: Background processes may affect timing precision
 - **Browser Variations**: Results specific to Chromium V8 WebAssembly implementation
 
-### **Benchmark Scope**
+### 🎯 **Benchmark Scope**
 
 - **Limited Task Coverage**: Three computational patterns (not comprehensive)
 - **No I/O Testing**: Focus on CPU/memory intensive workloads only
