@@ -61,8 +61,6 @@ The following directories are mounted as volumes to persist data:
 - `./results` - Benchmark test results
 - `./reports` - Analysis reports and plots
 - `./builds` - WebAssembly build artifacts
-- `./configs` - Configuration files (read-only)
-- `./data` - Reference data (read-only)
 
 ### Tool Versions
 
