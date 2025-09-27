@@ -1258,10 +1258,10 @@ class VisualizationGenerator:
         # it sits directly under the chart area. This avoids overlapping the
         # subplots and keeps the note visually centered under the composed plot.
         try:
-            # Use a conservative y offset inside the reserved bottom area
+            # Use appropriate vertical spacing in the reserved bottom area
             center_x = 0.5
-            # Move further down so the box does not overlap x-axis tick labels
-            text_y = 0.01
+            # Position the text with appropriate distance from the plot area
+            text_y = 0.05
 
             fig.text(
                 center_x,
@@ -1286,7 +1286,7 @@ class VisualizationGenerator:
             # Fallback safe absolute placement
             fig.text(
                 0.5,
-                0.005,
+                0.04,
                 summary_text,
                 fontsize=9,
                 ha="center",
