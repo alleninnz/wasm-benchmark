@@ -1,45 +1,45 @@
-# 📋 `make run quick` 执行链路详细分析
+# 📋 `make run quick` Execution Chain Detailed Analysis
 
-> **文档版本**: v2.0
-> **最后更新**: 2025-09-26
-
----
-
-## 🎯 **概述**
-
-`make run quick` 是 WebAssembly Benchmark 项目中用于快速开发测试的关键命令，提供 1-2 分钟的快速反馈，相比完整测试套件的 30+分钟大幅提升开发效率。本文档详细分析其完整的执行链路、涉及文件、核心方法和架构设计。
-
-### 📊 **执行性能对比**
-
-| 模式             | 执行时间                   | 任务规模 | 适用场景               |
-| ---------------- | -------------------------- | -------- | ---------------------- |
-| `make run`       | 并行 5+ 分钟 串行 20+ 分钟 | 完整规模 | 正式基准测试、研究发布 |
-| `make run quick` | 1-2 分钟                   | 微型规模 | 开发验证、CI 冒烟测试  |
+> **Document Version**: v2.0
+> **Last Updated**: 2025-09-26
 
 ---
 
-## 🏗️ **整体架构**
+## 🎯 **Overview**
+
+`make run quick` is a key command in the WebAssembly Benchmark project for rapid development testing, providing 1-2 minute rapid feedback, significantly improving development efficiency compared to the 30+ minutes of the complete test suite.
+
+### 📊 **Execution Performance Comparison**
+
+| Mode             | Execution Time                   | Task Scale | Applicable Scenarios               |
+| ---------------- | -------------------------------- | ---------- | ---------------------------------- |
+| `make run`       | Parallel 5+ min Serial 20+ min   | Full scale | Formal benchmarks, research release |
+| `make run quick` | 1-2 minutes                      | Micro scale | Development validation, CI smoke tests |
+
+---
+
+## 🏗️ **Overall Architecture**
 
 ```mermaid
 graph TD
-    A[make run quick] --> B[检查依赖 NODE_MODULES]
-    B --> C{配置文件存在?}
-    C -->|否| D[scripts/build_config.js --quick]
-    C -->|是| E[scripts/run_bench.js --quick]
+    A[make run quick] --> B[Check NODE_MODULES dependencies]
+    B --> C{Config file exists?}
+    C -->|No| D[scripts/build_config.js --quick]
+    C -->|Yes| E[scripts/run_bench.js --quick]
     D --> E
-    E --> F[服务初始化]
+    E --> F[Service initialization]
     F --> G[BenchmarkOrchestrator]
-    G --> H[浏览器基准测试]
-    H --> I[结果保存]
+    G --> H[Browser benchmark testing]
+    H --> I[Result saving]
 ```
 
 ---
 
-## 🔧 **1. Makefile 入口点**
+## 🔧 **1. Makefile Entry Point**
 
-### **1.1 目标定义**
+### **1.1 Target Definition**
 
-**文件位置**: `/Makefile` (第 162-175 行)
+**File Location**: `/Makefile` (lines 162-175)
 
 ```makefile
 run: $(NODE_MODULES) ## Run browser benchmark suite (use quick headed for options)
@@ -55,104 +55,104 @@ else
 endif
 ```
 
-### **1.2 依赖关系**
+### **1.2 Dependency Relationships**
 
-- **前置依赖**: `$(NODE_MODULES)` - 确保 Node.js 依赖已安装
-- **条件依赖**: `configs/bench-quick.json` - 不存在时自动生成
-- **脚本验证**: `scripts/run_bench.js` - 验证存在性并设置执行权限
+- **Pre-dependencies**: `$(NODE_MODULES)` - Ensure Node.js dependencies are installed
+- **Conditional dependencies**: `configs/bench-quick.json` - Auto-generated if not exists
+- **Script verification**: `scripts/run_bench.js` - Verify existence and set execution permissions
 
-### **1.3 执行步骤**
+### **1.3 Execution Steps**
 
-1. **日志输出**: 显示开始执行快速基准测试套件
-2. **配置检查**: 检查 `configs/bench-quick.json` 是否存在
-3. **配置生成**: 如不存在，调用 `build_config.js --quick` 生成
-4. **脚本验证**: 验证 `run_bench.js` 存在并可执行
-5. **主程序执行**: 运行 `node scripts/run_bench.js --quick`
-6. **完成日志**: 显示执行完成信息
+1. **Log output**: Display start of quick benchmark suite execution
+2. **Config check**: Check if `configs/bench-quick.json` exists
+3. **Config generation**: If not exists, call `build_config.js --quick` to generate
+4. **Script verification**: Verify `run_bench.js` exists and is executable
+5. **Main program execution**: Run `node scripts/run_bench.js --quick`
+6. **Completion log**: Display execution completion information
 
 ---
 
-## ⚙️ **2. 配置生成阶段**
+## ⚙️ **2. Configuration Generation Phase**
 
-### **2.1 build_config.js 配置生成器**
+### **2.1 build_config.js Configuration Generator**
 
-**文件位置**: `/scripts/build_config.js`
+**File Location**: `/scripts/build_config.js`
 
-#### **核心职责**
+#### **Core Responsibilities**
 
-- **格式转换**: YAML → JSON 转换，消除运行时 YAML 解析开销
-- **配置优化**: 为浏览器环境优化配置结构
-- **验证保证**: 确保配置完整性和正确性
-- **缓存支持**: 生成带版本信息的配置缓存
+- **Format conversion**: YAML → JSON conversion, eliminating runtime YAML parsing overhead
+- **Configuration optimization**: Optimize configuration structure for browser environment
+- **Validation guarantee**: Ensure configuration completeness and correctness
+- **Cache support**: Generate version information configuration cache
 
-#### **关键方法详解**
+#### **Key Method Details**
 
 ```javascript
-// 主要方法及其作用
-loadYamlConfig()              // 加载并解析 YAML 配置文件
-├── 读取 configs/bench-quick.yaml
-├── 使用 yaml.parse() 解析内容
-└── 错误处理和日志记录
+// Main methods and their functions
+loadYamlConfig()              // Load and parse YAML configuration files
+├── Read configs/bench-quick.yaml
+├── Use yaml.parse() to parse content
+└── Error handling and logging
 
-createOptimizedEnvironment()  // 创建优化的环境配置
-├── 处理 warmup_runs、measure_runs 等核心参数
-├── 设置超时配置 (timeout)
-├── 配置监控选项 (memory_monitoring、gc_monitoring)
-└── 过滤和转换配置格式
+createOptimizedEnvironment()  // Create optimized environment configuration
+├── Process core parameters like warmup_runs, measure_runs, etc.
+├── Set timeout configurations
+├── Configure monitoring options (memory_monitoring, gc_monitoring)
+└── Filter and convert configuration formats
 
-optimizeConfig()             // 为浏览器使用优化配置
-├── 提取基本实验信息
-├── 优化环境设置
-├── 处理任务和语言配置
-├── 生成便利数组 (taskNames、enabledLanguages)
-└── 添加元数据信息
+optimizeConfig()             // Optimize configuration for browser usage
+├── Extract basic experiment information
+├── Optimize environment settings
+├── Process task and language configurations
+├── Generate convenience arrays (taskNames, enabledLanguages)
+└── Add metadata information
 
-validateConfig()             // 验证生成的配置
-├── 检查必需字段 (experiment、environment、tasks、languages)
-├── 验证实验名称和环境参数
-├── 验证任务和语言配置
-└── 生成详细的错误报告
+validateConfig()             // Validate generated configuration
+├── Check required fields (experiment, environment, tasks, languages)
+├── Validate experiment names and environment parameters
+├── Validate task and language configurations
+└── Generate detailed error reports
 
-writeJsonConfig()           // 写入最终 JSON 配置
-├── 添加 "DO NOT EDIT" 头部注释
-├── 格式化 JSON 输出
-├── 写入 configs/bench-quick.json
-└── 报告文件大小统计
+writeJsonConfig()           // Write final JSON configuration
+├── Add "DO NOT EDIT" header comment
+├── Format JSON output
+├── Write to configs/bench-quick.json
+└── Report file size statistics
 ```
 
-### **2.2 Quick 配置特性**
+### **2.2 Quick Configuration Features**
 
-**配置文件**: `/configs/bench-quick.yaml`
+**Config File**: `/configs/bench-quick.yaml`
 
-#### **性能优化设置**
+#### **Performance Optimization Settings**
 
 ```yaml
 environment:
-  warmup_runs: 5 # 减少预热次数
-  measure_runs: 20 # 减少测量次数
-  repetitions: 2 # 减少重复次数
-  timeout: 60 # 60秒快速超时
+  warmup_runs: 5 # Reduce warm-up runs
+  measure_runs: 20 # Reduce measurement runs
+  repetitions: 2 # Reduce repetitions
+  timeout: 60 # 60-second quick timeout
 ```
 
-#### **微型任务规模**
+#### **Micro Task Scales**
 
 ```yaml
 tasks:
   mandelbrot:
     scales:
       micro:
-        width: 64 # 64x64 网格
+        width: 64 # 64x64 grid
         height: 64
 
   json_parse:
     scales:
       micro:
-        record_count: 500 # 500 记录
+        record_count: 500 # 500 records
 
   matrix_mul:
     scales:
       micro:
-        dimension: 64 # 64x64 矩阵
+        dimension: 64 # 64x64 matrix
 
 ```
 
@@ -163,39 +163,39 @@ tasks:
 
 ```
 
-#### **工程化质量控制**
+#### **Engineering Quality Control**
 
 ```yaml
 qc:
-  max_coefficient_variation: 0.15 # 变异系数阈值 - 控制测量一致性
-  outlier_iqr_multiplier: 1.5 # 异常值检测倍数 - IQR方法
-  min_valid_samples: 15 # 最少有效样本数 - 保证统计意义
+  max_coefficient_variation: 0.15 # Coefficient of variation threshold - control measurement consistency
+  outlier_iqr_multiplier: 1.5 # Outlier detection multiplier - IQR method
+  min_valid_samples: 15 # Minimum valid samples - ensure statistical significance
   timeout_handling:
-    treat_timeout_as: "failure" # 超时处理策略
-    max_timeout_rate: 0.3 # 最大超时率 - 质量控制
+    treat_timeout_as: "failure" # Timeout handling strategy
+    max_timeout_rate: 0.3 # Maximum timeout rate - quality control
 ```
 
 ---
 
-## 🚀 **3. 主执行阶段**
+## 🚀 **3. Main Execution Phase**
 
-### **3.1 run_bench.js 主入口**
+### **3.1 run_bench.js Main Entry**
 
-**文件位置**: `/scripts/run_bench.js`
+**File Location**: `/scripts/run_bench.js`
 
-#### **架构模式**
+#### **Architecture Pattern**
 
-采用**纯服务导向架构 (Pure Service-Oriented Architecture)**，通过依赖注入实现松耦合设计。
+Adopts **Pure Service-Oriented Architecture (Pure SOA)**, implementing loose coupling through dependency injection.
 
-#### **核心流程**
+#### **Core Flow**
 
 ```javascript
 async function main() {
-    // 1. CLI 参数解析
+    // 1. CLI parameter parsing
     const args = process.argv.slice(2);
     const options = parseOptions(args);
 
-    // 2. 服务初始化 (依赖注入)
+    // 2. Service initialization (dependency injection)
     const logger = new LoggingService({...});
     const configService = new ConfigurationService();
     const browserService = new BrowserService();
@@ -204,58 +204,58 @@ async function main() {
         configService, browserService, resultsService
     );
 
-    // 3. 系统初始化
+    // 3. System initialization
     await orchestrator.initialize(configPath);
 
-    // 4. 执行基准测试
+    // 4. Execute benchmarks
     const results = await orchestrator.executeBenchmarks(options);
 
-    // 5. 保存结果
+    // 5. Save results
     await orchestrator.saveResults(outputPath, 'json');
 }
 ```
 
-#### **CLI 参数解析**
+#### **CLI Parameter Parsing**
 
 ```javascript
 parseOptions(args) {
     return {
-        headless: !args.includes('--headed'),    // 无头模式
-        devtools: args.includes('--devtools'),   // 开发者工具
-        verbose: args.includes('--verbose'),     // 详细日志
-        parallel: args.includes('--parallel'),   // 并行执行
-        quick: args.includes('--quick'),         // 快速模式
-        timeout: parseArgumentValue(...),        // 超时设置
-        maxParallel: parseArgumentValue(...),    // 最大并发数
-        failureThreshold: parseArgumentValue(...) // 失败阈值
+        headless: !args.includes('--headed'),    // Headless mode
+        devtools: args.includes('--devtools'),   // Developer tools
+        verbose: args.includes('--verbose'),     // Verbose logging
+        parallel: args.includes('--parallel'),   // Parallel execution
+        quick: args.includes('--quick'),         // Quick mode
+        timeout: parseArgumentValue(...),        // Timeout settings
+        maxParallel: parseArgumentValue(...),    // Max concurrency
+        failureThreshold: parseArgumentValue(...) // Failure threshold
     };
 }
 ```
 
-### **3.2 服务层架构**
+### **3.2 Service Layer Architecture**
 
-#### **ConfigurationService 配置服务**
+#### **ConfigurationService Configuration Service**
 
-**文件位置**: `/scripts/services/ConfigurationService.js`
+**File Location**: `/scripts/services/ConfigurationService.js`
 
 ```javascript
 class ConfigurationService extends IConfigurationService {
-    // 核心方法
-    async loadConfig(configPath)     // 加载和验证配置
-    validateConfig(config)           // 配置结构验证
-    addDefaults(config)             // 添加默认值
+    // Core methods
+    async loadConfig(configPath)     // Load and validate configuration
+    validateConfig(config)           // Configuration structure validation
+    addDefaults(config)             // Add default values
 
-    // 配置获取方法
-    getConfig()                     // 获取完整配置
-    getBenchmarks()                 // 获取基准测试配置
-    getBrowserConfig()              // 获取浏览器配置
-    getTimeout()                    // 获取超时配置
-    getParallelConfig()             // 获取并行配置
-    getBenchmarkUrl()               // 构建基准测试 URL
+    // Configuration getter methods
+    getConfig()                     // Get complete configuration
+    getBenchmarks()                 // Get benchmark configurations
+    getBrowserConfig()              // Get browser configuration
+    getTimeout()                    // Get timeout configuration
+    getParallelConfig()             // Get parallel configuration
+    getBenchmarkUrl()               // Build benchmark URL
 }
 ```
 
-**配置验证逻辑**:
+**Configuration Validation Logic**:
 
 ```javascript
 validateConfig(config) {
@@ -266,39 +266,39 @@ validateConfig(config) {
         throw new Error(`Missing required config fields: ${missing.join(', ')}`);
     }
 
-    // 验证基准测试配置
+    // Validate benchmark configurations
     config.benchmarks.forEach((bench, index) => {
         this.validateBenchmarkConfig(bench, index);
     });
 }
 ```
 
-#### **BenchmarkOrchestrator 协调中心**
+#### **BenchmarkOrchestrator Coordinator**
 
-**文件位置**: `/scripts/services/BenchmarkOrchestrator.js`
+**File Location**: `/scripts/services/BenchmarkOrchestrator.js`
 
-这是整个系统的核心协调器，负责编排所有基准测试的执行。
+This is the core coordinator of the entire system, responsible for orchestrating the execution of all benchmarks.
 
 ```javascript
 class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
   constructor(configService, browserService, resultsService, loggingService) {
-    // 依赖注入的服务实例
+    // Dependency-injected service instances
     this.configService = configService;
     this.browserService = browserService;
     this.resultsService = resultsService;
     this.logger = loggingService;
 
-    // 执行状态管理
+    // Execution state management
     this.isRunning = false;
     this.abortController = null;
   }
 }
 ```
 
-**核心执行方法**:
+**Core Execution Methods**:
 
 ```javascript
-// 主执行入口
+// Main execution entry
 async executeBenchmarks(options = {}) {
     this.isRunning = true;
     this.abortController = new AbortController();
@@ -317,7 +317,7 @@ async executeBenchmarks(options = {}) {
         return {
             summary: this.resultsService.getSummary(),
             results: this.resultsService.getResults(),
-            statistics: this.resultsService.getStatistics()  // 注意：statistics 仅在内存中，不保存到文件
+            statistics: this.resultsService.getStatistics()  // Note: statistics only in memory, not saved to file
         };
     } finally {
         this.isRunning = false;
@@ -325,7 +325,7 @@ async executeBenchmarks(options = {}) {
     }
 }
 
-// 并行执行策略
+// Parallel execution strategy
 async executeInParallel(benchmarks, options = {}) {
     const parallelConfig = this.configService.getParallelConfig();
     const maxParallel = Math.min(parallelConfig.maxParallel, benchmarks.length);
@@ -334,9 +334,9 @@ async executeInParallel(benchmarks, options = {}) {
     const executing = new Set();
     let benchmarkIndex = 0;
 
-    // 控制并发的执行逻辑
+    // Sliding window algorithm for controlling concurrency
     while (benchmarkIndex < benchmarks.length || executing.size > 0) {
-        // 启动新的基准测试直到达到最大并发数
+        // Fill execution queue to max concurrency
         while (executing.size < maxParallel && benchmarkIndex < benchmarks.length) {
             const benchmark = benchmarks[benchmarkIndex];
             const promise = this.executeSingleBenchmark(benchmark, benchmarkIndex);
@@ -346,7 +346,7 @@ async executeInParallel(benchmarks, options = {}) {
             promise.finally(() => executing.delete(promise));
         }
 
-        // 等待至少一个完成
+        // Wait for at least one to complete
         if (executing.size > 0) {
             await Promise.race(executing);
         }
@@ -355,18 +355,18 @@ async executeInParallel(benchmarks, options = {}) {
     return results;
 }
 
-// 单个基准测试执行
+// Single benchmark execution
 async executeSingleBenchmark(benchmark, options = {}) {
     const startTime = Date.now();
     const timeout = this.configService.getTimeout();
 
     try {
-        // 创建超时保护
+        // Create timeout protection
         const timeoutPromise = new Promise((_, reject) => {
             setTimeout(() => reject(new Error(`Benchmark timeout (${timeout}ms)`)), timeout);
         });
 
-        // 执行基准测试任务
+        // Execute benchmark task
         const benchmarkPromise = this.runBenchmarkTask(benchmark, options);
         const result = await Promise.race([benchmarkPromise, timeoutPromise]);
 
@@ -398,22 +398,22 @@ async executeSingleBenchmark(benchmark, options = {}) {
 }
 ```
 
-**浏览器任务执行**:
+**Browser Task Execution**:
 
 ```javascript
 async runBenchmarkTask(benchmark, options = {}) {
-    // 1. 导航到基准测试页面
+    // 1. Navigate to benchmark page
     const benchmarkUrl = this.configService.getBenchmarkUrl();
     await this.browserService.navigateTo(benchmarkUrl);
 
-    // 2. 等待页面就绪
+    // 2. Wait for page ready
     await this.browserService.waitForElement('#status', { timeout: 10000 });
 
-    // 3. 解析任务信息
+    // 3. Parse task information
     const taskName = benchmark.name.replace(/_micro$/, '');
     const scale = benchmark.name.includes('_micro') ? 'micro' : 'small';
 
-    // 4. 执行各语言实现
+    // 4. Execute each language implementation
     const results = [];
     for (const implementation of benchmark.implementations) {
         const language = implementation.name.split('-')[0];
@@ -429,7 +429,7 @@ async runBenchmarkTask(benchmark, options = {}) {
         };
 
         try {
-            // 在浏览器中执行基准测试
+            // Execute benchmark in browser
             const result = await this.browserService.executeScript(async (config) => {
                 if (window.benchmarkRunner && typeof window.benchmarkRunner.runTaskBenchmark === 'function') {
                     return await window.benchmarkRunner.runTaskBenchmark(config);
@@ -466,41 +466,41 @@ async runBenchmarkTask(benchmark, options = {}) {
 
 ---
 
-## 🌐 **4. 浏览器端执行**
+## 🌐 **4. Browser-side Execution**
 
-### **4.1 Web Harness 架构**
+### **4.1 Web Harness Architecture**
 
-**主页面**: `/harness/web/bench.html`
+**Main Page**: `/harness/web/bench.html`
 
-#### **核心组件**
+#### **Core Components**
 
 ```javascript
-// 全局状态管理
+// Global state management
 window.benchmarkState = {
-  status: "initializing", // 执行状态
-  progress: 0, // 进度百分比
-  currentTask: null, // 当前任务
-  currentLang: null, // 当前语言
-  currentRun: 0, // 当前运行次数
-  totalRuns: 0, // 总运行次数
-  successfulRuns: 0, // 成功次数
-  failedRuns: 0, // 失败次数
-  results: [], // 结果数组
-  memoryUsage: 0, // 内存使用量
-  startTime: performance.now(), // 开始时间
-  lastError: null, // 最后错误
-  errorCount: 0, // 错误计数
-  detailedMetrics: false, // 详细指标开关
-  taskTimeout: 30000, // 任务超时
+  status: "initializing", // Execution status
+  progress: 0, // Progress percentage
+  currentTask: null, // Current task
+  currentLang: null, // Current language
+  currentRun: 0, // Current run count
+  totalRuns: 0, // Total runs
+  successfulRuns: 0, // Successful runs
+  failedRuns: 0, // Failed runs
+  results: [], // Results array
+  memoryUsage: 0, // Memory usage
+  startTime: performance.now(), // Start time
+  lastError: null, // Last error
+  errorCount: 0, // Error count
+  detailedMetrics: false, // Detailed metrics toggle
+  taskTimeout: 30000, // Task timeout
 };
 ```
 
-#### **关键全局函数**
+#### **Key Global Functions**
 
 ```javascript
-// 主要的任务执行接口
+// Main task execution interface
 window.runTask = async function (taskName, language, taskData) {
-  // 输入验证
+  // Input validation
   if (typeof taskName !== "string" || !taskName.trim()) {
     throw new Error("runTask: taskName must be a non-empty string");
   }
@@ -517,7 +517,7 @@ window.runTask = async function (taskName, language, taskData) {
     );
   }
 
-  // 创建任务配置
+  // Create task configuration
   const config = {
     task: taskName,
     language: language,
@@ -560,7 +560,7 @@ window.runTask = async function (taskName, language, taskData) {
   }
 };
 
-// 日志记录系统
+// Logging system
 window.logResult = function (message, type = "log") {
   try {
     const resultsDiv = document.getElementById("results");
@@ -578,13 +578,13 @@ window.logResult = function (message, type = "log") {
     resultsDiv.appendChild(logDiv);
     resultsDiv.scrollTop = resultsDiv.scrollHeight;
 
-    // 错误跟踪
+    // Error tracking
     if (type === "error") {
       window.benchmarkState.lastError = message;
       window.benchmarkState.errorCount++;
     }
 
-    // 限制日志条目数量防止内存问题
+    // Limit log entries to prevent memory issues
     const logEntries = resultsDiv.getElementsByClassName("log");
     if (logEntries.length > 1000) {
       for (let i = 0; i < 100; i++) {
@@ -598,7 +598,7 @@ window.logResult = function (message, type = "log") {
   }
 };
 
-// UI 更新函数
+// UI update function
 function updateUI() {
   const state = window.benchmarkState;
   document.getElementById("status").textContent = state.status;
@@ -618,7 +618,7 @@ function updateUI() {
     1000
   ).toFixed(1)}s`;
 
-  // 内存监控
+  // Memory monitoring
   if (performance.memory) {
     const memMB = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1);
     document.getElementById("memory-usage").textContent = `${memMB} MB`;
@@ -627,58 +627,58 @@ function updateUI() {
 }
 ```
 
-### **4.2 WebAssembly 模块系统**
+### **4.2 WebAssembly Module System**
 
-**位置**: `/harness/web/wasm_loader.js`
+**Location**: `/harness/web/wasm_loader.js`
 
-#### **支持的基准测试任务**
+#### **Supported Benchmark Tasks**
 
-| 任务           | 类型       | 描述              | 主要测试点           |
-| -------------- | ---------- | ----------------- | -------------------- |
-| **mandelbrot** | CPU 密集型 | Mandelbrot 集计算 | 浮点运算、循环优化   |
-| **json_parse** | 数据处理   | JSON 解析和序列化 | 字符串处理、内存分配 |
-| **matrix_mul** | 数学计算   | 矩阵乘法运算      | 数组访问、算法优化   |
+| Task           | Type       | Description              | Main Test Points           |
+| -------------- | ---------- | ------------------------ | -------------------------- |
+| **mandelbrot** | CPU intensive | Mandelbrot set calculation | Floating-point operations, loop optimization |
+| **json_parse** | Data processing | JSON parsing and serialization | String processing, memory allocation |
+| **matrix_mul** | Math calculation | Matrix multiplication | Array access, algorithm optimization |
 
-#### **支持的编程语言**
+#### **Supported Programming Languages**
 
-| 语言       | 目标平台               | 优化级别     | 文件位置                |
-| ---------- | ---------------------- | ------------ | ----------------------- |
-| **Rust**   | wasm32-unknown-unknown | -O3, LTO=fat | `/builds/rust/*.wasm`   |
-| **TinyGo** | wasm                   | -opt=3       | `/builds/tinygo/*.wasm` |
+| Language       | Target Platform               | Optimization Level     | File Location                |
+| -------------- | ----------------------------- | ---------------------- | --------------------------- |
+| **Rust**       | wasm32-unknown-unknown        | -O3, LTO=fat           | `/builds/rust/*.wasm`       |
+| **TinyGo**     | wasm                          | -opt=3                 | `/builds/tinygo/*.wasm`     |
 
-#### **任务执行流程**
+#### **Task Execution Flow**
 
 ```javascript
-// 1. 模块加载
+// 1. Module loading
 async function loadWasmModule(language, taskName) {
   const modulePath = `/builds/${language}/${taskName}-${language}-o3.wasm`;
   const wasmModule = await WebAssembly.instantiateStreaming(fetch(modulePath));
   return wasmModule.instance;
 }
 
-// 2. 任务配置
+// 2. Task configuration
 function configureTask(taskName, scale, taskConfig) {
   const scaleConfig = taskConfig.scales[scale];
   return {
-    // mandelbrot 示例
+    // mandelbrot example
     width: scaleConfig.width,
     height: scaleConfig.height,
     maxIter: scaleConfig.max_iter,
-    // json_parse 示例
+    // json_parse example
     recordCount: scaleConfig.record_count,
-    // matrix_mul 示例
+    // matrix_mul example
     dimension: scaleConfig.dimension,
   };
 }
 
-// 3. 基准测试执行
+// 3. Benchmark execution
 async function runBenchmark(wasmInstance, config, warmup_runs, measure_runs) {
-  // 预热运行
+  // Warm-up runs
   for (let i = 0; i < warmup_runs; i++) {
     await executeTask(wasmInstance, config);
   }
 
-  // 测量运行
+  // Measurement runs
   const results = [];
   for (let i = 0; i < measure_runs; i++) {
     const startTime = performance.now();
@@ -695,7 +695,7 @@ async function runBenchmark(wasmInstance, config, warmup_runs, measure_runs) {
   return results;
 }
 
-// 4. 结果验证
+// 4. Result verification
 function verifyResult(result, taskName, expectedHash) {
   const computedHash = computeHash(result);
   return computedHash === expectedHash;
@@ -704,13 +704,13 @@ function verifyResult(result, taskName, expectedHash) {
 
 ---
 
-## 📊 **5. 结果处理和保存**
+## 📊 **5. Result Processing and Saving**
 
-### **5.1 ResultsService 结果服务**
+### **5.1 ResultsService Result Service**
 
-**文件位置**: `/scripts/services/ResultsService.js`
+**File Location**: `/scripts/services/ResultsService.js`
 
-#### **核心功能**
+#### **Core Functions**
 
 ```javascript
 class ResultsService extends IResultsService {
@@ -727,7 +727,7 @@ class ResultsService extends IResultsService {
     };
   }
 
-  // 结果收集
+  // Result collection
   addResult(result) {
     this.results.push({
       ...result,
@@ -737,7 +737,7 @@ class ResultsService extends IResultsService {
     this.updateSummary();
   }
 
-  // 基础统计信息（实际实现）
+  // Basic statistics (actual implementation)
   getStatistics() {
     if (this.results.length === 0) {
       return { count: 0 };
@@ -766,9 +766,9 @@ class ResultsService extends IResultsService {
     return stats;
   }
 
-  // 文件保存（实际实现）
+  // File saving (actual implementation)
   async saveToFile(filepath, format = "json", options = {}) {
-    // 注意：实际只保存 summary 和 results，不包含 statistics 或其他复杂元数据
+    // Note: Actually only saves summary and results, not statistics or other complex metadata
     const outputData = {
       summary: this.summary,
       results: this.results,
@@ -788,11 +788,11 @@ class ResultsService extends IResultsService {
 }
 ```
 
-### **5.2 输出文件格式**
+### **5.2 Output File Format**
 
-**输出位置**: `/results/{timestamp}.json`
+**Output Location**: `/results/{timestamp}.json`
 
-#### **实际结果文件结构**
+#### **Actual Result File Structure**
 
 ```json
 {
@@ -838,26 +838,26 @@ class ResultsService extends IResultsService {
           "jsHeapAfter": 1334916,
           "success": true
         }
-        // ... 更多测量结果
+        // ... more measurement results
       ],
       "timestamp": "2025-09-13T05:38:24.481Z",
       "duration": 1022
     }
-    // ... 更多基准测试结果
+    // ... more benchmark results
   ]
 }
 ```
 
-**重要说明**：
+**Important Notes**:
 
-- ❌ **没有 statistics 字段**：复杂的统计分析和性能比较数据不存在于保存的文件中
-- ❌ **没有 experiment 或 metadata 字段**：文件结构比文档声称的简单得多
-- ✅ **只有 summary 和 results**：实际保存的数据结构仅包含基础摘要和原始结果数据
+- ❌ **No statistics field**: Complex statistical analysis and performance comparison data does not exist in saved files
+- ❌ **No experiment or metadata field**: File structure is much simpler than documentation claims
+- ✅ **Only summary and results**: Actual saved data structure only contains basic summary and raw results
 
-### **5.3 元数据收集**
+### **5.3 Metadata Collection**
 
 ```javascript
-// 系统信息收集
+// System information collection
 function collectSystemMetadata() {
   return {
     timestamp: new Date().toISOString(),
@@ -867,7 +867,7 @@ function collectSystemMetadata() {
     cpus: os.cpus().length,
     totalMemory: os.totalmem(),
     freeMemory: os.freemem(),
-    userAgent: navigator.userAgent, // 浏览器端
+    userAgent: navigator.userAgent, // Browser side
     browserInfo: {
       vendor: navigator.vendor,
       language: navigator.language,
@@ -876,7 +876,7 @@ function collectSystemMetadata() {
   };
 }
 
-// 执行环境信息
+// Execution environment information
 function collectExecutionMetadata(options) {
   return {
     configFile: options.configPath,
@@ -891,21 +891,21 @@ function collectExecutionMetadata(options) {
 
 ---
 
-## 🔍 **6. 关键技术特性**
+## 🔍 **6. Key Technical Features**
 
-### **6.1 错误处理机制**
+### **6.1 Error Handling Mechanisms**
 
-#### **多层超时保护**
+#### **Multi-layer Timeout Protection**
 
 ```javascript
-// 1. 全局超时 (Makefile 级别)
-// 整个 make run quick 命令的总时间限制
+// 1. Global timeout (Makefile level)
+// Total time limit for entire make run quick command
 
-// 2. 进程超时 (run_bench.js 级别)
-const DEFAULT_TIMEOUT_MS = 300000;  // 5分钟
-const QUICK_TIMEOUT_MS = 30000;     // 30秒快速模式
+// 2. Process timeout (run_bench.js level)
+const DEFAULT_TIMEOUT_MS = 300000;  // 5 minutes
+const QUICK_TIMEOUT_MS = 30000;     // 30 seconds quick mode
 
-// 3. 任务超时 (BenchmarkOrchestrator 级别)
+// 3. Task timeout (BenchmarkOrchestrator level)
 async executeSingleBenchmark(benchmark, options = {}) {
     const timeout = this.configService.getTimeout();
     const timeoutPromise = new Promise((_, reject) => {
@@ -915,14 +915,14 @@ async executeSingleBenchmark(benchmark, options = {}) {
     const result = await Promise.race([benchmarkPromise, timeoutPromise]);
 }
 
-// 4. 浏览器操作超时 (BrowserService 级别)
+// 4. Browser operation timeout (BrowserService level)
 await this.browserService.waitForElement('#status', { timeout: 10000 });
 
-// 5. WebAssembly 任务超时 (浏览器端)
-taskTimeout: 30000  // 单个 WASM 任务的最大执行时间
+// 5. WebAssembly task timeout (browser side)
+taskTimeout: 30000  // Max execution time for single WASM task
 ```
 
-#### **重试机制**
+#### **Retry Mechanism**
 
 ```javascript
 class BenchmarkOrchestrator {
@@ -950,7 +950,7 @@ class BenchmarkOrchestrator {
 }
 ```
 
-#### **失败阈值控制**
+#### **Failure Threshold Control**
 
 ```javascript
 validateFailureThreshold() {
@@ -963,7 +963,7 @@ validateFailureThreshold() {
 }
 ```
 
-#### **紧急清理机制**
+#### **Emergency Cleanup Mechanism**
 
 ```javascript
 async emergencyCleanup() {
@@ -971,18 +971,18 @@ async emergencyCleanup() {
     const emergencyOperations = [];
 
     try {
-        // 1. 强制状态重置
+        // 1. Force state reset
         emergencyOperations.push('force-state-reset');
         this.isRunning = false;
         this.abortController = null;
 
-        // 2. 紧急浏览器清理
+        // 2. Emergency browser cleanup
         if (this.browserService) {
             emergencyOperations.push('emergency-browser-cleanup');
             await this.browserService.emergencyCleanup();
         }
 
-        // 3. 清理结果服务
+        // 3. Clean up results service
         if (this.resultsService) {
             emergencyOperations.push('results-clear');
             this.resultsService.clear();
@@ -990,7 +990,7 @@ async emergencyCleanup() {
 
         return { success: true, emergencyOperations };
     } catch (error) {
-        // 紧急清理中不抛出异常 - 记录并继续
+        // Do not throw exceptions during emergency cleanup - log and continue
         const errorMsg = `[BenchmarkOrchestrator] Emergency cleanup failed: ${error.message}`;
         this.logger.error(errorMsg);
         return { success: false, error: errorMsg, completedOperations: emergencyOperations };
@@ -998,9 +998,9 @@ async emergencyCleanup() {
 }
 ```
 
-### **6.2 性能优化策略**
+### **6.2 Performance Optimization Strategies**
 
-#### **并行执行控制**
+#### **Parallel Execution Control**
 
 ```javascript
 async executeInParallel(benchmarks, options = {}) {
@@ -1011,20 +1011,20 @@ async executeInParallel(benchmarks, options = {}) {
     const executing = new Set();
     let benchmarkIndex = 0;
 
-    // 控制并发数的滑动窗口算法
+    // Sliding window algorithm for controlling concurrency
     while (benchmarkIndex < benchmarks.length || executing.size > 0) {
-        // 填充执行队列到最大并发数
+        // Fill execution queue to max concurrency
         while (executing.size < maxParallel && benchmarkIndex < benchmarks.length) {
             const benchmark = benchmarks[benchmarkIndex];
             const promise = this.executeSingleBenchmark(benchmark, benchmarkIndex);
             executing.add(promise);
             benchmarkIndex++;
 
-            // 完成时自动从执行队列移除
+            // Auto-remove from execution queue when completed
             promise.finally(() => executing.delete(promise));
         }
 
-        // 等待至少一个任务完成
+        // Wait for at least one to complete
         if (executing.size > 0) {
             await Promise.race(executing);
         }
@@ -1034,10 +1034,10 @@ async executeInParallel(benchmarks, options = {}) {
 }
 ```
 
-#### **资源管理优化**
+#### **Resource Management Optimization**
 
 ```javascript
-// 浏览器实例池
+// Browser instance pool
 class BrowserService {
   constructor() {
     this.browserPool = new Map();
@@ -1052,7 +1052,7 @@ class BrowserService {
     }
 
     if (this.browserPool.size >= this.maxPoolSize) {
-      // 回收最久未使用的实例
+      // Recycle least recently used instance
       const [oldestKey] = this.browserPool.keys();
       const oldestBrowser = this.browserPool.get(oldestKey);
       await oldestBrowser.close();
@@ -1066,10 +1066,10 @@ class BrowserService {
 }
 ```
 
-#### **内存监控**
+#### **Memory Monitoring**
 
 ```javascript
-// 内存使用跟踪
+// Memory usage tracking
 function trackMemoryUsage() {
   if (performance.memory) {
     const memInfo = {
@@ -1079,13 +1079,13 @@ function trackMemoryUsage() {
       timestamp: Date.now(),
     };
 
-    // 内存压力检测
+    // Memory pressure detection
     const usageRatio = memInfo.used / memInfo.limit;
     if (usageRatio > 0.8) {
       console.warn(
         `High memory usage detected: ${(usageRatio * 100).toFixed(1)}%`
       );
-      // 触发垃圾回收 (如果可用)
+      // Trigger garbage collection (if available)
       if (window.gc) {
         window.gc();
       }
@@ -1097,9 +1097,9 @@ function trackMemoryUsage() {
 }
 ```
 
-### **6.3 可观测性和监控**
+### **6.3 Observability and Monitoring**
 
-#### **分层日志系统**
+#### **Hierarchical Logging System**
 
 ```javascript
 class LoggingService {
@@ -1110,7 +1110,7 @@ class LoggingService {
     this.prefix = config.prefix || "";
   }
 
-  // 不同级别的日志方法
+  // Different level logging methods
   debug(message, ...args) {
     this.log("debug", message, ...args);
   }
@@ -1127,7 +1127,7 @@ class LoggingService {
     this.log("success", message, ...args);
   }
 
-  // 结构化日志输出
+  // Structured log output
   log(level, message, ...args) {
     if (!this.shouldLog(level)) return;
 
@@ -1141,7 +1141,7 @@ class LoggingService {
     console.log(logMessage, ...args);
   }
 
-  // 特殊格式的日志方法
+  // Special formatted logging methods
   section(title) {
     this.log("info", "");
     this.log("info", "=".repeat(50));
@@ -1160,27 +1160,27 @@ class LoggingService {
 }
 ```
 
-#### **实时进度跟踪**
+#### **Real-time Progress Tracking**
 
 ```javascript
-// 进度更新机制
+// Progress update mechanism
 function updateProgress(current, total, taskName, language) {
   const progress = (current / total) * 100;
 
-  // 更新全局状态
+  // Update global state
   window.benchmarkState.progress = progress;
   window.benchmarkState.currentTask = taskName;
   window.benchmarkState.currentLang = language;
   window.benchmarkState.currentRun = current;
   window.benchmarkState.totalRuns = total;
 
-  // 更新 UI
+  // Update UI
   document.getElementById("progress").style.width = `${progress}%`;
   document.getElementById("current-task").textContent = taskName || "None";
   document.getElementById("current-lang").textContent = language || "None";
   document.getElementById("current-run").textContent = `${current}/${total}`;
 
-  // 日志记录
+  // Log
   window.logResult(
     `Progress: ${taskName}/${language} - ${current}/${total} (${progress.toFixed(
       1
@@ -1189,10 +1189,10 @@ function updateProgress(current, total, taskName, language) {
 }
 ```
 
-#### **性能指标收集**
+#### **Performance Metrics Collection**
 
 ```javascript
-// 详细的性能指标
+// Detailed performance metrics
 class PerformanceCollector {
   constructor() {
     this.metrics = {
@@ -1206,23 +1206,23 @@ class PerformanceCollector {
 
   collectTaskMetrics(taskResult) {
     return {
-      // 执行时间指标
+      // Execution time metrics
       executionTime: taskResult.executionTime,
       setupTime: taskResult.setupTime,
       teardownTime: taskResult.teardownTime,
 
-      // 内存指标
+      // Memory metrics
       memoryBefore: taskResult.memoryBefore,
       memoryAfter: taskResult.memoryAfter,
       memoryPeak: taskResult.memoryPeak,
       memoryDelta: taskResult.memoryAfter - taskResult.memoryBefore,
 
-      // WebAssembly 特定指标
+      // WebAssembly specific metrics
       wasmCompileTime: taskResult.wasmCompileTime,
       wasmInstantiateTime: taskResult.wasmInstantiateTime,
       wasmExecutionTime: taskResult.wasmExecutionTime,
 
-      // 验证指标
+      // Verification metrics
       resultHash: taskResult.resultHash,
       verificationTime: taskResult.verificationTime,
       verificationSuccess: taskResult.verificationSuccess,
@@ -1240,31 +1240,31 @@ class PerformanceCollector {
 }
 ```
 
-### **6.4 超时配置策略**
+### **6.4 Timeout Configuration Strategy**
 
-#### **🎯 新超时策略总览**
+#### **🎯 New Timeout Strategy Overview**
 
-针对密集型 WebAssembly 任务优化的超时配置，解决了 `Runtime.callFunctionOn timed out` 等协议超时问题。
+Optimized timeout configuration for intensive WebAssembly tasks, solving `Runtime.callFunctionOn timed out` and other protocol timeout issues.
 
-| 模式 | 基础超时 | 浏览器协议 | 任务执行 | WASM密集任务 | 元素等待 |
-|------|---------|-----------|---------|-------------|---------|
-| **正常模式** | 600s (10min) | 1200s (20min) | 1500s (25min) | 1800s (30min) | 150s (2.5min) |
-| **快速模式** | 60s (1min) | 120s (2min) | 150s (2.5min) | 180s (3min) | 15s (15s) |
+| Mode | Base Timeout | Browser Protocol | Task Execution | WASM Intensive Tasks | Element Wait |
+|------|-------------|------------------|---------------|---------------------|-------------|
+| **Normal Mode** | 600s (10min) | 1200s (20min) | 1500s (25min) | 1800s (30min) | 150s (2.5min) |
+| **Quick Mode** | 60s (1min) | 120s (2min) | 150s (2.5min) | 180s (3min) | 15s (15s) |
 
-#### **超时层级架构**
+#### **Timeout Hierarchy Architecture**
 
 ```javascript
-// 配置层级：configs/bench.yaml & configs/bench-quick.yaml
+// Configuration level: configs/bench.yaml & configs/bench-quick.yaml
 environment:
-  timeout: 600  // 基础超时（秒）- 正常模式
-  timeout: 20   // 基础超时（秒）- 快速模式
+  timeout: 600  // Base timeout (seconds) - normal mode
+  timeout: 20   // Base timeout (seconds) - quick mode
 
-// 倍数配置：scripts/services/ConfigurationService.js
+// Multiplier configuration: scripts/services/ConfigurationService.js
 class ConfigurationService {
   getTimeoutWithMultiplier(multiplier) {
-    const baseTimeout = this.getTimeout(); // 基础超时转换为毫秒
+    const baseTimeout = this.getTimeout(); // Convert base timeout to milliseconds
     
-    // 快速模式减少 90%
+    // Quick mode reduces by 90%
     if (this.isQuickMode) {
       return Math.floor(baseTimeout * multiplier * 0.1);
     }
@@ -1272,102 +1272,102 @@ class ConfigurationService {
     return Math.floor(baseTimeout * multiplier);
   }
   
-  // 具体超时方法
-  getBrowserTimeout()    // 2x 基础 - Puppeteer 协议超时
-  getNavigationTimeout() // 1x 基础 - 页面导航超时  
-  getTaskTimeout()       // 2.5x 基础 - 基准任务超时
-  getElementTimeout()    // 0.25x 基础 - DOM 元素等待
-  getWasmTimeout()       // 3x 基础 - WASM 密集任务
+  // Specific timeout methods
+  getBrowserTimeout()    // 2x base - Puppeteer protocol timeout
+  getNavigationTimeout() // 1x base - Page navigation timeout  
+  getTaskTimeout()       // 2.5x base - Benchmark task timeout
+  getElementTimeout()    // 0.25x base - DOM element wait
+  getWasmTimeout()       // 3x base - WASM intensive task
 }
 ```
 
-#### **协议超时配置**
+#### **Protocol Timeout Configuration**
 
 ```javascript
 // scripts/services/BrowserService.js
 async initialize(browserConfig = {}, configService = null) {
-  // 获取协议超时配置
+  // Get protocol timeout configuration
   const browserTimeout = this.configService ? 
     this.configService.getBrowserTimeout() : 600000;
   
   const config = {
     headless: true,
     args: [...],
-    protocolTimeout: browserTimeout, // 关键：设置协议超时
+    protocolTimeout: browserTimeout, // Key: Set protocol timeout
     ...browserConfig
   };
   
   this.browser = await this.puppeteer.launch(config);
   this.page = await this.browser.newPage();
   
-  // 页面级超时
+  // Page-level timeouts
   this.page.setDefaultTimeout(browserTimeout);
 }
 ```
 
-#### **超时问题诊断和解决**
+#### **Timeout Problem Diagnosis and Resolution**
 
 ```javascript
-// 常见超时错误类型及解决方案
+// Common timeout error types and solutions
 const timeoutTroubleshooting = {
-  // 1. Puppeteer 协议超时
+  // 1. Puppeteer protocol timeout
   'Runtime.callFunctionOn timed out': {
-    cause: '浏览器协议层超时',
-    solution: '增加 protocolTimeout 配置',
+    cause: 'Browser protocol layer timeout',
+    solution: 'Increase protocolTimeout configuration',
     config: 'getBrowserTimeout() - 2x base',
     fixed_in: 'BrowserService.js launch config'
   },
   
-  // 2. 页面导航超时
+  // 2. Page navigation timeout
   'Navigation timeout': {
-    cause: '页面加载或导航超时',
-    solution: '增加 navigation timeout',
+    cause: 'Page load or navigation timeout',
+    solution: 'Increase navigation timeout',
     config: 'getNavigationTimeout() - 1x base',
     fixed_in: 'BrowserService.navigateTo()'
   },
   
-  // 3. 元素等待超时
+  // 3. Element wait timeout
   'Element not found': {
-    cause: 'DOM 元素等待超时',
-    solution: '增加 element wait timeout',
+    cause: 'DOM element wait timeout',
+    solution: 'Increase element wait timeout',
     config: 'getElementTimeout() - 0.25x base',
     fixed_in: 'BrowserService.waitForElement()'
   },
   
-  // 4. 任务执行超时
+  // 4. Task execution timeout
   'Benchmark timeout': {
-    cause: 'WASM 任务执行时间过长',
-    solution: '增加任务超时或使用快速模式',
+    cause: 'WASM task execution time too long',
+    solution: 'Increase task timeout or use quick mode',
     config: 'getTaskTimeout() - 2.5x base',
-    recommendation: '使用 --quick 模式开发测试'
+    recommendation: 'Use --quick mode for development testing'
   }
 };
 ```
 
-#### **超时配置最佳实践**
+#### **Timeout Configuration Best Practices**
 
 ```yaml
-# 配置建议
+# Configuration recommendations
 development:
   mode: quick
-  timeout: 20  # 20秒基础，快速反馈
-  适用场景: [开发调试, CI冒烟测试, 快速验证]
+  timeout: 20  # 20-second base, rapid feedback
+  applicable_scenarios: [development debugging, CI smoke tests]
 
 production:
   mode: normal  
-  timeout: 600  # 10分钟基础，充分测试
-  适用场景: [正式基准, 性能研究, 发布验证]
+  timeout: 600  # 10-minute base, thorough testing
+  applicable_scenarios: [formal benchmarks, research releases]
 
 troubleshooting:
-  # 如果仍然超时，可以临时增加
-  timeout: 900  # 15分钟基础
-  建议: 检查任务复杂度和系统性能
+  # If still timing out, temporarily increase
+  timeout: 900  # 15-minute base
+  suggestion: Check task complexity and system performance
 ```
 
-#### **监控和日志**
+#### **Monitoring and Logging**
 
 ```javascript
-// 超时相关日志输出
+// Timeout-related log output
 [Browser] [INFO] Browser timeout set to 1200000ms (20min)
 [Browser] [INFO] Protocol timeout set to 1200000ms for intensive WASM tasks
 [Orchestrator] [SUCCESS] Completed: mandelbrot_medium_rust (181193ms)
@@ -1376,52 +1376,52 @@ troubleshooting:
 
 ---
 
-## ⚡ **7. Quick 模式的设计哲学**
+## ⚡ **7. Quick Mode Design Philosophy**
 
-### **7.1 快速反馈原则**
+### **7.1 Rapid Feedback Principle**
 
-#### **时间优化策略**
+#### **Time Optimization Strategy**
 
 ```yaml
-# 执行时间对比分析
+# Execution time comparison analysis
 Normal Mode:
-  warmup_runs: 25 # 25次预热
-  measure_runs: 120 # 120次测量
-  repetitions: 2 # 2次重复
-  scales: [small, medium, large] # 3个规模
-  total_time: ~5 minutes # 总计约5分钟
+  warmup_runs: 25 # 25 warm-up runs
+  measure_runs: 120 # 120 measurement runs
+  repetitions: 2 # 2 repetitions
+  scales: [small, medium, large] # 3 scales
+  total_time: ~5 minutes # Total ~5 minutes
 
 Quick Mode:
-  warmup_runs: 3 # 3次预热 (70% 减少)
-  measure_runs: 15 # 15次测量 (85% 减少)
-  repetitions: 1 # 1次重复 (80% 减少)
-  scales: [micro] # 仅微型规模 (67% 减少)
-  total_time: ~1 minutes # 总计约1分钟 (80% 减少)
+  warmup_runs: 3 # 3 warm-up runs (70% reduction)
+  measure_runs: 15 # 15 measurement runs (85% reduction)
+  repetitions: 1 # 1 repetition (80% reduction)
+  scales: [micro] # Only micro scale (67% reduction)
+  total_time: ~1 minutes # Total ~1 minute (80% reduction)
 ```
 
-### **7.2 开发工作流集成**
+### **7.2 Development Workflow Integration**
 
-#### **适用场景矩阵**
+#### **Applicable Scenario Matrix**
 
 ```markdown
-| 场景         | Normal Mode | Quick Mode  | 推荐   |
-| ------------ | ----------- | ----------- | ------ |
-| 代码变更验证 | ❌ 太慢     | ✅ 快速反馈 | Quick  |
-| 性能回归检测 | ❌ 太慢     | ✅ 趋势检测 | Quick  |
-| 开发调试     | ❌ 打断流程 | ✅ 快速迭代 | Quick  |
-| 正式基准测试 | ✅ 高精度   | ❌ 精度不足 | Normal |
-| 研究发布     | ✅ 可重复   | ❌ 不够严谨 | Normal |
-| 环境验证     | ❌ 过度     | ✅ 足够     | Quick  |
-| 冒烟测试     | ❌ 过度     | ✅ 完美     | Quick  |
+| Scenario         | Normal Mode | Quick Mode  | Recommendation   |
+| ---------------- | ----------- | ----------- | ---------------- |
+| Code change validation | ❌ Too slow     | ✅ Rapid feedback | Quick  |
+| Performance regression detection | ❌ Too slow     | ✅ Trend detection | Quick  |
+| Development debugging     | ❌ Interrupts workflow | ✅ Rapid iteration | Quick  |
+| Formal benchmarking     | ✅ High precision   | ❌ Insufficient precision | Normal |
+| Research release     | ✅ Repeatable   | ❌ Not rigorous enough | Normal |
+| Environment validation     | ❌ Excessive     | ✅ Sufficient     | Quick  |
+| Smoke testing     | ❌ Excessive     | ✅ Perfect     | Quick  |
 ```
 
 ---
 
-## 🔧 **8. 扩展和维护指南**
+## 🔧 **8. Extension and Maintenance Guide**
 
-### **8.1 添加新的基准测试任务**
+### **8.1 Adding New Benchmark Tasks**
 
-#### **步骤 1: 配置文件更新**
+#### **Step 1: Configuration File Update**
 
 ```yaml
 # configs/bench-quick.yaml
@@ -1437,18 +1437,18 @@ tasks:
       shared_param: value
 ```
 
-#### **步骤 2: WebAssembly 实现**
+#### **Step 2: WebAssembly Implementation**
 
 ```rust
 // tasks/new_task/rust/src/lib.rs
 #[no_mangle]
 pub extern "C" fn run_new_task(param1: u32, param2: f64) -> u64 {
-    // 实现新任务逻辑
-    // 返回结果hash用于验证
+    // Implement new task logic
+    // Return result hash for verification
 }
 ```
 
-#### **步骤 3: 浏览器集成**
+#### **Step 3: Browser Integration**
 
 ```javascript
 // harness/web/wasm_loader.js
@@ -1462,18 +1462,18 @@ const taskRunners = {
       return { result, hash: result };
     },
     tinygo: async (wasmInstance, config) => {
-      // TinyGo 实现
+      // TinyGo implementation
     },
   },
 };
 ```
 
-### **8.2 性能调优建议**
+### **8.2 Performance Tuning Suggestions**
 
-#### **并行化策略**
+#### **Parallelization Strategy**
 
 ```javascript
-// 动态并发控制
+// Dynamic concurrency control
 class AdaptiveParallelism {
   constructor() {
     this.systemLoad = this.detectSystemLoad();
@@ -1484,17 +1484,17 @@ class AdaptiveParallelism {
     const cpuCores = navigator.hardwareConcurrency || 4;
     const memoryGb = this.estimateAvailableMemory();
 
-    // 基于系统资源计算最优并发数
+    // Calculate optimal concurrency based on system resources
     const cpuBased = Math.max(1, Math.floor(cpuCores * 0.8));
-    const memoryBased = Math.max(1, Math.floor(memoryGb / 0.5)); // 每个任务约0.5GB
+    const memoryBased = Math.max(1, Math.floor(memoryGb / 0.5)); // ~0.5GB per task
 
-    return Math.min(cpuBased, memoryBased, 6); // 最大6个并发
+    return Math.min(cpuBased, memoryBased, 6); // Max 6 concurrent
   }
 }
 ```
 
-## 🎯 **总结**
+## 🎯 **Summary**
 
-**🏆 这个执行链路分析展示了现代软件工程中性能基准测试系统的最佳实践，为类似项目提供了宝贵的架构参考和实现指南。**
+**🏆 This execution chain analysis demonstrates the best practices of modern software engineering in performance benchmarking systems, providing valuable architectural references and implementation guidance for similar projects.**
 
 ---

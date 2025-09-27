@@ -173,111 +173,38 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 wasm-benchmark/
 ├── analysis/                   # 统计分析模块
 │   ├── common.py              # 共享工具函数
-│   ├── config_parser.py       # 配置解析
-│   ├── data_models.py         # 数据结构定义
-│   ├── decision.py            # 决策支持分析
-│   ├── plots.py               # 可视化生成
-│   ├── qc.py                  # 质量控制系统
 │   ├── statistics.py          # 统计计算
-│   └── validation.py          # 跨语言验证
+│   ├── qc.py                  # 质量控制系统
+│   ├── plots.py               # 可视化生成
+│   ├── decision.py            # 决策支持分析
+│   ├── validation.py          # 跨语言验证
+│   ├── data_models.py         # 数据结构定义
+│   └── config_parser.py       # 配置解析
 ├── builds/                     # 构建产物
 │   ├── rust/                  # Rust WASM 文件
-│   │   ├── *.wasm            # 编译后的WASM模块
-│   │   ├── *.wasm.gz         # 压缩后的WASM模块
-│   └── tinygo/               # TinyGo WASM 文件
-│       ├── *.wasm            # 编译后的WASM模块
-│       ├── *.wasm.gz         # 压缩后的WASM模块
+│   └── tinygo/                # TinyGo WASM 文件
 ├── configs/                    # 配置文件
-│   ├── bench.yaml             # 基准测试配置 (1800s超时)
-│   ├── bench.json             # JSON格式配置
-│   ├── bench-quick.yaml       # 快速测试配置 (60s超时)
-│   └── bench-quick.json       # 快速测试JSON配置
-├── data/                       # 测试数据和参考资料
-│   └── reference_hashes/       # 参考哈希值 (449个验证向量)
-│       ├── json_parse.json    # JSON解析任务哈希 (112个)
-│       ├── mandelbrot.json    # Mandelbrot任务哈希 (320个)
-│       └── matrix_mul.json    # 矩阵乘法任务哈希 (17个)
+├── data/reference_hashes/      # 参考哈希值 (449个验证向量)
 ├── docs/                       # 项目文档
-│   ├── command-reference.md   # 命令参考指南
-│   ├── development-todo-en.md # 开发进度（英文）
-│   ├── development-todo-zh.md # 开发进度（中文）
-│   ├── experiment-plan-en.md  # 实验计划（英文）
-│   ├── experiment-plan-zh.md  # 实验计划（中文）
-│   ├── run-quick-flow.md      # 快速运行工作流
-│   ├── statistical-design-impl.md # 统计方法论
-│   ├── statistical-terminology.md # 统计术语
-│   └── timeout-configuration.md # 超时配置指南
-├── harness/                    # 测试运行环境
-│   └── web/                    # 浏览器测试框架
-│       ├── bench.html         # 基准测试页面
-│       ├── bench.js           # 测试执行脚本
-│       ├── config_loader.js   # 配置加载器
-│       └── wasm_loader.js     # WASM加载工具
+├── harness/web/                # 浏览器测试框架
 ├── scripts/                    # 构建和自动化脚本
-│   ├── all_in_one.sh         # 完整流水线脚本
-│   ├── build_all.sh          # 构建所有任务
-│   ├── build_config.js       # 构建配置
-│   ├── build_rust.sh         # Rust构建脚本
-│   ├── build_tinygo.sh       # TinyGo构建脚本
-│   ├── common.sh             # 通用工具
-│   ├── dev-server.js         # 开发服务器
-│   ├── fingerprint.sh        # 环境指纹
-│   ├── run_bench.js          # 基准测试运行器
-│   ├── validate-tasks.sh     # 任务验证
-│   ├── interfaces/           # 服务接口
-│   │   ├── IBenchmarkOrchestrator.js
-│   │   ├── IBrowserService.js
-│   │   ├── IConfigurationService.js
-│   │   ├── ILoggingService.js
-│   │   └── IResultsService.js
-│   └── services/             # 服务实现
-│       ├── BenchmarkOrchestrator.js
-│       ├── BrowserService.js
-│       ├── ConfigurationService.js
-│       ├── LoggingService.js
-│       └── ResultsService.js
+│   ├── build_*.sh             # 构建脚本
+│   ├── run_bench.js           # 基准测试运行器
+│   ├── interfaces/            # 服务接口
+│   └── services/              # 服务实现
 ├── tasks/                      # 基准测试任务实现
 │   ├── mandelbrot/            # Mandelbrot分形计算
-│   │   ├── rust/              # Rust实现
-│   │   └── tinygo/            # TinyGo实现
 │   ├── json_parse/            # JSON解析基准
-│   │   ├── rust/              # Rust实现
-│   │   └── tinygo/            # TinyGo实现
 │   └── matrix_mul/            # 矩阵乘法
-│       ├── rust/              # Rust实现
-│       └── tinygo/            # TinyGo实现
 ├── tests/                     # 综合测试套件
-│   ├── unit/                  # 单元测试
-│   │   ├── config-parser.test.js
-│   │   └── statistics.test.js
-│   ├── integration/           # 集成测试
-│   │   ├── cross-language.test.js
-│   │   └── experiment-pipeline.test.js
-│   ├── setup.js              # 测试配置
-│   └── utils/                 # 测试工具
-│       ├── browser-test-harness.js
-│       ├── prettify-test-results.js
-│       ├── server-checker.js
-│       ├── test-assertions.js
-│       └── test-data-generator.js
 ├── results/                   # 实验结果存储
 ├── reports/                   # 生成的报告和可视化
 │   ├── plots/                 # 图表输出
-│   │   ├── decision_summary.html         # 决策分析仪表板
-│   │   ├── execution_time_comparison.png # 执行时间对比
-│   │   ├── memory_usage_comparison.png   # 内存使用对比
-│   │   ├── effect_size_heatmap.png       # 效应量热力图
-│   │   ├── distribution_variance_analysis.png # 分布方差分析
-│   │   └── templates/         # 模板文件
 │   ├── qc/                    # 质量控制报告
 │   └── statistics/            # 统计分析报告
-├── meta.json                  # 实验元数据
-├── versions.lock              # 工具链版本锁定
 ├── pyproject.toml            # Python依赖
 ├── package.json               # Node.js依赖
 ├── Makefile                   # 自动化构建和工作流
-├── vitest.config.js           # 测试配置
-├── eslint.config.js           # 代码质量配置
 └── README.md                  # 项目说明
 ```
 

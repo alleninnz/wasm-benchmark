@@ -1,495 +1,496 @@
-# WebAssembly Benchmark Project - Command Reference Guide
+# 🚀 WebAssembly基准测试项目 - 命令参考指南
 
-## Overview
+## 📋 概述
 
-This document provides a comprehensive guide for developers taking over the WebAssembly Benchmark project. It covers all available commands, their purposes, execution sequences, and common troubleshooting scenarios for both development and research workflows.
+本文档为接手WebAssembly基准测试项目的开发者提供全面指南。它涵盖了所有可用命令、用途、执行顺序以及开发和研究工作流程的常见故障排除场景。
 
-## Table of Contents
+### 🛠️ 关键技术
 
-1. [Project Overview](#project-overview)
-2. [Command Categories](#command-categories)
-3. [Development Workflows](#development-workflows)
-4. [Research Workflows](#research-workflows)
-5. [Command Reference](#command-reference)
-6. [Troubleshooting Guide](#troubleshooting-guide)
-7. [Flow Charts](#flow-charts)
+- WebAssembly (WASM) 编译目标
+- Rust 和 TinyGo 实现，具有统一的 C-ABI 接口
+- Node.js 测试工具链，使用 Puppeteer 浏览器自动化 (v24.22.0)
+- Python 统计分析管道，使用 NumPy 2.3+、SciPy 1.10+、Matplotlib 3.6+
+- 基于 Make 的自动化系统，具有面向服务的架构（5个核心服务）
+- Poetry 用于 Python 依赖管理
+- Vitest 用于 JavaScript 测试框架（ConfigurationService、BrowserService、ResultsService）
 
----
+### 📁 项目结构
 
-## Project Overview
-
-This project benchmarks WebAssembly performance by comparing Rust and TinyGo implementations across multiple computational tasks. The project supports both development and research scenarios with automated pipelines for building, testing, and analyzing performance data.
-
-### Key Technologies
-
-- WebAssembly (WASM) compilation targets
-- Rust and TinyGo implementations with unified C-ABI interface
-- Node.js test harness with Puppeteer browser automation (v24.22.0)
-- Python statistical analysis pipeline with NumPy 2.3+, SciPy 1.10+, Matplotlib 3.6+
-- Make-based automation system with service-oriented architecture (5 core services)
-- Poetry for Python dependency management
-- Vitest for JavaScript testing framework (ConfigurationService, BrowserService, ResultsService)
-
-### Project Structure
-
-- `tasks/` - Benchmark implementations (Rust/TinyGo)
-- `scripts/` - Build and automation scripts
-- `tests/` - Test suites (unit, integration, e2e)
-- `analysis/` - Statistical analysis tools
-- `results/` - Benchmark output data
-- `docs/` - Project documentation
+- `tasks/` - 基准测试实现（Rust/TinyGo）
+- `scripts/` - 构建和自动化脚本
+- `tests/` - 测试套件（单元测试、集成测试、端到端测试）
+- `analysis/` - 统计分析工具
+- `results/` - 基准测试输出数据
+- `docs/` - 项目文档
 
 ---
 
-## Command Categories
+## 🏷️ 命令类别
 
-### Environment Setup
+### ⚙️ 环境设置
 
-Commands for initializing development environment and dependencies.
+用于初始化开发环境和依赖项的命令。
 
-### Build System
+### 🔨 构建系统
 
-Commands for compiling WebAssembly modules and managing builds.
+用于编译WebAssembly模块和管理构建的命令。
 
-### Test Suite
+### 🧪 测试套件
 
-Commands for running different levels of testing and validation.
+用于运行不同级别测试和验证的命令。
 
-### Benchmark Execution
+### 📊 基准测试执行
 
-Commands for running performance benchmarks with various configurations.
+用于使用各种配置运行性能基准测试的命令。
 
-### Analysis Pipeline
+### 📈 分析管道
 
-Commands for processing results and generating reports.
+用于处理结果和生成报告的命令。
 
-### Maintenance
+### 🧹 维护
 
-Commands for cleaning, linting, and project maintenance.
+用于清理、代码质量检查和项目维护的命令。
 
 ---
 
-## Development Workflows
+## 💻 开发工作流程
 
-### New Developer Setup
+### 🆕 新开发者设置
 
-#### Setup Purpose
+#### 设置目的
 
-Set up development environment from scratch
+从头开始设置开发环境
 
-#### Setup Flow
+#### 设置流程
 
 ```bash
-make check deps → make init → make build → npm run test:smoke → make status
+make check deps → make init → make build → make status → make test
 ```
 
-#### Setup Timeline
+#### 设置时间线
 
-10-20 minutes (depending on compilation time and system performance)
+10-20分钟（取决于编译时间和系统性能）
 
-#### Setup Expected Outcome
+#### 设置预期结果
 
-Fully configured development environment with verified functionality
+完全配置的开发环境，具有验证的功能
 
-### Daily Development Cycle
+### 🔄 日常开发周期
 
-#### Development Purpose
+#### 开发目的
 
-Standard development and testing workflow
+标准开发和测试工作流程
 
-#### Development Flow
+#### 开发流程
 
 ```bash
-git pull → make build → npm run test:unit → [code changes] → npm run test:smoke → git commit
+git pull → make build → make test → [代码更改] → make test → git commit
 ```
 
-#### Development Timeline
+#### 开发时间线
 
-2-5 minutes per cycle
+每次周期2-5分钟
 
-#### Development Expected Outcome
+#### 开发预期结果
 
-Verified code changes with passing tests
+通过测试验证的代码更改
 
-### Pre-Release Validation
+### ✅ 发布前验证
 
-#### Validation Purpose
+#### 验证目的
 
-Comprehensive validation before deployment
+部署前的全面验证
 
-#### Validation Flow
+#### 验证流程
 
 ```bash
-make clean all → make build → npm run test → make all quick
+make clean all → make build → make test → make all quick
 ```
 
-#### Validation Timeline
+#### 验证时间线
 
-20-40 minutes
+20-40分钟
 
-#### Validation Expected Outcome
+#### 验证预期结果
 
-Full validation with verified builds and test coverage (no performance analysis)
+完全验证，具有验证的构建和测试覆盖率（无性能分析）
 
 ---
 
-## Research Workflows
+## 🔬 研究工作流程
 
-### Quick Performance Analysis
+### ⚡ 快速性能分析
 
-#### Quick Analysis Purpose
+#### 快速分析目的
 
-Fast performance comparison for development
+开发时的快速性能比较
 
-#### Quick Analysis Flow
+#### 快速分析流程
 
 ```bash
 make build → make run quick
 ```
 
-#### Quick Analysis Timeline
+#### 快速分析时间线
 
-2-3 minutes
+2-3分钟
 
-#### Quick Analysis Expected Outcome
+#### 快速分析预期结果
 
-Verified build integrity and module correctness (no performance data generated)
+验证构建完整性和模块正确性（不生成性能数据）
 
-### Comprehensive Research Experiment
+### 🧪 全面研究实验
 
-#### Research Purpose
+#### 研究目的
 
-Full research-grade performance analysis
+完整的科研级性能分析
 
-#### Research Flow
+#### 研究流程
 
 ```bash
 make clean all → make all
 ```
 
-#### Research Timeline
+#### 研究时间线
 
-30-60 minutes
+30-60分钟
 
-#### Research Expected Outcome
+#### 研究预期结果
 
-Complete research dataset with statistical significance
+具有统计显著性的完整研究数据集
 
-### Focused Task Analysis
+### 🎯 专注任务分析
 
-#### Focused Purpose
+#### 专注目的
 
-Analyze specific benchmark task performance
+分析特定基准测试任务性能
 
-#### Focused Flow
+#### 专注流程
 
 ```bash
-make build → npm run bench → make analyze
+make build → make run → make analyze
 ```
 
-#### Focused Timeline
+#### 专注时间线
 
-10-20 minutes
+10-20分钟
 
-#### Focused Expected Outcome
+#### 专注预期结果
 
-Detailed analysis of single benchmark task
+单个基准测试任务的详细分析
 
 ---
 
-## Command Reference
+## 📖 命令参考
 
-### Makefile Commands
+### 🔧 Makefile 命令
 
-#### **make check deps**
+#### make check deps
 
-**Purpose**: Verify all required tools and dependencies are available
-**When to Use**: Before any other operations, especially in new environments
-**Prerequisites**: None
-**Common Issues**: Missing Rust/TinyGo toolchain, Node.js version incompatibility
+**目的**：验证所有必需的工具和依赖项都可用
+**何时使用**：在任何其他操作之前，尤其是在新环境中
+**先决条件**：无
+**常见问题**：缺少 Rust/TinyGo 工具链，Node.js 版本不兼容
 
-#### **make init**
+#### make init
 
-**Purpose**: Initialize development environment, install Node.js and Python dependencies, generate environment fingerprint
-**When to Use**: First-time setup or after clean-all
-**Prerequisites**: check-deps passed
+**目的**：初始化开发环境，安装 Node.js 和 Python 依赖项，生成环境指纹
+**何时使用**：首次设置或在 clean-all 之后
+**先决条件**：check-deps 通过
 
-**Dependencies Installed**:
+**安装的依赖项**：
 
-- Node.js packages via npm ci (chalk, puppeteer, yaml, eslint, express, vitest)
-- Python packages via Poetry (numpy, matplotlib, scipy, pyyaml, black, ruff)
-- Environment fingerprint (versions.lock, meta.json)
+- 通过 npm ci 安装 Node.js 包（chalk、puppeteer、yaml、eslint、express、vitest）
+- 通过 Poetry 安装 Python 包（numpy、matplotlib、scipy、pyyaml、black、ruff）
+- 环境指纹（versions.lock、meta.json）
 
-**Common Issues**: Network connectivity, Poetry not installed, permission issues
+**常见问题**：网络连接、Poetry 未安装、权限问题
 
-#### **make build**
+#### make build
 
-**Purpose**: Build WebAssembly modules or config (use: make build [rust/tinygo/all/config])
-**When to Use**: After code changes, before testing or benchmarking
-**Prerequisites**: init completed
+**目的**：构建 WebAssembly 模块或配置（使用：make build [rust/tinygo/all/config]）
+**何时使用**：代码更改后，在测试或基准测试之前
+**先决条件**：init 完成
 
-**Options**:
+**选项**：
 
-- `make build` - Build both Rust and TinyGo modules
-- `make build rust` - Build only Rust modules
-- `make build tinygo` - Build only TinyGo modules  
-- `make build all` - Build all with full pipeline and optimization analysis
-- `make build config` - Build configuration files from YAML
-- `make build config quick` - Build quick configuration for development
+- `make build` - 构建 Rust 和 TinyGo 模块
+- `make build rust` - 仅构建 Rust 模块
+- `make build tinygo` - 仅构建 TinyGo 模块
+- `make build all` - 构建所有内容，包括完整管道和优化分析
+- `make build config` - 从 YAML 构建配置文件
+- `make build config quick` - 为开发构建快速配置
 
-**Common Issues**: Compilation errors, missing source files, Rust/TinyGo toolchain issues
+**常见问题**：编译错误、缺少源文件、Rust/TinyGo 工具链问题
 
-**Note**: Individual build targets have been replaced with flag-based commands:
-- `make build rust` - Build only Rust modules
-- `make build tinygo` - Build only TinyGo modules
-- `make build all` - Build all with full pipeline and optimization analysis
-- `make build config` - Build configuration files from YAML
-- `make build config quick` - Build quick configuration for development
+**注意**：单个构建目标已被基于标志的命令替换：
 
-#### **make run**
+- `make build rust` - 仅构建 Rust 模块
+- `make build tinygo` - 仅构建 TinyGo 模块
+- `make build all` - 构建所有内容，包括完整管道和优化分析
+- `make build config` - 从 YAML 构建配置文件
+- `make build config quick` - 为开发构建快速配置
 
-**Purpose**: Run browser benchmark suite (use quick headed for options)
-**When to Use**: Performance testing and data collection
-**Prerequisites**: build completed
+#### make run
 
-**Options**:
+**目的**：运行浏览器基准测试套件（使用 quick headed 获取选项）
+**何时使用**：性能测试和数据收集
+**先决条件**：build 完成
 
-- `make run` - Run with default configuration
-- `make run quick` - Run quick benchmarks for development
-- `make run headed` - Run with visible browser for debugging
-- `make run quick headed` - Quick benchmarks with visible browser
+**选项**：
 
-**Common Issues**: Browser automation failures, timeout issues, missing configuration
+- `make run` - 使用默认配置运行
+- `make run quick` - 运行快速基准测试用于开发
+- `make run headed` - 运行可见浏览器用于调试
+- `make run quick headed` - 快速基准测试与可见浏览器
 
-#### **make qc**
+**常见问题**：浏览器自动化失败、超时问题、缺少配置
 
-**Purpose**: Run quality control on benchmark data (use quick for quick mode)
-**When to Use**: After benchmark execution to validate data quality
-**Prerequisites**: benchmark results available
+#### make qc
 
-**Options**:
+**目的**：对基准测试数据运行质量控制（使用 quick 获取快速模式）
+**何时使用**：基准测试执行后验证数据质量
+**先决条件**：基准测试结果可用
 
-- `make qc` - Full quality control analysis
-- `make qc quick` - Quick quality control for development
+**选项**：
 
-**Common Issues**: Missing Python dependencies, no results data, Poetry environment issues
+- `make qc` - 完整质量控制分析
+- `make qc quick` - 开发快速质量控制
 
-#### **make analyze**
+**常见问题**：缺少 Python 依赖项、无结果数据、Poetry 环境问题
 
-**Purpose**: Run validation, quality control, statistical analysis, and plotting (use quick for quick mode)
-**When to Use**: After benchmark execution for complete analysis
-**Prerequisites**: benchmark results available
-**Pipeline**: validate → qc → stats → plots
+#### make analyze
 
-**Options**:
+**目的**：运行验证、质量控制、统计分析和绘图（使用 quick 获取快速模式）
+**何时使用**：基准测试执行后进行完整分析
+**先决条件**：基准测试结果可用
+**管道**：validate → qc → stats → plots
 
-- `make analyze` - Full analysis pipeline
-- `make analyze quick` - Quick analysis for development
+**选项**：
 
-**Common Issues**: Missing Python dependencies, Poetry not initialized, matplotlib display issues
+- `make analyze` - 完整分析管道
+- `make analyze quick` - 开发快速分析
 
-#### **make all**
+**常见问题**：缺少 Python 依赖项、Poetry 未初始化、matplotlib 显示问题
 
-**Purpose**: Execute complete experiment pipeline (build → run → analyze)
-**When to Use**: Full research experiments
-**Prerequisites**: init completed
-**Common Issues**: Long execution time, any step failure stops pipeline
+#### make all
 
-#### **make all quick**
+**目的**：执行完整实验管道（build → run → analyze）
+**何时使用**：完整研究实验
+**先决条件**：init 完成
+**常见问题**：执行时间长，任何步骤失败都会停止管道
 
-**Purpose**: Complete pipeline with quick settings for development/testing
-**When to Use**: Development verification, quick experimentation
-**Prerequisites**: init completed
-**Common Issues**: No benchmark data generated, analysis step should be omitted
+#### make all quick
 
-#### **make clean**
+**目的**：使用快速设置的完整管道用于开发/测试
+**何时使用**：开发验证、快速实验
+**先决条件**：init 完成
+**常见问题**：不生成基准测试数据，应省略分析步骤
 
-**Purpose**: Clean build artifacts and temporary files (use: make clean all for complete cleanup)
-**When to Use**: Build issues, disk space cleanup
+#### make clean
 
-**Options**:
+**目的**：清理构建产物和临时文件（使用：make clean all 获取完整清理）
+**何时使用**：构建问题、磁盘空间清理
 
-- `make clean` - Clean generated artifacts (builds, configs, reports, results)
-- `make clean all` - Complete cleanup including dependencies, caches, logs (with confirmation)
+**选项**：
 
-**Cleaned Items**:
+- `make clean` - 清理生成产物（builds、configs、reports、results）
+- `make clean all` - 完整清理包括依赖项、缓存、日志（带确认）
 
-- Build artifacts (*.wasm, checksums.txt, sizes.csv)
-- Configuration files (bench.json, bench-quick.json)
-- Reports and results directories
-- Cache files (.cache.*)
-- Temporary files (\*.tmp, \_\_pycache\_\_, \*.pyc)
+**清理的项目**：
 
-**Common Issues**: Permission issues on protected files, accidental data loss
+- 构建产物（*.wasm、checksums.txt、sizes.csv）
+- 配置文件（bench.json、bench-quick.json）
+- 报告和结果目录
+- 缓存文件（.cache.*）
+- 临时文件（*.tmp、**pycache**、*.pyc）
 
-#### **make lint**
+**常见问题**：受保护文件的权限问题、意外数据丢失
 
-**Purpose**: Run code quality checks (use: make lint [python/rust/go/js])
-**When to Use**: Code quality assurance, pre-commit checks
-**Prerequisites**: Dependencies installed
+#### make lint
 
-**Options**:
+**目的**：运行代码质量检查（使用：make lint [python/rust/go/js]）
+**何时使用**：代码质量保证、提交前检查
+**先决条件**：依赖项已安装
 
-- `make lint` - Run all language linters
-- `make lint python` - Python linting with ruff
-- `make lint rust` - Rust linting with cargo clippy
-- `make lint go` - Go linting with go vet and gofmt
-- `make lint js` - JavaScript linting with ESLint
+**选项**：
 
-**Common Issues**: Missing linters, code formatting issues, linting rule violations
+- `make lint` - 运行所有语言的 linter
+- `make lint python` - 使用 ruff 进行 Python linting
+- `make lint rust` - 使用 cargo clippy 进行 Rust linting
+- `make lint go` - 使用 go vet 和 gofmt 进行 Go linting
+- `make lint js` - 使用 ESLint 进行 JavaScript linting
 
-#### **make format**
+**常见问题**：缺少 linter、代码格式问题、linting 规则违规
 
-**Purpose**: Format code (use: make format [python/rust/go])
-**When to Use**: Code formatting, consistent style
-**Prerequisites**: Dependencies installed
+#### make format
 
-**Options**:
+**目的**：格式化代码（使用：make format [python/rust/go]）
+**何时使用**：代码格式化、一致样式
+**先决条件**：依赖项已安装
 
-- `make format` - Format all supported languages
-- `make format python` - Python formatting with black
-- `make format rust` - Rust formatting with cargo fmt
-- `make format go` - Go formatting with gofmt
+**选项**：
 
-**Common Issues**: Missing formatters, conflicting formatting rules
+- `make format` - 格式化所有支持的语言
+- `make format python` - 使用 black 进行 Python 格式化
+- `make format rust` - 使用 cargo fmt 进行 Rust 格式化
+- `make format go` - 使用 gofmt 进行 Go 格式化
 
-#### **make test**
+**常见问题**：缺少格式化工具、冲突的格式化规则
 
-**Purpose**: Run tests (use: make test [validate] or run all tests)
-**When to Use**: Test execution, validation
-**Prerequisites**: Dependencies installed
+#### make test
 
-**Options**:
+**目的**：运行测试（使用：make test [validate] 或运行所有测试）
+**何时使用**：测试执行、验证
+**先决条件**：依赖项已安装
 
-- `make test` - Run all available tests (JavaScript + Python)
-- `make test validate` - Run WASM task validation suite
+**选项**：
 
-**Common Issues**: Missing test runners, environment setup issues
+- `make test` - 运行所有可用测试（JavaScript + Python）
+- `make test validate` - 运行 WASM 任务验证套件
 
-#### **make status**
+**常见问题**：缺少测试运行器、环境设置问题
 
-**Purpose**: Show current project status
-**When to Use**: Debugging, status verification
-**Displays**: Environment status, build artifacts, results count, latest experiment
-**Common Issues**: None (informational only)
+#### make status
 
-#### **make info**
+**目的**：显示包含环境、构建和实验信息的综合项目状态
+**何时使用**：调试、状态验证、环境验证
 
-**Purpose**: Show system information
-**When to Use**: Debugging environment issues
-**Displays**: OS, architecture, CPU cores, memory, tool versions
-**Common Issues**: None (informational only)
+**显示内容**：
 
-**Note**: This is the updated syntax for dependency checking (was `make check-deps`)
+- 🔧 环境依赖项：Python、Node.js、Rust、TinyGo 版本和可用性状态
+- 📦 构建状态：WASM 模块计数（Rust/TinyGo 共3个）、校验和可用性、构建指标
+- 🧪 基准测试任务：可用任务（mandelbrot、json_parse、matrix_mul）、规模（small/medium/large）、质量设置（50 次运行 × 4 次重复）
+- 📈 实验结果：总实验运行计数、最新实验文件名、快速 vs 完整基准测试状态
+- 🚀 快速命令：开发常用快捷方式，带时间估算
 
-### NPM Script Commands
+**常见问题**：无（仅信息性）
 
-#### **npm run dev**
+#### make info
 
-**Purpose**: Start development server with auto-opening browser
-**When to Use**: Interactive development and testing
-**Prerequisites**: Dependencies installed
-**Server**: Runs on port 2025, logs to dev-server.log
-**Common Issues**: Port conflicts, browser opening failures
+**目的**：显示详细的系统和基准测试环境信息
+**何时使用**：调试环境问题、系统兼容性检查
 
-#### **npm run serve:port**
+**显示内容**：
 
-**Purpose**: Start development server on specified port (uses PORT environment variable)
-**When to Use**: Server-only mode with custom port configuration
-**Prerequisites**: Dependencies installed
-**Example**: `PORT=3000 npm run serve:port`
-**Common Issues**: Port already in use, environment variable issues
+- 🖥️ 系统硬件：OS 版本、架构、CPU 核心数、内存大小
+- 🛠️ 编译工具链：Make、Rust、Cargo、TinyGo、Go 版本和可用性
+- 🌍 运行时环境：Node.js、npm、Python 版本、Puppeteer 配置状态
+- 🔧 WASM 工具：wasm-strip (wabt)、wasm-opt (binaryen) 可用性状态
+- 🧪 基准测试配置：配置文件位置、可用任务、规模、质量设置（50 次运行 × 4 次重复）
+- 📁 项目信息：版本、许可证、目的、环境指纹哈希
 
-#### **npm run test**
+**常见问题**：无（仅信息性）
 
-**Purpose**: Run full test suite (JavaScript and Python) with verbose output
-**When to Use**: Comprehensive testing and validation
-**Prerequisites**: Dependencies installed, build completed
-**Test Framework**: Vitest with 300s timeout
-**Common Issues**: Long execution time, environment dependencies
+**注意**：这是依赖检查的更新语法（以前是 `make check-deps`）
 
-#### **npm run test:smoke**
+### 📦 NPM 脚本命令
 
-**Purpose**: Quick validation tests for core functionality
-**When to Use**: Fast development feedback
-**Prerequisites**: Build completed
-**Test Framework**: Vitest with 10s timeout
-**Common Issues**: Browser automation setup issues
+#### npm run dev
 
-#### **npm run test:unit**
+**目的**：启动开发服务器并自动打开浏览器
+**何时使用**：交互式开发和测试
+**先决条件**：依赖项已安装
+**服务器**：在端口 2025 上运行，日志记录到 dev-server.log
+**常见问题**：端口冲突、浏览器打开失败
 
-**Purpose**: Run isolated unit tests
-**When to Use**: Testing specific components
-**Prerequisites**: Dependencies installed
-**Test Framework**: Vitest with 5s timeout
-**Common Issues**: Test environment configuration
+#### npm run serve:port
 
-#### **npm run test:integration**
+**目的**：在指定端口上启动开发服务器（使用 PORT 环境变量）
+**何时使用**：仅服务器模式，使用自定义端口配置
+**先决条件**：依赖项已安装
+**示例**：`PORT=3000 npm run serve:port`
+**常见问题**：端口已被使用、环境变量问题
 
-**Purpose**: Run cross-language consistency tests
-**When to Use**: Validating language implementation consistency
-**Prerequisites**: Build completed, server running
-**Test Framework**: Vitest with 60s timeout
-**Common Issues**: Browser compatibility, timing issues
+#### npm run test
 
-### Python Script Commands
+**目的**：运行完整测试套件（JavaScript 和 Python），带详细输出
+**何时使用**：全面测试和验证
+**先决条件**：依赖项已安装，构建已完成
+**测试框架**：Vitest，300秒超时
+**常见问题**：执行时间长、环境依赖项
 
-#### **wasm-benchmark-qc**
+#### npm run test:smoke
 
-**Purpose**: Quality control analysis of benchmark results
-**When to Use**: Validating data integrity and statistical assumptions
-**Prerequisites**: Results data available
-**Analysis**: Outlier detection, normality tests, variance analysis
-**Common Issues**: Missing data files, statistical assumption violations
+**目的**：核心功能的快速验证测试
+**何时使用**：快速开发反馈
+**先决条件**：构建已完成
+**测试框架**：Vitest，10秒超时
+**常见问题**：浏览器自动化设置问题
 
-#### **wasm-benchmark-stats**
+#### npm run test:unit
 
-**Purpose**: Statistical analysis of benchmark results
-**When to Use**: Computing significance tests and effect sizes
-**Prerequisites**: Results data available
-**Analysis**: Welch's t-test, Cohen's d effect size, confidence intervals
-**Common Issues**: Insufficient sample sizes, non-normal distributions
+**目的**：运行隔离的单元测试
+**何时使用**：测试特定组件
+**先决条件**：依赖项已安装
+**测试框架**：Vitest，5秒超时
+**常见问题**：测试环境配置
 
-#### **wasm-benchmark-plots**
+#### npm run test:integration
 
-**Purpose**: Generate visualization plots for benchmark results
-**When to Use**: Creating publication-ready charts and graphs
-**Prerequisites**: Results data available
-**Output**: PNG files in reports/plots/ directory
-**Common Issues**: Matplotlib backend issues, missing data
+**目的**：运行跨语言一致性测试
+**何时使用**：验证语言实现一致性
+**先决条件**：构建已完成，服务器运行中
+**测试框架**：Vitest，60秒超时
+**常见问题**：浏览器兼容性、时序问题
 
-#### **wasm-benchmark-validate**
+### 🐍 Python 脚本命令
 
-**Purpose**: Cross-language validation of task implementations
-**When to Use**: Verifying WASM module correctness
-**Prerequisites**: Build completed
-**Validation**: FNV-1a hash comparison across languages
-**Common Issues**: Hash mismatches, WASM loading failures
+#### wasm-benchmark-qc
 
-## Command Usage Patterns
+**目的**：基准测试结果的质量控制分析
+**何时使用**：验证数据完整性和统计假设
+**先决条件**：结果数据可用
+**分析**：异常值检测、正态性测试、方差分析
+**常见问题**：缺少数据文件、统计假设违规
 
-### Typical Development Workflow
+#### wasm-benchmark-stats
+
+**目的**：基准测试结果的统计分析
+**何时使用**：计算显著性检验和效应量
+**先决条件**：结果数据可用
+**分析**：Welch's t-test、Cohen's d 效应量、置信区间
+**常见问题**：样本量不足、非正态分布
+
+#### wasm-benchmark-plots
+
+**目的**：为基准测试结果生成可视化图表
+**何时使用**：创建出版级图表和图形
+**先决条件**：结果数据可用
+**输出**：reports/plots/ 目录中的 PNG 文件
+**常见问题**：Matplotlib 后端问题、缺少数据
+
+#### wasm-benchmark-validate
+
+**目的**：任务实现的跨语言验证
+**何时使用**：验证 WASM 模块正确性
+**先决条件**：构建已完成
+**验证**：跨语言的 FNV-1a 哈希比较
+**常见问题**：哈希不匹配、WASM 加载失败
+
+## 🔄 命令使用模式
+
+### 💻 典型开发工作流程
 
 ```bash
-# Initial setup
+# 初始设置
 make init
 
-# Development cycle
+# 开发周期
 make build config quick
 npm run dev &
 make run quick
 make qc quick
 make analyze quick
 
-# Full validation
+# 完整验证
 make test
-npm run test
 ```
 
-### Production Benchmarking Workflow
+### 🚀 生产基准测试工作流程
 
 ```bash
-# Complete benchmark run
+# 完整基准测试运行
 make init
 make build all
 make run
@@ -498,353 +499,76 @@ make analyze
 make plots
 ```
 
-### Troubleshooting Workflow
+### 🔍 故障排除工作流程
 
 ```bash
-# Check system status
+# 检查系统状态
 make status
 make info
 
-# Clean and rebuild
+# 清理并重建
 make clean all
 make init
 make build all
 
-# Validate components
+# 验证组件
 make validate
-npm run test:smoke
+make test
 ```
 
-## Best Practices Summary
+## ✅ 最佳实践总结
 
-- **Always run `make init`** before starting work
-- **Use quick modes** during development for faster feedback
-- **Run full validation** before publishing results
-- **Check logs** in dev-server.log for server issues
-- **Use `make status`** to verify system readiness
-- **Clean builds** with `make clean all` when switching toolchains
+- **始终运行 `make init`** 在开始工作之前
+- **在开发期间使用快速模式** 以获得更快的反馈
+- **在发布结果之前运行完整验证**
+- **检查日志** 在 dev-server.log 中查找服务器问题
+- **使用 `make status`** 验证系统就绪状态和环境状态
+- **使用 `make info`** 获取详细的系统和工具链信息
+- **在切换工具链时使用 `make clean all` 清理构建**
 
-### Run Bench Script Options
+### ⚙️ 运行基准测试脚本选项
 
-#### **node scripts/run_bench.js**
+#### node scripts/run_bench.js
 
-**Purpose**: Execute benchmark suite with various configuration options
-**When to Use**: Performance testing and data collection with custom settings
-**Prerequisites**: build completed, configuration files exist
+**目的**：使用各种配置选项执行基准测试套件
+**何时使用**：使用自定义设置进行性能测试和数据收集
+**先决条件**：构建已完成，配置文件存在
 
-**Available Options:**
+**可用选项：**
 
-- `--headed`: Run in headed mode (show browser)
-- `--devtools`: Open browser DevTools
-- `--verbose`: Enable verbose logging
-- `--parallel`: Enable parallel benchmark execution
-- `--quick`: Use quick configuration for fast development testing
-- `--timeout=<ms>`: Set timeout in milliseconds (default: 300000, quick: 30000)
-- `--max-concurrent=<n>`: Max concurrent benchmarks in parallel mode (default: 4, max: 20)
-- `--failure-threshold=<rate>`: Failure threshold rate 0-1 (default: 0.3)
-- `--help, -h`: Show help message
+- `--headed`：在 headed 模式下运行（显示浏览器）
+- `--devtools`：打开浏览器开发者工具
+- `--verbose`：启用详细日志记录
+- `--parallel`：启用并行基准测试执行
+- `--quick`：使用快速配置进行快速开发测试
+- `--timeout=<ms>`：设置超时时间（毫秒，默认：300000，快速：30000）
+- `--max-concurrent=<n>`：并行模式下的最大并发基准测试（默认：4，最大：20）
+- `--failure-threshold=<rate>`：失败阈值率 0-1（默认：0.3）
+- `--help, -h`：显示帮助信息
 
-**Common Usage Examples:**
+**常见使用示例：**
 
 ```bash
-# Basic headless run
+# 基本无头运行
 node scripts/run_bench.js
 
-# Development with visible browser
+# 带可见浏览器的开发
 node scripts/run_bench.js --headed
 
-# Quick development testing
+# 快速开发测试
 node scripts/run_bench.js --quick
 
-# Verbose output for debugging
+# 调试的详细输出
 node scripts/run_bench.js --verbose
 
-# Parallel execution
+# 并行执行
 node scripts/run_bench.js --parallel --max-concurrent=5
 
-# Custom timeout for slow systems
+# 慢速系统的自定义超时
 node scripts/run_bench.js --timeout=600000
 
-# Conservative failure handling
+# 保守的失败处理
 node scripts/run_bench.js --failure-threshold=0.1
 ```
 
-**Common Issues**: Browser automation failures, timeout issues, configuration file missing
-
-## Troubleshooting Guide
-
-### Build Issues
-
-#### Rust Compilation Failures
-
-- **Symptoms**: Cargo build errors, missing dependencies
-- **Solutions**:
-  - Verify Rust toolchain: `rustup show`
-  - Update Rust: `rustup update`
-  - Check wasm-pack: `wasm-pack --version`
-  - Clean Rust cache: `cargo clean`
-
-#### TinyGo Compilation Failures
-
-- **Symptoms**: TinyGo build errors, WASM target issues
-- **Solutions**:
-  - Verify TinyGo installation: `tinygo version`
-  - Check WASM target support: `tinygo targets`
-  - Update TinyGo to latest version
-  - Verify Go version compatibility
-
-#### Cross-Platform Issues
-
-- **Symptoms**: `numfmt: command not found` on macOS
-- **Solutions**: This has been fixed with portable formatting functions
-- **Prevention**: Use provided build scripts, avoid direct GNU tools
-
-### Test Failures
-
-#### Browser Automation Issues
-
-- **Symptoms**: Puppeteer timeouts, browser launch failures
-- **Solutions**:
-  - Check Chrome/Chromium installation
-  - Verify display configuration (headless vs headed)
-  - Increase timeout values for slow systems
-  - Check port availability (default: 2025)
-
-#### Cross-Language Consistency Failures
-
-- **Symptoms**: Hash mismatches, precision differences
-- **Solutions**:
-  - Verify both implementations built successfully
-  - Check floating-point standardization
-  - Run validation script: `npm run validate`
-  - Review recent changes to algorithm implementations
-
-#### Performance Measurement Issues
-
-- **Symptoms**: Invalid timing data, coefficient of variation warnings
-- **Solutions**: These have been fixed in recent updates
-- **Verification**: Ensure property path consistency in test code
-
-### Environment Issues
-
-#### Dependency Conflicts
-
-- **Symptoms**: Version mismatches, installation failures
-- **Solutions**:
-  - Run `make clean all` followed by `make init`
-  - Check Node.js version: `node --version` (>=18.0.0 required)
-  - Verify Python version: `python3 --version`
-  - Clear npm cache: `npm cache clean --force`
-
-#### Permission Issues
-
-- **Symptoms**: Access denied, file permission errors
-- **Solutions**:
-  - Check file permissions in build directories
-  - Avoid running as root unless necessary
-  - Verify write access to results/ and builds/
-  - Use `--user` flag for pip installations
-
-#### Memory/Resource Issues
-
-- **Symptoms**: Out of memory, slow performance
-- **Solutions**:
-  - Monitor system resources during builds/tests
-  - Use `make all quick` for resource-constrained environments
-  - Adjust timeout values in test configurations
-  - Close unnecessary applications
-
-### Analysis Issues
-
-#### Missing Results Data
-
-- **Symptoms**: No data to analyze, analysis script failures
-- **Solutions**:
-  - Verify benchmark execution completed successfully
-  - Check results/ directory for recent data
-  - Ensure proper file permissions
-  - Re-run benchmarks if data is corrupted
-
-#### Statistical Analysis Errors
-
-- **Symptoms**: Python script failures, plotting errors
-- **Solutions**:
-  - Verify Python dependencies: `pip3 list`
-  - Check data file formats and integrity
-  - Ensure matplotlib/numpy compatibility
-  - Review analysis script for recent changes
-
----
-
-## Flow Charts
-
-### Development Workflow
-
-```mermaid
-flowchart TD
-    A[New Developer] --> B[make check deps]
-    B --> C{Dependencies OK?}
-    C -->|No| D[Install Missing Tools]
-    D --> B
-    C -->|Yes| E[make init]
-    E --> F[make build]
-    F --> G{Build Success?}
-    G -->|No| H[Fix Build Issues]
-    H --> F
-    G -->|Yes| I[npm run test:smoke]
-    I --> J{Tests Pass?}
-    J -->|No| K[Fix Test Issues]
-    K --> I
-    J -->|Yes| L[Development Ready]
-
-    L --> M[Code Changes]
-    M --> N[make build]
-    N --> O[npm run test:unit]
-    O --> P{Tests Pass?}
-    P -->|No| M
-    P -->|Yes| Q[Commit Changes]
-    Q --> M
-```
-
-### Research Workflow
-
-```mermaid
-flowchart TD
-    A[Research Analysis] --> B{Analysis Type?}
-    B -->|Quick| C[make build]
-    B -->|Comprehensive| D[make clean all]
-
-    C --> E[make run quick]
-    E --> G[Validation Results]
-
-    D --> I[make all]
-    I --> K[Research Dataset]
-
-    G --> L[Iterate/Refine]
-    K --> L
-    L --> M{More Analysis?}
-    M -->|Yes| B
-    M -->|No| N[Complete]
-```
-
-### Troubleshooting Decision Tree
-
-```mermaid
-flowchart TD
-    A[Issue Encountered] --> B{Issue Type?}
-    B -->|Build| C[Build Troubleshooting]
-    B -->|Test| D[Test Troubleshooting]
-    B -->|Performance| E[Performance Troubleshooting]
-
-    C --> F{Rust or TinyGo?}
-    F -->|Rust| G[Check Rust Toolchain]
-    F -->|TinyGo| H[Check TinyGo Setup]
-    F -->|Both| I[Check Common Issues]
-
-    D --> J{Browser Issues?}
-    J -->|Yes| K[Check Puppeteer Setup]
-    J -->|No| L[Check Test Environment]
-
-    E --> M{Measurement Issues?}
-    M -->|Yes| N[Check Timing Logic]
-    M -->|No| O[Check System Resources]
-
-    G --> P[Apply Fix]
-    H --> P
-    I --> P
-    K --> P
-    L --> P
-    N --> P
-    O --> P
-
-    P --> Q[Test Fix]
-    Q --> R{Fixed?}
-    R -->|No| A
-    R -->|Yes| S[Complete]
-```
-
----
-
-## Operational Best Practices
-
-### Development Practices
-
-- Always run `make check deps` in new environments
-- Use `make status` to verify project state
-- Run smoke tests after significant changes: `npm run test:smoke`
-- Keep builds clean with regular `make clean`
-
-### Research Practices
-
-- Use `make run quick` for quick validation, `make all` for full exploration
-- Run full experiments with `make all` for publication
-- Document experimental parameters and results
-- Validate cross-language consistency regularly
-
-### Maintenance Practices
-
-- Update dependencies regularly
-- Monitor disk space in results/ directory
-- Keep documentation synchronized with code changes
-- Use version control effectively for experiment tracking
-
----
-
-## Timeout Configuration Strategy
-
-The project implements a comprehensive timeout strategy designed to handle intensive WebAssembly tasks while preventing resource waste and providing fast feedback during development.
-
-### 🎯 **Timeout Strategy Overview**
-
-| 模式 | 基础超时 | 浏览器协议 | 任务执行 | WASM密集任务 |
-|------|---------|-----------|---------|-------------|
-| **正常模式** | 600s | 1200s (20min) | 1500s (25min) | 1800s (30min) |
-| **快速模式** | 60s | 120s (2min) | 150s (2.5min) | 180s (3min) |
-
-### **Configuration Hierarchy**
-
-1. **Base Timeout**: Configured in `configs/bench.yaml` and `configs/bench-quick.yaml`
-
-   ```yaml
-   environment:
-     timeout: 600  # Normal mode: 10 minutes
-     timeout: 20   # Quick mode: 20 seconds
-   ```
-
-2. **Timeout Multipliers** (defined in `ConfigurationService.js`):
-   - **Browser Protocol**: 2x base (for Puppeteer automation)
-   - **Navigation**: 1x base (for page loading)
-   - **Task Execution**: 2.5x base (for individual benchmark tasks)
-   - **Element Wait**: 0.25x base (for DOM element waiting)
-   - **WASM Intensive**: 3x base (for CPU-intensive WASM tasks)
-   - **Quick Mode Factor**: 0.1x (reduction for development mode)
-
-### **Implementation Details**
-
-- **Protocol Timeout**: Set in `BrowserService.js` via `protocolTimeout` parameter
-- **Page Timeout**: Set via `page.setDefaultTimeout()` for browser operations
-- **Task Timeout**: Applied at benchmark execution level
-- **Quick Mode**: Automatically reduces all timeouts by 90% for fast feedback
-
-### **Troubleshooting Timeout Issues**
-
-Common timeout errors and solutions:
-
-1. **`Runtime.callFunctionOn timed out`**:
-   - Increase base timeout in config files
-   - Check if task complexity requires more time
-   - Verify browser protocol timeout is sufficient
-
-2. **Navigation timeout**:
-   - Check network connectivity
-   - Increase navigation timeout multiplier
-   - Verify development server is running
-
-3. **Element wait timeout**:
-   - Check DOM element selectors
-   - Increase element wait timeout
-   - Verify page loading completion
-
-For detailed timeout configuration, see `docs/timeout-configuration.md`.
-
----
+**常见问题**：浏览器自动化失败、超时问题、缺少配置文件
