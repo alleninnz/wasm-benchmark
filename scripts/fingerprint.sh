@@ -10,6 +10,13 @@ source "${SCRIPT_DIR}/common.sh"
 # Configuration
 VERSIONS_LOCK="${PROJECT_ROOT}/versions.lock"
 META_JSON="${PROJECT_ROOT}/meta.json"
+# Check for FORCE environment variable or --force flag
+# FORCE can be "1", "true", "TRUE", or "yes"
+if [[ "${FORCE:-false}" == "1" || "${FORCE:-false}" == "true" || "${FORCE:-false}" == "TRUE" || "${FORCE:-false}" == "yes" ]]; then
+    FORCE_MODE=true
+else
+    FORCE_MODE=false
+fi
 
 # Get command version or return "not found"
 get_version() {
@@ -211,7 +218,7 @@ make_version=$MAKE_VERSION
 git_version=$GIT_VERSION
 
 # Lock File Metadata
-generated_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+generated_date=$(date +"%Y-%m-%dT%H:%M:%S%z")
 generator_script=scripts/fingerprint.sh
 lock_file_version=1.0
 project_root=$PROJECT_ROOT
@@ -230,7 +237,7 @@ generate_meta_json() {
         "name": "WebAssembly Performance Benchmark",
         "description": "Comparing Rust and TinyGo WebAssembly performance across computational tasks",
         "version": "1.0",
-        "generated_date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+    "generated_date": "$(date +"%Y-%m-%dT%H:%M:%S%z")",
         "project_root": "$PROJECT_ROOT"
     },
     "system": {
@@ -337,44 +344,85 @@ display_summary() {
 
 # Main function
 main() {
-    log_section "Environment Fingerprint Generation"
-    
+    if [[ "$FORCE_MODE" == "true" ]]; then
+        log_section "Environment Fingerprint Generation (FORCE MODE)"
+        log_warning "Force mode enabled - removing existing fingerprint files"
+        rm -f "$VERSIONS_LOCK" "$META_JSON" 2>/dev/null || true
+    else
+        log_section "Environment Fingerprint Generation"
+
+        # Check if files already exist and skip if they do (unless force mode)
+        if [[ -f "$VERSIONS_LOCK" && -f "$META_JSON" ]]; then
+            log_info "Environment fingerprint files already exist:"
+            log_info "  - $VERSIONS_LOCK"
+            log_info "  - $META_JSON"
+            log_info "Use --force option to regenerate"
+            return 0
+        fi
+    fi
+
     # Gather all information
     get_system_info
     get_toolchain_versions
     get_python_libs
     get_browser_info
-    
+
     # Generate output files
     generate_versions_lock
     generate_meta_json
-    
+
     # Display summary
     display_summary
-    
+
     log_section "Fingerprint Generation Complete"
-    log_success "Environment fingerprint captured successfully"
+    if [[ "$FORCE_MODE" == "true" ]]; then
+        log_success "Environment fingerprint forcefully regenerated"
+    else
+        log_success "Environment fingerprint captured successfully"
+    fi
 }
 
 # Handle command line arguments
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    if [[ $# -eq 1 && "$1" == "--help" ]]; then
-        echo "Usage: $0"
-        echo ""
-        echo "Generate environment fingerprint for reproducible builds."
-        echo ""
-        echo "This script captures:"
-        echo "  - System information (OS, CPU, memory)"
-        echo "  - Toolchain versions (Rust, Go, TinyGo, Node.js, Python)"
-        echo "  - WebAssembly tools (wasm-strip, wasm-opt, etc.)"
-        echo "  - Python scientific libraries"
-        echo "  - Browser information"
-        echo ""
-        echo "Output files:"
-        echo "  - versions.lock"
-        echo "  - meta.json"
-        exit 0
-    fi
-    
-    main "$@"
+    # Parse command line arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --help)
+                echo "Usage: $0 [--force] [--help]"
+                echo "   or: FORCE=1 $0"
+                echo ""
+                echo "Generate environment fingerprint for reproducible builds."
+                echo ""
+                echo "Options:"
+                echo "  --force    Force regeneration of fingerprint files"
+                echo "  --help     Show this help message"
+                echo ""
+                echo "Environment Variables:"
+                echo "  FORCE=1    Force regeneration (same as --force)"
+                echo ""
+                echo "This script captures:"
+                echo "  - System information (OS, CPU, memory)"
+                echo "  - Toolchain versions (Rust, Go, TinyGo, Node.js, Python)"
+                echo "  - WebAssembly tools (wasm-strip, wasm-opt, etc.)"
+                echo "  - Python scientific libraries"
+                echo "  - Browser information"
+                echo ""
+                echo "Output files:"
+                echo "  - versions.lock"
+                echo "  - meta.json"
+                exit 0
+                ;;
+            --force)
+                FORCE_MODE=true
+                shift
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                echo "Use --help for usage information"
+                exit 1
+                ;;
+        esac
+    done
+
+    main
 fi

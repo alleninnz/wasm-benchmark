@@ -4,12 +4,16 @@
 # Declare all phony targets (targets that don't create files)
 .PHONY: help init build run \
         qc analyze validate all clean clean-cache cache-file-discovery \
-        lint format test status info check deps stats plots quick headed rust tinygo config python go js
+        lint format test status info check deps stats plots quick headed rust tinygo config python go js \
+        docker full
 
 .DEFAULT_GOAL := help
 
-# Configuration
+# Configuration variables (centralized for maintainability)
 PROJECT_ROOT := $(shell pwd)
+MAX_PARALLEL_JOBS := 4
+DEFAULT_TIMEOUT := 300
+CACHE_VALIDITY_HOURS := 24
 
 # Mode detection
 QUICK_MODE := $(if $(filter quick,$(MAKECMDGOALS)),true,false)
@@ -35,8 +39,47 @@ JS_MODE := $(if $(filter js,$(MAKECMDGOALS)),true,false)
 CHECK_DEPS_MODE := $(if $(and $(filter check,$(MAKECMDGOALS)),$(filter deps,$(MAKECMDGOALS))),true,false)
 TEST_VALIDATE_MODE := $(if $(and $(filter test,$(MAKECMDGOALS)),$(filter validate,$(MAKECMDGOALS))),true,false)
 
+# Docker mode detection - consolidated approach
+DOCKER_MODE := $(if $(filter docker,$(MAKECMDGOALS)),true,false)
+
+# Force mode detection from environment variable
+FORCE_MODE := $(if $(FORCE),true,false)
+
+# Docker subcommand detection function
+# Usage: $(call docker_mode_check,subcommand) returns true/false
+define docker_mode_check
+$(if $(and $(filter docker,$(MAKECMDGOALS)),$(filter $(1),$(MAKECMDGOALS))),true,false)
+endef
+
+# Docker mode variables using the consolidated function
+DOCKER_START_MODE := $(call docker_mode_check,start)
+DOCKER_STOP_MODE := $(call docker_mode_check,stop)
+DOCKER_RESTART_MODE := $(call docker_mode_check,restart)
+DOCKER_STATUS_MODE := $(call docker_mode_check,status)
+DOCKER_LOGS_MODE := $(call docker_mode_check,logs)
+DOCKER_SHELL_MODE := $(call docker_mode_check,shell)
+DOCKER_INIT_MODE := $(call docker_mode_check,init)
+DOCKER_BUILD_MODE := $(call docker_mode_check,build)
+DOCKER_RUN_MODE := $(call docker_mode_check,run)
+DOCKER_FULL_MODE := $(call docker_mode_check,full)
+DOCKER_ANALYZE_MODE := $(call docker_mode_check,analyze)
+DOCKER_VALIDATE_MODE := $(call docker_mode_check,validate)
+DOCKER_QC_MODE := $(call docker_mode_check,qc)
+DOCKER_STATS_MODE := $(call docker_mode_check,stats)
+DOCKER_PLOTS_MODE := $(call docker_mode_check,plots)
+DOCKER_LINT_MODE := $(call docker_mode_check,lint)
+DOCKER_FORMAT_MODE := $(call docker_mode_check,format)
+DOCKER_HELP_MODE := $(call docker_mode_check,help)
+DOCKER_TEST_MODE := $(call docker_mode_check,test)
+DOCKER_INFO_MODE := $(call docker_mode_check,info)
+DOCKER_CLEAN_MODE := $(call docker_mode_check,clean)
+
 # Virtual targets for flags
-quick headed rust tinygo config python go js deps validate parallel no-checksums:
+quick headed rust tinygo config python go js deps parallel no-checksums:
+	@:
+
+# Virtual targets for docker subcommands
+start stop restart logs shell:
 	@:
 
 NODE_MODULES := node_modules
@@ -59,6 +102,9 @@ BUILD_EXCLUDES := $(COMMON_EXCLUDES) -not -path "./$(BUILDS_DIR)/*" -not -path "
 
 # Terminal color support detection
 SHELL := /bin/bash
+
+# Do not echo recipe commands by default; logging macros emit only formatted messages.
+.SILENT:
 TERM_COLORS := $(shell tput colors 2>/dev/null || echo 0)
 ifeq ($(shell test $(TERM_COLORS) -ge 8 && echo true),true)
 	RED := \033[0;31m
@@ -80,48 +126,76 @@ endif
 
 # Enhanced logging functions (unified for both command and shell contexts)
 define log_info
-	$(if $(filter shell,$(2)),echo,@echo) -e "$(BLUE)$(BOLD)[INFO]$(NC) $(1)"
+	printf "%b\n" "$(BLUE)$(BOLD)[INFO]$(NC) $(1)"
 endef
 
 define log_success
-	$(if $(filter shell,$(2)),echo,@echo) -e "$(GREEN)$(BOLD)[SUCCESS]$(NC) $(1)"
+	printf "%b\n" "$(GREEN)$(BOLD)[SUCCESS]$(NC) $(1)"
 endef
 
 define log_warning
-	$(if $(filter shell,$(2)),echo,@echo) -e "$(YELLOW)$(BOLD)[WARNING]$(NC) $(1)"
+	printf "%b\n" "$(YELLOW)$(BOLD)[WARNING]$(NC) $(1)"
 endef
 
 define log_error
-	$(if $(filter shell,$(2)),echo,@echo) -e "$(RED)$(BOLD)[ERROR]$(NC) $(1)"
+	printf "%b\n" "$(RED)$(BOLD)[ERROR]$(NC) $(1)"
 endef
 
 define log_step
-	$(if $(filter shell,$(2)),echo,@echo) -e "$(CYAN)$(BOLD)[STEP]$(NC) $(1)"
+	printf "%b\n" "$(CYAN)$(BOLD)[STEP]$(NC) $(1)"
 endef
 
 
 
-# File discovery functions (DRY improvement)
+# File discovery functions with intelligent caching
+# These functions locate source files for linting/formatting operations
+# Uses caching to improve performance on repeated calls
+
+# Find Python source files (excluding common build/cache directories)
 define find_python_files
-$(shell find . -name "*.py" $(COMMON_EXCLUDES) 2>/dev/null)
+$(if $(wildcard .cache.python_files),$(shell cat .cache.python_files 2>/dev/null),$(shell find . -name "*.py" $(COMMON_EXCLUDES) 2>/dev/null))
 endef
 
+# Find Rust project directories by locating Cargo.toml files
 define find_rust_projects
-$(shell find $(TASKS_DIR) -name 'Cargo.toml' -exec dirname {} \; 2>/dev/null)
+$(if $(wildcard .cache.rust_projects),$(shell cat .cache.rust_projects 2>/dev/null),$(shell find $(TASKS_DIR) -name 'Cargo.toml' -exec dirname {} \; 2>/dev/null))
 endef
 
+# Find Go module directories, sorted and deduplicated
 define find_go_modules
-$(shell find $(TASKS_DIR) -name '*.go' -exec dirname {} \; 2>/dev/null | sort -u)
+$(if $(wildcard .cache.go_modules),$(shell cat .cache.go_modules 2>/dev/null),$(shell find $(TASKS_DIR) -name '*.go' -exec dirname {} \; 2>/dev/null | sort -u))
 endef
 
+# Find JavaScript source files (excluding build artifacts)
 define find_js_files
-$(shell find . -name "*.js" $(BUILD_EXCLUDES) 2>/dev/null)
+$(if $(wildcard .cache.js_files),$(shell cat .cache.js_files 2>/dev/null),$(shell find . -name "*.js" $(BUILD_EXCLUDES) 2>/dev/null))
 endef
 
-# Error handling function (consistency improvement)
+# Error handling functions (enhanced for consistency)
 define handle_command_error
 	@if ! $(1); then \
 		$(call log_error,$(2)); \
+		exit 1; \
+	fi
+endef
+
+# Enhanced error handling with context
+define safe_execute
+	@$(call log_step,$(2)); \
+	if ! $(1); then \
+		$(call log_error,Failed: $(2)); \
+		$(call log_info,Command was: $(1)); \
+		exit 1; \
+	else \
+		$(call log_success,$(3)); \
+	fi
+endef
+
+# Validation function for required files
+define require_file
+	@if [ ! -f $(1) ]; then \
+		$(call log_error,Required file missing: $(1)); \
+		$(call log_info,$(2)); \
 		exit 1; \
 	fi
 endef
@@ -168,7 +242,7 @@ help: ## Show complete list of all available targets
 	@echo "============================"
 	@echo ""
 	$(call log_info,🏗️  Setup & Build Targets:)
-	$(call log_info,  init                   🔧 Initialize environment and install dependencies)
+	$(call log_info,  init FORCE=1           🔧 Initialize environment and install dependencies (FORCE=1 to regenerate fingerprint))
 	$(call log_info,  build                  📦 Build WebAssembly modules or config (add rust/tinygo/all/config/parallel/no-checksums))
 	@echo ""
 	$(call log_info,🚀 Execution Targets:)
@@ -196,6 +270,26 @@ help: ## Show complete list of all available targets
 	$(call log_info,  info                   💻 Show system information)
 	$(call log_info,  check deps             🔍 Check if all required dependencies are available)
 	@echo ""
+	$(call log_info,🐳 Docker Container Targets:)
+	$(call log_info,  docker start           🚀 Start Docker container with health checks)
+	$(call log_info,  docker stop            🛑 Stop Docker container gracefully)
+	$(call log_info,  docker restart         🔄 Restart container with verification)
+	$(call log_info,  docker status          📊 Show container status and resource usage)
+	$(call log_info,  docker logs            📝 Show recent container logs)
+	$(call log_info,  docker shell           🐚 Enter container for development)
+	$(call log_info,  docker init            🔧 Initialize environment in container)
+	$(call log_info,  docker build [flags]   📦 Build WebAssembly modules in container)
+	$(call log_info,  docker run [flags]     🏃 Run benchmarks in container)
+	$(call log_info,  docker full [flags]    🎯 Complete pipeline in container)
+	$(call log_info,  docker analyze [flags] 📊 Run analysis in container)
+	$(call log_info,  docker validate [flags] 🔬 Run benchmark validation in container)
+	$(call log_info,  docker qc [flags]      🔍 Run quality control in container)
+	$(call log_info,  docker stats [flags]   📈 Run statistical analysis in container)
+	$(call log_info,  docker plots [flags]   📉 Generate analysis plots in container)
+	$(call log_info,  docker test [flags]    🧪 Run tests in container)
+	$(call log_info,  docker info            💻 Show system information from container)
+	$(call log_info,  docker clean [all]     🧹 Clean containers and images)
+	@echo ""
 	$(call log_info,💡 Usage Examples:)
 	$(call log_info,  make build rust        🦀 Build only Rust modules)
 	$(call log_info,  make build parallel    ⚡ Build with parallel task compilation)
@@ -206,48 +300,47 @@ help: ## Show complete list of all available targets
 	$(call log_info,  make test validate     ✅ Run WASM task validation)
 	$(call log_info,  make clean all         💥 Clean everything)
 	$(call log_info,  make check deps        🔍 Check all dependencies)
+	@echo ""
+	$(call log_info,🐳 Docker Examples:)
+	$(call log_info,  make docker full quick 🐳⚡ Quick pipeline in container)
+	$(call log_info,  make docker run quick headed 🐳👁️ Quick benchmarks with browser)
+	$(call log_info,  make docker build rust parallel 🐳🦀 Build Rust with parallelization)
+	$(call log_info,  make docker status     🐳📊 Show container health)
+	$(call log_info,  make docker clean all  🐳🧹 Full container cleanup)
 
 
 # ============================================================================
 # Environment Setup Targets
 # ============================================================================
 
-init: $(NODE_MODULES) versions.lock ## Initialize environment and install dependencies
+init: $(NODE_MODULES) versions.lock ## Initialize environment and install dependencies (use: make init FORCE=1)
 	$(MAKE) check deps
-	$(call log_step,Installing Python dependencies...)
-	@if [ ! -f pyproject.toml ]; then \
-		$(call log_error,pyproject.toml not found); \
-		exit 1; \
-	fi
-	poetry install
-	$(call log_success,🐍 Python dependencies installed)
+	$(call require_file,pyproject.toml,Python project configuration missing - check repository integrity)
+	$(call safe_execute,poetry install,Installing Python dependencies,🐍 Python dependencies installed)
 	$(call log_success,🎉 Environment initialized successfully)
 	$(call log_info,Ready to run: make build)
 
 $(NODE_MODULES): package.json
+	$(call require_file,package.json,Node.js project configuration missing - check repository integrity)
 	$(call log_step,Installing Node.js dependencies...)
-	@if [ ! -f package.json ]; then \
-		$(call log_error,package.json not found); \
-		exit 1; \
-	fi
 	@if [ -f package-lock.json ]; then \
-		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) Using npm ci for clean install..."; \
-		npm ci; \
+		$(call log_info,Using npm ci for clean install...); \
+		$(call safe_execute,npm ci,Clean installing Node.js dependencies,📦 Node.js dependencies installed); \
 	else \
-		echo -e "$(BLUE)$(BOLD)[INFO]$(NC) No package-lock.json found, using npm install..."; \
-		npm install; \
+		$(call log_info,No package-lock.json found, using npm install...); \
+		$(call safe_execute,npm install,Installing Node.js dependencies,📦 Node.js dependencies installed); \
 	fi
-	$(call log_success,📦 Node.js dependencies installed)
 
 versions.lock: scripts/fingerprint.sh
-	$(call log_step,Generating environment fingerprint...)
-	@if [ ! -f scripts/fingerprint.sh ]; then \
-		$(call log_error,scripts/fingerprint.sh not found); \
-		exit 1; \
-	fi
-	chmod +x scripts/fingerprint.sh
-	scripts/fingerprint.sh
-	$(call log_success,🔐 Environment fingerprint generated)
+	$(call require_file,scripts/fingerprint.sh,Environment fingerprinting script missing - check repository integrity)
+	@chmod +x scripts/fingerprint.sh
+ifeq ($(FORCE_MODE),true)
+	$(call log_info,Force mode enabled - regenerating environment fingerprint...)
+	@rm -f versions.lock meta.json 2>/dev/null || true
+	$(call safe_execute,scripts/fingerprint.sh --force,Force regenerating environment fingerprint,🔐 Environment fingerprint forcefully regenerated)
+else
+	$(call safe_execute,scripts/fingerprint.sh,Generating environment fingerprint,🔐 Environment fingerprint generated)
+endif
 
 # ============================================================================
 # Build Targets
@@ -438,6 +531,7 @@ ifeq ($(QUICK_MODE),true)
 else
 	$(call log_step,Running full complete pipeline -> init, build, run, analyze...)
 	$(MAKE) init
+	$(MAKE) build config
 	$(MAKE) build
 	$(MAKE) run
 	$(MAKE) analyze
@@ -692,6 +786,9 @@ endif
 # ============================================================================
 
 status: ## Show comprehensive project status
+ifeq ($(DOCKER_STATUS_MODE),true)
+	@# Skip regular status when docker status is running
+else
 	$(call log_info,📊 WebAssembly Benchmark Status 📊)
 	@echo "============================"
 	@echo ""
@@ -804,6 +901,7 @@ status: ## Show comprehensive project status
 	@echo "  make all        # Full benchmark (~15 min)"
 	@echo "  make build      # Compile WASM modules"
 	@echo "  make init       # Setup environment"
+endif
 
 info: ## Show detailed system and benchmark environment information
 	$(call log_info,💻 WebAssembly Benchmark Environment 💻)
@@ -952,5 +1050,113 @@ ifeq ($(CHECK_DEPS_MODE),true)
 	@scripts/check-deps.sh
 else
 	$(call log_error,Invalid check command. Use: make check deps)
+	exit 1
+endif
+
+# ============================================================================
+# Docker Container Targets
+# ============================================================================
+
+# Docker script validation with enhanced error context
+define check_docker_script
+	$(call require_file,scripts/docker-run.sh,Run 'git pull' to get latest Docker support)
+	@chmod +x scripts/docker-run.sh
+endef
+
+# Docker command execution with consistent error handling
+define exec_docker_command
+	$(call check_docker_script)
+	$(call safe_execute,scripts/docker-run.sh $(1),$(2),$(3))
+endef
+
+# Docker command dispatch - improved maintainability
+define docker_build_flags
+$(strip \
+$(if $(filter true,$(RUST_MODE)), rust) \
+$(if $(filter true,$(TINYGO_MODE)), tinygo) \
+$(if $(filter true,$(CONFIG_MODE)), config) \
+$(if $(filter true,$(PARALLEL_MODE)), parallel) \
+$(if $(filter true,$(NO_CHECKSUMS_MODE)), no-checksums))
+endef
+
+define docker_run_flags
+$(strip \
+$(if $(filter true,$(QUICK_MODE)), quick) \
+$(if $(filter true,$(HEADED_MODE)), headed))
+endef
+
+define docker_test_flags
+$(strip \
+$(if $(filter true,$(TEST_VALIDATE_MODE)), validate))
+endef
+
+define docker_clean_flags
+$(strip \
+$(if $(filter true,$(CLEAN_ALL_MODE)), all))
+endef
+
+docker: ## Docker container operations (use: make docker [subcommand] [flags])
+ifeq ($(DOCKER_MODE),false)
+	$(call log_error,Docker subcommand required)
+	$(call log_info,Usage: make docker [start|stop|restart|status|logs|shell|init|build|run|full|analyze|validate|qc|stats|plots|test|info|clean|help] [flags])
+	$(call log_info,Examples: make docker start, make docker build rust, make docker run quick)
+	exit 1
+else ifeq ($(DOCKER_START_MODE),true)
+	$(call exec_docker_command,start,Starting Docker container with health verification,🐳 Container ready for operations)
+else ifeq ($(DOCKER_STOP_MODE),true)
+	$(call exec_docker_command,stop,Stopping Docker container,🐳 Container stopped)
+else ifeq ($(DOCKER_RESTART_MODE),true)
+	$(call exec_docker_command,restart,Restarting Docker container,🐳 Container restarted)
+else ifeq ($(DOCKER_STATUS_MODE),true)
+	$(call log_info,📊 Docker Container Status)
+	$(call check_docker_script)
+	@scripts/docker-run.sh status || true
+else ifeq ($(DOCKER_LOGS_MODE),true)
+	$(call log_info,📝 Recent Container Logs)
+	$(call exec_docker_command,logs,Retrieving container logs,📝 Logs displayed)
+else ifeq ($(DOCKER_SHELL_MODE),true)
+	$(call log_info,🐚 Entering Docker container for development...)
+	$(call exec_docker_command,shell,Opening container shell,🐚 Shell session started)
+else ifeq ($(DOCKER_INIT_MODE),true)
+	$(call exec_docker_command,init,Initializing development environment in container,🔧 Environment initialized in container)
+else ifeq ($(DOCKER_BUILD_MODE),true)
+	$(call check_docker_script)
+	$(call safe_execute,scripts/docker-run.sh build $(call docker_build_flags),Building WebAssembly modules in container,🐳 Build completed in container)
+else ifeq ($(DOCKER_RUN_MODE),true)
+	$(call check_docker_script)
+	$(call safe_execute,scripts/docker-run.sh run $(call docker_run_flags),Running benchmarks in container,🐳 Benchmarks completed in container)
+else ifeq ($(DOCKER_FULL_MODE),true)
+	$(call check_docker_script)
+	$(call safe_execute,scripts/docker-run.sh full $(call docker_run_flags),Running complete pipeline in container,🐳 Complete pipeline finished in container)
+else ifeq ($(DOCKER_ANALYZE_MODE),true)
+	$(call check_docker_script)
+	$(call safe_execute,scripts/docker-run.sh analyze $(call docker_run_flags),Running analysis pipeline in container,🐳 Analysis completed in container)
+else ifeq ($(DOCKER_VALIDATE_MODE),true)
+	$(call check_docker_script)
+	$(call safe_execute,scripts/docker-run.sh validate $(call docker_run_flags),Running benchmark validation in container,🐳 Validation completed in container)
+else ifeq ($(DOCKER_QC_MODE),true)
+	$(call check_docker_script)
+	$(call safe_execute,scripts/docker-run.sh qc $(call docker_run_flags),Running quality control in container,🐳 Quality control completed in container)
+else ifeq ($(DOCKER_STATS_MODE),true)
+	$(call check_docker_script)
+	$(call safe_execute,scripts/docker-run.sh stats $(call docker_run_flags),Running statistical analysis in container,🐳 Statistical analysis completed in container)
+else ifeq ($(DOCKER_PLOTS_MODE),true)
+	$(call check_docker_script)
+	$(call safe_execute,scripts/docker-run.sh plots $(call docker_run_flags),Generating analysis plots in container,🐳 Plots generated in container)
+else ifeq ($(DOCKER_HELP_MODE),true)
+	$(call log_info,🐳 Docker help)
+	$(call exec_docker_command,help,Displaying Docker help,📖 Help displayed)
+else ifeq ($(DOCKER_TEST_MODE),true)
+	$(call check_docker_script)
+	$(call safe_execute,scripts/docker-run.sh test $(call docker_test_flags),Running tests in container,🐳 Tests completed in container)
+else ifeq ($(DOCKER_INFO_MODE),true)
+	$(call log_info,💻 System Information from Container)
+	$(call exec_docker_command,info,Retrieving system information from container,💻 System info displayed)
+else ifeq ($(DOCKER_CLEAN_MODE),true)
+	$(call check_docker_script)
+	$(call safe_execute,scripts/docker-run.sh clean $(call docker_clean_flags),Cleaning Docker containers and images,🐳 Docker cleanup completed)
+else
+	$(call log_error,Unknown docker subcommand)
+	$(call log_info,Usage: make docker [start|stop|restart|status|logs|shell|init|build|run|full|analyze|validate|qc|stats|plots|lint|format|test|info|clean] [flags])
 	exit 1
 endif
