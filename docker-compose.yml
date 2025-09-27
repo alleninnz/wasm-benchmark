@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  wasm-benchmark:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wasm-benchmark
+    volumes:
+      # Mount project source code (read-only)
+      - .:/app:ro
+      # Mount test results directory (read-write)
+      - ./results:/app/results:rw
+      # Mount analysis reports directory (read-write)
+      - ./reports:/app/reports:rw
+      # Mount build artifacts directory (read-write)
+      - ./builds:/app/builds:rw
+      # Mount configuration directory (read-only)
+      - ./configs:/app/configs:ro
+      # Mount data directory (read-only)
+      - ./data:/app/data:ro
+    working_dir: /app
+    environment:
+      - NODE_ENV=development
+      - PYTHONPATH=/app
+      - RUSTUP_HOME=/usr/local/rustup
+      - CARGO_HOME=/usr/local/cargo
+      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+    ports:
+      - "2025:2025" # Development server port
+    # Keep container running for command execution
+    command: tail -f /dev/null
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"
+        reservations:
+          memory: 1G
+          cpus: "0.5"
+    # Restart policy
+    restart: unless-stopped
+    # Health check
+    healthcheck:
+      test: ["CMD", "python3", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
