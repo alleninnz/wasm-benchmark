@@ -17,7 +17,6 @@ __pycache__
 
 # Rust
 target/
-Cargo.lock
 
 # Go
 *.exe
@@ -33,7 +32,6 @@ reports/
 
 # Logs
 *.log
-dev-server.log
 
 # IDE
 .vscode/
@@ -58,9 +56,12 @@ coverage/
 .cache-*
 
 # Docker
-Dockerfile*
-docker-compose*.yml
 .dockerignore
 
-# Documentation build
-docs/*.html
+# Documentation
+docs/
+
+# Misc
+meta.json
+.claude
+.serena
