@@ -24,7 +24,12 @@ CHECKSUM_FILE="${RUST_OUTPUT_DIR}/checksums.txt"
 # Check if rust toolchain is available
 check_rust_toolchain() {
     log_info "Checking Rust toolchain..."
-    
+
+    # Source Rust environment if available
+    if [[ -f "${HOME}/.cargo/env" ]]; then
+        source "${HOME}/.cargo/env"
+    fi
+
     if ! command -v rustc &> /dev/null; then
         log_error "rustc not found. Please install Rust: https://rustup.rs/"
         exit 1

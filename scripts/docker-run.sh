@@ -113,7 +113,7 @@ ensure_container_running() {
     log_step "Starting WebAssembly Benchmark container..."
 
     # Build and start with progress feedback
-    if docker-compose up -d --build; then
+    if docker-compose up -d --build 2>&1; then
         log_info "Container startup initiated, checking health..."
 
         if check_container_health; then
@@ -590,34 +590,14 @@ handle_start_command() {
     # Start should never fail - completely isolated execution
     {
         set +e
-        if is_container_running; then
-            log_success "Container is already running"
-        else
-            log_step "Starting WebAssembly Benchmark container..."
-
-            # Check if this is likely a first build
-            if ! docker images | grep -q "wasm-benchmark"; then
-                log_info "First build detected - this may take several minutes"
-                log_info "Downloading and installing: Rust, Go, TinyGo, Node.js, Python packages..."
-            fi
-
-            if docker-compose up -d --build 2>&1; then
-                log_success "Container build and startup completed"
-
-                log_info "Performing health check..."
-                if check_container_health; then
-                    log_success "Container is running and healthy"
-                else
-                    log_warning "Container may still be initializing (this is normal for first build)"
-                    log_info "Use 'scripts/docker-run.sh status' to monitor progress"
-                fi
-            else
-                log_error "Container build/start failed"
-                log_info "Check build output and container logs for details"
-                show_container_logs
-                exit 1
-            fi
+        # Check if this is likely a first build
+        if ! docker images | grep -q "wasm-benchmark"; then
+            log_info "First build detected - this may take several minutes"
+            log_info "Downloading and installing: Rust, Go, TinyGo, Node.js, Python packages..."
         fi
+
+        # Use the unified container startup logic
+        ensure_container_running
     }
     exit 0
 }

@@ -114,7 +114,7 @@ main() {
 
     check_dependency "tinygo"  "🐹" "0.39.0"  "tinygo version"     '[0-9]+\.[0-9]+\.[0-9]+' || all_deps_ok=false
     check_dependency "node"    "📜" "22.18.0" "node --version"     '[0-9]+\.[0-9]+\.[0-9]+' || all_deps_ok=false
-    check_dependency "python3" "🐍" "3.13.0"  "python3 --version"  '[0-9]+\.[0-9]+\.[0-9]+' || all_deps_ok=false
+    check_dependency "python3" "🐍" "3.11.0"  "python3 --version"  '[0-9]+\.[0-9]+\.[0-9]+' || all_deps_ok=false
 
     # Special handling for pip3 which has different output format
     if command -v pip3 >/dev/null 2>&1; then
