@@ -11,6 +11,7 @@ ENV RUST_VERSION=1.90.0 \
     GO_VERSION=1.25.1 \
     NODE_VERSION=22.20.0 \
     TINYGO_VERSION=0.39.0 \
+    BINARYEN_VERSION=119 \
     RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:/usr/local/go/bin:/usr/local/bin:/usr/bin:$PATH
@@ -30,6 +31,8 @@ RUN apt-get update \
     pkg-config \
     gnupg \
     lsb-release \
+    jq \
+    wabt \
     # Python runtime & build tools
     python3 \
     python3-venv \
@@ -104,6 +107,21 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --de
     && rustup target add wasm32-unknown-unknown \
     && rustup component add rustfmt clippy
 
+# Install Binaryen tools (WABT installed via apt package)
+RUN set -eux; \
+    # Install binaryen for wasm-opt
+    ARCH=$(uname -m); \
+    case "$ARCH" in \
+    x86_64) BINARYEN_ARCH=x86_64 ;; \
+    aarch64|arm64) BINARYEN_ARCH=aarch64 ;; \
+    *) echo "unsupported arch: $ARCH" && exit 1 ;; \
+    esac; \
+    echo "Installing Binaryen ${BINARYEN_VERSION} for ${BINARYEN_ARCH}..." && \
+    wget https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/binaryen-version_${BINARYEN_VERSION}-${BINARYEN_ARCH}-linux.tar.gz -O /tmp/binaryen.tar.gz; \
+    tar -C /tmp -xzf /tmp/binaryen.tar.gz; \
+    cp /tmp/binaryen-version_${BINARYEN_VERSION}/bin/* /usr/local/bin/; \
+    rm -rf /tmp/binaryen*
+
 # Create non-root user and app directories
 RUN if ! id -u 1000 > /dev/null 2>&1; then \
     useradd -m -s /bin/bash -u 1000 benchmark; \
@@ -111,7 +129,9 @@ RUN if ! id -u 1000 > /dev/null 2>&1; then \
     useradd -m -s /bin/bash benchmark; \
     fi \
     && mkdir -p /app /app/results /app/reports /app/builds \
-    && chown -R benchmark:benchmark /app
+    && chown -R benchmark:benchmark /app \
+    && chown -R benchmark:benchmark /usr/local/cargo \
+    && chown -R benchmark:benchmark /usr/local/rustup
 
 WORKDIR /app
 USER benchmark
@@ -159,7 +179,7 @@ USER benchmark
 
 # Health check for container readiness
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD ["bash", "-lc", "python3 --version && node --version && rustc --version"]
+    CMD ["bash", "-lc", "python3 --version && node --version && rustc --version && wasm-strip --version && wasm-opt --version && wasm2wat --version && jq --version"]
 
 # Default command for development
 CMD ["/bin/bash"]
