@@ -9,7 +9,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Versions (tweak as needed)
 ENV RUST_VERSION=1.90.0 \
     GO_VERSION=1.25.1 \
-    PYTHON_VERSION=3.13.5 \
     NODE_VERSION=22.20.0 \
     TINYGO_VERSION=0.39.0 \
     RUSTUP_HOME=/usr/local/rustup \
