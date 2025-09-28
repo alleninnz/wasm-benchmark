@@ -7,8 +7,7 @@ name = "wasm-benchmark"
 version = "1.0.0"
 description = "WebAssembly Performance Analysis Tools"
 readme = "README.md"
-license = { file = "LICENSE" }
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 authors = [{ name = "Allen Wang", email = "allenincosmos@gmail.com" }]
 keywords = ["webassembly", "benchmark", "performance", "rust", "tinygo"]
 classifiers = [

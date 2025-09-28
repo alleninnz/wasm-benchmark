@@ -968,5 +968,5 @@ dev = ["black", "ruff"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.13"
-content-hash = "ac0a145bb8caeaa471058458022f8cc03f9e984153368bc6f6f8c2ba1a8eec32"
+python-versions = ">=3.11"
+content-hash = "86b3a269b3264e056113f69361c4fcad3e13ce45b6ef41444d99b1eb410cf95f"
