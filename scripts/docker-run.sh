@@ -19,7 +19,17 @@ log_success() { echo -e "${GREEN}${BOLD}[SUCCESS]${NC} ✅ $1"; }
 log_warning() { echo -e "${YELLOW}${BOLD}[WARNING]${NC} ⚠️ $1"; }
 log_error() { echo -e "${RED}${BOLD}[ERROR]${NC} ❌ $1"; }
 log_step() { echo -e "${CYAN}${BOLD}[STEP]${NC} 🔧 $1"; }
-log_debug() { [[ "${DEBUG:-0}" == "1" ]] && echo -e "${CYAN}[DEBUG]${NC} 🐛 $1"; }
+log_debug() {
+    # Only print debug messages when DEBUG=1. Use an explicit if/fi so the
+    # function always returns 0 when debug is disabled — otherwise the
+    # '[[ .. ]]' test would return status 1 and, together with
+    # 'set -euo pipefail', that would cause the whole script to exit.
+    if [[ "${DEBUG:-0}" == "1" ]]; then
+        echo -e "${CYAN}[DEBUG]${NC} 🐛 $1"
+    else
+        : # no-op to keep exit status 0
+    fi
+}
 
 # Configuration
 CONTAINER_NAME="wasm-benchmark"
@@ -44,7 +54,7 @@ check_docker() {
     fi
 
     # Check if Docker daemon is running
-    if ! docker info >/dev/null 2>&1; then
+    if ! timeout 5 docker info >/dev/null 2>&1; then
         log_error "Docker daemon is not running. Please start Docker Desktop."
         exit 1
     fi
@@ -76,6 +86,7 @@ check_container_health() {
 
     local retries=0
     local max_retries=10
+    local health_check_interval=3
 
     while [ $retries -lt $max_retries ]; do
         if docker-compose exec -T "$COMPOSE_SERVICE" python3 --version >/dev/null 2>&1; then
@@ -85,7 +96,7 @@ check_container_health() {
 
         retries=$((retries + 1))
         log_debug "Health check attempt $retries/$max_retries..."
-        sleep 3
+        sleep $health_check_interval
     done
 
     log_error "Container health check failed after $max_retries attempts"
@@ -129,6 +140,12 @@ run_in_container() {
     local cmd="$1"
     local show_output="${2:-true}"
 
+    # Input validation
+    if [[ -z "$cmd" ]]; then
+        log_error "No command provided to run_in_container"
+        return 1
+    fi
+
     log_debug "Executing in container: $cmd"
 
     if ! is_container_running; then
@@ -151,6 +168,8 @@ run_in_container() {
 
 # Container monitoring and debugging
 show_container_logs() {
+    local tail_lines="${1:-20}"
+
     if ! is_container_exists; then
         log_info "No containers found"
         echo "💡 Available Actions:"
@@ -158,11 +177,11 @@ show_container_logs() {
         return 0
     fi
 
-    log_info "Recent container logs:"
-    docker-compose logs --tail=20 "$COMPOSE_SERVICE" 2>/dev/null || {
+    log_info "Recent container logs (last $tail_lines lines):"
+    if ! docker-compose logs --tail="$tail_lines" "$COMPOSE_SERVICE" 2>/dev/null; then
         log_warning "Could not retrieve container logs"
         echo "💡 Try: make docker start"
-    }
+    fi
 }
 
 show_container_status() {
@@ -197,6 +216,13 @@ show_container_status() {
 # Enhanced Makefile integration with flag support
 build_make_command() {
     local base_cmd="$1"
+
+    # Input validation
+    if [[ -z "$base_cmd" ]]; then
+        log_error "No base command provided to build_make_command"
+        return 1
+    fi
+
     shift
     local flags=()
 
@@ -222,6 +248,7 @@ build_make_command() {
         make_cmd="$make_cmd ${flags[*]}"
     fi
 
+    log_debug "Built command: $make_cmd"
     echo "$make_cmd"
 }
 
@@ -285,7 +312,10 @@ run_development_tools() {
 enter_container() {
     log_info "Entering container for development..."
     log_info "💡 Available commands: make help, make status, make all quick"
-    docker-compose exec "$COMPOSE_SERVICE" bash
+    if ! docker-compose exec "$COMPOSE_SERVICE" bash; then
+        log_error "Failed to enter container"
+        return 1
+    fi
 }
 
 # Comprehensive help system
@@ -369,9 +399,27 @@ stop_container() {
 }
 
 restart_container() {
+    # If container is not running, don't attempt restart — inform the user and exit cleanly
+    if ! is_container_running; then
+        log_info "Container is not running - nothing to restart."
+        log_info "Start the container with: ./scripts/docker-run.sh start"
+        return 0
+    fi
+
     log_step "Restarting container..."
-    stop_container
-    ensure_container_running
+
+    # Try to stop gracefully; continue even if stop reports issues (stop_container logs appropriately)
+    if ! stop_container; then
+        log_warning "Stopping container returned a non-zero status; attempting to start anyway"
+    fi
+
+    if ensure_container_running; then
+        log_success "Container restarted and is available"
+        return 0
+    else
+        log_error "Failed to start container after restart"
+        return 1
+    fi
 }
 
 # Enhanced cleanup with safety checks
@@ -384,137 +432,85 @@ clean_container() {
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             log_step "Performing full cleanup..."
-            docker-compose down --rmi all --volumes --remove-orphans
-            # Also clean up any orphaned containers/images
-            docker system prune -f
-            log_success "Full cleanup completed"
+            if docker-compose down --rmi all --volumes --remove-orphans; then
+                # Also clean up any orphaned containers/images
+                docker system prune -f
+                log_success "Full cleanup completed"
+            else
+                log_error "Full cleanup encountered errors"
+                return 1
+            fi
         else
             log_info "Cleanup cancelled"
         fi
     else
         log_step "Cleaning containers and images..."
-        docker-compose down --rmi local --volumes
-        log_success "Standard cleanup completed"
+        if docker-compose down --rmi local --volumes; then
+            log_success "Standard cleanup completed"
+        else
+            log_error "Standard cleanup encountered errors"
+            return 1
+        fi
     fi
 }
 
-# Enhanced main function with intelligent routing
-main() {
-    local command="${1:-help}"
-    shift || true  # Remove command from args, ignore error if no args
-
-    # Set debug mode if requested
-    [[ "${DEBUG:-0}" == "1" ]] && log_debug "Debug mode enabled"
-
-    # For status and stop commands, we want to be more forgiving
-    if [[ "$command" == "status" ]]; then
-        # Try to check docker but don't fail the status command if it fails
-        if ! command -v docker &> /dev/null || ! command -v docker-compose &> /dev/null || ! docker info >/dev/null 2>&1; then
-            log_warning "Docker not available or not running"
-            echo "📊 Container Status: Docker not accessible"
-            echo "💡 Available Actions:"
-            echo "  Start Docker Desktop or install Docker"
-            echo "  Check: docker --version && docker info"
-            exit 0
-        fi
-    elif [[ "$command" == "stop" || "$command" == "restart" || "$command" == "logs" || "$command" == "shell" || "$command" == "clean" || "$command" == "help" ]]; then
-        # For these commands, be forgiving if Docker is not available
-        if ! command -v docker &> /dev/null || ! command -v docker-compose &> /dev/null; then
-            case "$command" in
-                "stop")   log_info "Docker not available - no containers to stop" ;;
-                "restart") log_info "Docker not available - cannot restart containers" ;;
-                "logs")   log_info "Docker not available - no container logs to show" ;;
-                "shell")  log_info "Docker not available - cannot enter container" ;;
-                "clean")  log_info "Docker not available - cannot clean containers/images" ;;
-                "help")  show_help ;;
-            esac
-            exit 0
-        fi
-        # If Docker is available, don't fail on docker info (daemon might be stopped)
-        # We'll let the actual operation handle the daemon state
-    else
-        check_docker
-    fi
+# Container lifecycle commands
+handle_lifecycle_commands() {
+    local command="$1"
+    shift
 
     case "$command" in
-        # Container lifecycle
         start)
-            # Start should never fail - completely isolated execution
-            {
-                set +e
-                if is_container_running; then
-                    log_success "Container is already running"
-                else
-                    log_step "Starting WebAssembly Benchmark container..."
-                    log_info "This may take several minutes for the first build (downloading Rust, Go, TinyGo, Node.js, Python packages)..."
-
-                    # Start the build and capture output
-                    if docker-compose up -d --build; then
-                        log_success "Container build and startup completed"
-
-                        # Quick health check
-                        sleep 2
-                        if is_container_running; then
-                            log_success "Container is running and healthy"
-                        else
-                            log_warning "Container may still be initializing"
-                        fi
-                    else
-                        log_warning "Container build/start completed with warnings (this may be normal)"
-                        log_info "Use 'make docker status' to check container state"
-                    fi
-                fi
-            }
-            exit 0
+            handle_start_command
             ;;
         stop)
-            # Stop should never fail - run in safe context
-            set +e
-            stop_container
-            exit 0
+            handle_stop_command
             ;;
         restart)
-            # Restart should never fail - run in safe context
-            set +e
-            restart_container
-            exit 0
+            handle_restart_command
             ;;
+        *)
+            return 1  # Command not handled
+            ;;
+    esac
+}
 
-        # Information and monitoring
+# Information and monitoring commands
+handle_info_commands() {
+    local command="$1"
+    shift
+
+    case "$command" in
         status)
-            # Status should never fail - run in isolated context
-            (
-                set +e  # Disable exit on error for status
-                show_container_status
-                exit 0  # Always succeed
-            )
-            # Main script continues with success
-            exit 0
+            handle_status_command
             ;;
         logs)
-            # Logs should never fail
-            set +e
-            show_container_logs
-            exit 0
+            handle_logs_command "$@"
             ;;
         info)
             ensure_container_running
             run_development_tools "info"
             ;;
+        *)
+            return 1  # Command not handled
+            ;;
+    esac
+}
 
-        # Initialization and setup
+# Build and execution commands
+handle_build_exec_commands() {
+    local command="$1"
+    shift
+
+    case "$command" in
         init)
             ensure_container_running
             init_environment
             ;;
-
-        # Build operations with flag support
         build)
             ensure_container_running
             build_modules "$@"
             ;;
-
-        # Execution with flag support
         run)
             ensure_container_running
             run_benchmarks "$@"
@@ -523,8 +519,22 @@ main() {
             ensure_container_running
             run_full_pipeline "$@"
             ;;
+        test)
+            ensure_container_running
+            run_development_tools "test" "$@"
+            ;;
+        *)
+            return 1  # Command not handled
+            ;;
+    esac
+}
 
-        # Analysis operations with flag support
+# Analysis commands
+handle_analysis_commands() {
+    local command="$1"
+    shift
+
+    case "$command" in
         analyze)
             ensure_container_running
             run_analysis "analyze" "$@"
@@ -545,57 +555,159 @@ main() {
             ensure_container_running
             run_analysis "plots" "$@"
             ;;
-
-        # Testing with flag support
-        test)
-            ensure_container_running
-            run_development_tools "test" "$@"
+        *)
+            return 1  # Command not handled
             ;;
+    esac
+}
 
-        # Development tools with flag support
+# Utility commands
+handle_utility_commands() {
+    local command="$1"
+    shift
 
-        # Interactive development
+    case "$command" in
         shell)
-            # Shell should never fail
-            set +e
-            if ! is_container_running; then
-                log_info "No container is running"
-                echo "💡 Available Actions:"
-                echo "  Start container: make docker start"
-                echo "  Quick start: make docker shell (will auto-start)"
-                exit 0
-            fi
-            enter_container
-            exit 0
+            handle_shell_command
             ;;
-
-        # Cleanup operations
         clean)
-            # Guard against unset positional parameters (set -u)
-            local clean_arg="${1:-}"
-            if [[ "$clean_arg" == "all" ]]; then
-                clean_container "true"
-            else
-                clean_container "false"
-            fi
+            handle_clean_command "$@"
             ;;
-
-        # Help and information
         help|--help|-h)
             show_help
             ;;
-
-        # Error handling
         "")
             show_help
             ;;
         *)
-            log_error "Unknown command: $command"
-            echo ""
-            log_info "💡 Use '$0 help' to see all available commands"
-            exit 1
+            return 1  # Command not handled
             ;;
     esac
+}
+
+# Individual command handlers
+handle_start_command() {
+    # Start should never fail - completely isolated execution
+    {
+        set +e
+        if is_container_running; then
+            log_success "Container is already running"
+        else
+            log_step "Starting WebAssembly Benchmark container..."
+
+            # Check if this is likely a first build
+            if ! docker images | grep -q "wasm-benchmark"; then
+                log_info "First build detected - this may take several minutes"
+                log_info "Downloading and installing: Rust, Go, TinyGo, Node.js, Python packages..."
+            fi
+
+            if docker-compose up -d --build 2>&1; then
+                log_success "Container build and startup completed"
+
+                # Quick health check with longer wait for first build
+                log_info "Performing health check..."
+                sleep 5
+                if is_container_running; then
+                    log_success "Container is running and healthy"
+                else
+                    log_warning "Container may still be initializing (this is normal for first build)"
+                    log_info "Use 'scripts/docker-run.sh status' to monitor progress"
+                fi
+            else
+                log_error "Container build/start failed"
+                log_info "Check build output and container logs for details"
+                show_container_logs
+                exit 1
+            fi
+        fi
+    }
+    exit 0
+}
+
+handle_stop_command() {
+    # Stop should never fail - run in safe context
+    set +e
+    stop_container
+    exit 0
+}
+
+handle_restart_command() {
+    # Restart should never fail - run in safe context
+    set +e
+    restart_container
+    exit 0
+}
+
+handle_status_command() {
+    # Status should never fail - run in isolated context
+    (
+        set +e  # Disable exit on error for status
+        show_container_status
+        exit 0  # Always succeed
+    )
+    # Main script continues with success
+    exit 0
+}
+
+handle_logs_command() {
+    # Logs should never fail
+    set +e
+    local log_lines="${1:-20}"
+    show_container_logs "$log_lines"
+    exit 0
+}
+
+handle_shell_command() {
+    # Shell should never fail
+    set +e
+    if ! is_container_running; then
+        log_info "No container is running"
+        echo "💡 Available Actions:"
+        echo "  Start container: make docker start"
+        echo "  Quick start: make docker shell (will auto-start)"
+        exit 0
+    fi
+    enter_container
+    exit 0
+}
+
+handle_clean_command() {
+    # Guard against unset positional parameters (set -u)
+    local clean_arg="${1:-}"
+    if [[ "$clean_arg" == "all" ]]; then
+        clean_container "true"
+    else
+        clean_container "false"
+    fi
+}
+
+# Enhanced main function with intelligent routing
+main() {
+    local command="${1:-help}"
+    shift || true  # Remove command from args, ignore error if no args
+
+    # Set debug mode if requested
+    [[ "${DEBUG:-0}" == "1" ]] && log_debug "Debug mode enabled"
+
+    check_docker
+
+    # Try each command category in order
+    if handle_lifecycle_commands "$command" "$@"; then
+        return 0
+    elif handle_info_commands "$command" "$@"; then
+        return 0
+    elif handle_build_exec_commands "$command" "$@"; then
+        return 0
+    elif handle_analysis_commands "$command" "$@"; then
+        return 0
+    elif handle_utility_commands "$command" "$@"; then
+        return 0
+    else
+        log_error "Unknown command: $command"
+        echo ""
+        log_info "💡 Use '$0 help' to see all available commands"
+        exit 1
+    fi
 }
 
 # Execute main function
