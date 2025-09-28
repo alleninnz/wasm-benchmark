@@ -604,10 +604,8 @@ handle_start_command() {
             if docker-compose up -d --build 2>&1; then
                 log_success "Container build and startup completed"
 
-                # Quick health check with longer wait for first build
                 log_info "Performing health check..."
-                sleep 5
-                if is_container_running; then
+                if check_container_health; then
                     log_success "Container is running and healthy"
                 else
                     log_warning "Container may still be initializing (this is normal for first build)"
