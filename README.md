@@ -5,7 +5,7 @@
 ![Rust](https://img.shields.io/badge/rust-1.89.0-orange.svg)
 ![TinyGo](https://img.shields.io/badge/tinygo-0.39.0-00ADD8.svg)
 ![Node.js](https://img.shields.io/badge/node-24.7.0-green.svg)
-![Python](https://img.shields.io/badge/python-3.13.5-blue.svg)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)
 
 A comprehensive benchmarking framework to evaluate the efficiency of **Rust** and **TinyGo** when compiled to WebAssembly across various computational workloads.
 
@@ -23,7 +23,7 @@ This project provides a rigorous performance comparison between:
 - **Hardware:** MacBook Pro M4 10-Core CPU, 16GB RAM
 - **OS:** macOS 15.6+ (Darwin/arm64)
 - **Runtime:** Headless Chromium v140+ (Puppeteer)
-- **Toolchain:** Rust 1.89, Go 1.25, TinyGo 0.39, Node.js 24.7, Python 3.13
+- **Toolchain:** Rust 1.89, Go 1.25, TinyGo 0.39, Node.js 24.7, Python 3.11+
 
 ## 🚀 Quick Start
 
