@@ -66,11 +66,11 @@ The following directories are mounted as volumes to persist data:
 
 The container includes specific versions of all required tools:
 
-- Rust: 1.89.0
+- Rust: 1.90.0
 - TinyGo: 0.39.0
-- Go: 1.25.0
-- Node.js: 24.7.0
-- Python: 3.13.5
+- Go: 1.25.1
+- Node.js: 22.20.0
+- Python: 3.12.3
 
 ## Troubleshooting
 

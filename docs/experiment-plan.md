@@ -1,7 +1,6 @@
 # WebAssembly 基准测试：Rust vs TinyGo 性能对比研究
 
 > **最后更新**: 2025-09-26
-> **项目状态**: 99% 完成 - 生产就绪的基准测试框架，包含完整的质量门禁系统
 > **实验完成度**: 449个参考测试向量，完整的统计分析管道，自动化质量控制
 
 ---
@@ -19,7 +18,7 @@
 • **Rust** 1.89.0（稳定版）目标 `wasm32-unknown-unknown`，使用 `#[no_mangle]` 裸接口（零开销抽象）
 • **TinyGo** 0.39.0 + **Go** 1.25+ 目标 WebAssembly（`-target=wasm`）
 • **Node.js** 24.7.0 LTS
-• **Python** 3.13.5 配科学计算栈（NumPy 2.3.3+, SciPy 1.10.0+, Matplotlib 3.6.0+）
+• **Python** 3.11+ 配科学计算栈（NumPy 2.3.3+, SciPy 1.10.0+, Matplotlib 3.6.0+）
 
 **运行支架与脚本：**
 
@@ -157,7 +156,7 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 - **Rust 1.89.0** + `wasm32-unknown-unknown` 目标（无需 wasm-bindgen/wasm-pack）
 - **Go 1.25+** + **TinyGo 0.39.0**
 - **Node.js 24.7.0 LTS**
-- **Python 3.13.5** + 科学计算库（NumPy 2.3.3, SciPy 1.10.0+, Matplotlib 3.6.0+）
+- **Python 3.11+** + 科学计算库（NumPy 2.3.3, SciPy 1.10.0+, Matplotlib 3.6.0+）
 
 • 安装 Chromium 与无头运行依赖
 
@@ -535,7 +534,7 @@ builds/
 ## 1. 分析准备
 
 • **数据来源：** `results/` 目录中的结果JSON文件（经过QC验证）
-• **分析环境：** Python 3.13+ 配科学计算栈
+• **分析环境：** Python 3.11+ 配科学计算栈
 • **分析模块：** `analysis/statistics.py`、`analysis/qc.py`、`analysis/plots.py`、`analysis/decision.py`、`analysis/validation.py`
 • **数据结构：** 结构化JSON，包含任务、语言、执行指标和验证数据
 

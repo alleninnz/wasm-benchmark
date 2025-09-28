@@ -1,7 +1,6 @@
 # WebAssembly Benchmark: Rust vs TinyGo Performance Comparison Study
 
 > **Last Updated**: 2025-09-26
-> **Project Status**: 99% Complete - Production-ready benchmark framework with complete quality gate system
 > **Experiment Completion**: 449 reference test vectors, complete statistical analysis pipeline, automated quality control
 
 ---
@@ -19,7 +18,7 @@
 • **Rust** 1.89.0 (stable) targeting `wasm32-unknown-unknown`, using `#[no_mangle]` bare interface (zero-cost abstraction)
 • **TinyGo** 0.39.0 + **Go** 1.25+ targeting WebAssembly (`-target=wasm`)
 • **Node.js** 24.7.0 LTS
-• **Python** 3.13.5 with scientific computing stack (NumPy 2.3.3+, SciPy 1.10.0+, Matplotlib 3.6.0+)
+• **Python** 3.11+ with scientific computing stack (NumPy 2.3.3+, SciPy 1.10.0+, Matplotlib 3.6.0+)
 
 **Execution Framework and Scripts:**
 
@@ -157,7 +156,7 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 - **Rust 1.89.0** + `wasm32-unknown-unknown` target (no wasm-bindgen/wasm-pack needed)
 - **Go 1.25+** + **TinyGo 0.39.0**
 - **Node.js 24.7.0 LTS**
-- **Python 3.13.5** + scientific computing libraries (NumPy 2.3.3, SciPy 1.10.0+, Matplotlib 3.6.0+)
+- **Python 3.11+** + scientific computing libraries (NumPy 2.3.3, SciPy 1.10.0+, Matplotlib 3.6.0+)
 
 • Install Chromium and headless runtime dependencies
 
@@ -534,8 +533,8 @@ builds/
 
 ## 1. Analysis Preparation
 
-• **Data Source:** Result JSON files in `results/` directory (QC validated)
-• **Analysis Environment:** Python 3.13+ with scientific computing stack
+• **Data Source:** Result JSON files in `results/` directory
+• **Analysis Environment:** Python 3.11+ with scientific computing stack
 • **Analysis Modules:** `analysis/statistics.py`, `analysis/qc.py`, `analysis/plots.py`, `analysis/decision.py`, `analysis/validation.py`
 • **Data Structure:** Structured JSON containing tasks, languages, execution metrics, and validation data
 

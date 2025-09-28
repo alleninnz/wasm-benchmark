@@ -195,11 +195,7 @@
 
 **🟢 Can Be Postponed** (Non-critical Improvements):
 
-- **Build Environment Isolation** - Consider Docker containerization for improved cross-platform consistency [Low Priority]
-- **Resource Limit Enforcement** - Add memory/CPU limits for WASM execution [Optional Feature]
-- **Long-running Stability Monitoring** - Extended memory leak detection and performance degradation analysis [Monitoring Enhancement]
 - **Progress Reporting System** - Add real-time progress indication for long operations [User Experience Improvement]
-- **Cross-platform Edge Case Handling** - GNU tool compatibility optimization on macOS [Platform Support]
 
 ## 📊 Success Metrics
 
