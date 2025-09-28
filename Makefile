@@ -292,7 +292,7 @@ help: ## Show complete list of all available targets
 	@echo ""
 	$(call log_info,💡 Usage Examples:)
 	$(call log_info,  make build rust        🦀 Build only Rust modules)
-	$(call log_info,  make build parallel    ⚡ Build with parallel task compilation)
+	$(call log_info,  make build parallel    ⚡ Build with FULL parallel (languages + tasks))
 	$(call log_info,  make build rust parallel 🦀⚡ Build Rust with parallel tasks)
 	$(call log_info,  make run quick headed  ⚡👁️ Quick benchmarks with visible browser)
 	$(call log_info,  make lint python       🐍 Run Python linting only)
@@ -361,7 +361,7 @@ else ifeq ($(BUILD_ALL_MODE),true)
 	$(call log_step,Building all modules with optimized pipeline...)
 	$(call check_script_exists,scripts/build_all.sh)
 	@BUILD_ARGS=""; \
-	if [ "$(PARALLEL_MODE)" = "true" ]; then BUILD_ARGS="$$BUILD_ARGS --task-parallel"; fi; \
+	if [ "$(PARALLEL_MODE)" = "true" ]; then BUILD_ARGS="$$BUILD_ARGS -p --task-parallel"; fi; \
 	if [ "$(NO_CHECKSUMS_MODE)" = "true" ]; then BUILD_ARGS="$$BUILD_ARGS --no-checksums"; fi; \
 	scripts/build_all.sh $$BUILD_ARGS
 	$(call log_success,🚀 Complete optimized build pipeline finished)
@@ -386,7 +386,7 @@ else
 	$(call log_step,Building all modules with optimized pipeline...)
 	$(call check_script_exists,scripts/build_all.sh)
 	@BUILD_ARGS=""; \
-	if [ "$(PARALLEL_MODE)" = "true" ]; then BUILD_ARGS="$$BUILD_ARGS --task-parallel"; fi; \
+	if [ "$(PARALLEL_MODE)" = "true" ]; then BUILD_ARGS="$$BUILD_ARGS -p --task-parallel"; fi; \
 	if [ "$(NO_CHECKSUMS_MODE)" = "true" ]; then BUILD_ARGS="$$BUILD_ARGS --no-checksums"; fi; \
 	scripts/build_all.sh $$BUILD_ARGS
 	$(call log_success,🎯 All modules built successfully with optimizations)
