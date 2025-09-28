@@ -23,20 +23,51 @@ LABEL org.opencontainers.image.description="WebAssembly Benchmark Environment"
 # Install base packages and build deps
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-    ca-certificates curl wget git build-essential pkg-config gnupg lsb-release \
-    python3 python3-venv python3-pip python3-dev \
-    libssl-dev libffi-dev libblas-dev liblapack-dev libatlas-base-dev gfortran \
-    libfreetype6-dev libpng-dev \
-    xdg-utils fonts-liberation \
-    libasound2t64 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libdrm2 \
-    libgtk-3-0 libnspr4 libnss3 libx11-xcb1 libxcomposite1 libxdamage1 libxrandr2 \
+    ca-certificates \
+    curl \
+    wget \
+    git \
+    build-essential \
+    pkg-config \
+    gnupg \
+    lsb-release \
+    # Python runtime & build tools
+    python3 \
+    python3-venv \
+    python3-pip \
+    python3-dev \
+    # ML / numeric libs used by some tasks
+    libssl-dev \
+    libffi-dev \
+    libblas-dev \
+    liblapack-dev \
+    libatlas-base-dev \
+    gfortran \
+    # Imaging / fonts
+    libfreetype6-dev \
+    libpng-dev \
+    xdg-utils \
+    fonts-liberation \
+    # Browser UI / audio deps (for headless browser testing)
+    libasound2t64 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libatspi2.0-0 \
+    libdrm2 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Ensure python3 points to system python3
 RUN ln -sf /usr/bin/python3 /usr/bin/python
 
-# Install Poetry (no cache)
-RUN python3 -m pip install --no-cache-dir poetry
+# Install Poetry (no cache) - Ubuntu 24.04 requires --break-system-packages
+RUN python3 -m pip install --no-cache-dir --break-system-packages poetry
 
 # Install Go (detect arch)
 RUN set -eux; \
@@ -75,7 +106,11 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --de
     && rustup component add rustfmt clippy
 
 # Create non-root user and app directories
-RUN useradd -m -s /bin/bash -u 1000 benchmark \
+RUN if ! id -u 1000 > /dev/null 2>&1; then \
+    useradd -m -s /bin/bash -u 1000 benchmark; \
+    else \
+    useradd -m -s /bin/bash benchmark; \
+    fi \
     && mkdir -p /app /app/results /app/reports /app/builds \
     && chown -R benchmark:benchmark /app
 
@@ -91,9 +126,7 @@ FROM base AS development
 COPY --chown=benchmark:benchmark package*.json /app/
 
 # Install Node dependencies (use lockfile when present, otherwise fallback to install)
-RUN --mount=type=cache,target=/home/benchmark/.npm,uid=1000,gid=1000 \
-    --mount=type=cache,target=/home/benchmark/.cache,uid=1000,gid=1000 \
-    if [ -f /app/package-lock.json ]; then \
+RUN if [ -f /app/package-lock.json ]; then \
     npm ci --omit=dev; \
     elif [ -f /app/package.json ]; then \
     npm install --omit=dev; \
@@ -108,10 +141,9 @@ COPY --chown=benchmark:benchmark pyproject.toml poetry.lock /app/
 ENV POETRY_VIRTUALENVS_CREATE=false \
     POETRY_CACHE_DIR=/home/benchmark/.cache/pypoetry
 
-# Install Python dependencies with Poetry using a cache mount
-RUN --mount=type=cache,target=/home/benchmark/.cache/pypoetry,uid=1000,gid=1000 \
-    if [ -f /app/pyproject.toml ]; then \
-    poetry install --no-dev --no-interaction --no-ansi --no-root; \
+# Install Python dependencies with Poetry
+RUN if [ -f /app/pyproject.toml ]; then \
+    poetry install --only main --no-interaction --no-ansi --no-root; \
     else \
     echo "no pyproject.toml found, skipping poetry step"; \
     fi
@@ -128,7 +160,7 @@ USER benchmark
 
 # Health check for container readiness
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python3 --version && node --version && rustc --version || exit 1
+    CMD ["bash", "-lc", "python3 --version && node --version && rustc --version"]
 
 # Default command for development
 CMD ["/bin/bash"]
