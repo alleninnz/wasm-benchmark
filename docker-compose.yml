@@ -6,7 +6,6 @@ services:
       dockerfile: Dockerfile
       target: development
     container_name: wasm-benchmark
-    user: "1000:1000"
     working_dir: /app
 
     # Volume mounts for persistent data and development
@@ -37,7 +36,7 @@ services:
 
     # Health check
     healthcheck:
-      test: ["CMD", "python3", "--version"]
+      test: ["CMD", "bash", "-lc", "python3 --version && rustc --version && wasm-strip --version"]
       interval: 30s
       timeout: 10s
       retries: 3

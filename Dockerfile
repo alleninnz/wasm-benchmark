@@ -101,11 +101,16 @@ RUN set -eux; \
     dpkg -i /tmp/tinygo.deb || (apt-get update && apt-get install -y -f --no-install-recommends); \
     rm -f /tmp/tinygo.deb; rm -rf /var/lib/apt/lists/*
 
-# Install Rust (rustup) system-wide
+# Install Rust as root
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain ${RUST_VERSION} \
     && rustup default ${RUST_VERSION} \
     && rustup target add wasm32-unknown-unknown \
-    && rustup component add rustfmt clippy
+    && rustup component add rustfmt clippy \
+    && rustc --version \
+    && cargo --version
+
+# Create app directory
+RUN mkdir -p /app /app/results /app/reports /app/builds
 
 # Install Binaryen tools (WABT installed via apt package)
 RUN set -eux; \
@@ -122,20 +127,7 @@ RUN set -eux; \
     cp /tmp/binaryen-version_${BINARYEN_VERSION}/bin/* /usr/local/bin/; \
     rm -rf /tmp/binaryen*
 
-# Create non-root user and app directories
-RUN if ! id -u 1000 > /dev/null 2>&1; then \
-    useradd -m -s /bin/bash -u 1000 benchmark; \
-    else \
-    useradd -m -s /bin/bash benchmark; \
-    fi \
-    && mkdir -p /app /app/results /app/reports /app/builds \
-    && chown -R benchmark:benchmark /app \
-    && chown -R benchmark:benchmark /usr/local/cargo \
-    && chown -R benchmark:benchmark /usr/local/rustup
-
 WORKDIR /app
-USER benchmark
-
 # -------------------------
 # Stage 2: development (copy source code)
 # -------------------------
@@ -175,7 +167,6 @@ VOLUME ["/app/reports", "/app/results", "/app/builds"]
 
 # Set working directory and user
 WORKDIR /app
-USER benchmark
 
 # Health check for container readiness
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
