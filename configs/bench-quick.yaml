@@ -1,0 +1,147 @@
+# Quick Development Testing Configuration
+# Optimized for fast development feedback and validation
+
+experiment:
+  name: "Quick Development Testing - Rust vs TinyGo"
+  version: "2.1-quick"
+  description: "Fast development configuration for engineering validation"
+
+# Minimal measurement parameters for speed
+environment:
+  warmup_runs: 5
+  measure_runs: 20
+  repetitions: 2
+
+  # Quick timeout for fast feedback
+  timeout: 60
+
+# Micro-scale tasks for development speed
+tasks:
+  mandelbrot:
+    description: "Micro-scale CPU computation test"
+    scales:
+      micro:                  # Ultra-fast development scale
+        width: 64             # 64x64 grid for quick validation
+        height: 64
+        max_iter: 100         # Reduced iterations
+
+  json_parse:
+    description: "Micro-scale JSON processing test"
+    scales:
+      micro:                  # Fast parsing validation
+        record_count: 500     # 500 records for quick test
+    schema:
+      fields: ["id", "value", "flag", "name"]
+      id_sequential: true
+      value_random: true
+      flag_derived: true
+      name_pattern: "user_{id}"
+
+  matrix_mul:
+    description: "Micro-scale matrix multiplication test"
+    scales:
+      micro:                  # Quick matrix computation
+        dimension: 64         # 64x64 matrices for speed
+
+# Same optimized language configurations
+languages:
+  rust:
+    enabled: true
+    target: "wasm32-unknown-unknown"
+    optimization_levels:
+      - name: "optimized"
+        cargo_flags: "--release"
+        cargo_config:
+          opt_level: 3
+          lto: "fat"
+          codegen_units: 1
+          panic: "abort"
+          strip: "debuginfo"
+    post_processing:
+      - "wasm-strip"
+      - "wasm-opt -O3"
+
+  tinygo:
+    enabled: true
+    target: "wasm"
+    optimization_levels:
+      - name: "optimized"
+        build_flags:
+          - "-opt=2"
+          - "-panic=trap"
+          - "-no-debug"
+          - "-scheduler=none"
+          - "-gc=conservative"
+    post_processing:
+      - "wasm-strip"
+      - "wasm-opt -Oz"
+
+# Basic verification
+verification:
+  hash_algorithm: "fnv1a"
+  hash_offset_basis: 2166136261
+  hash_prime: 16777619
+  floating_point_precision: 6
+
+# Engineering-focused quality control with TinyGo-aware thresholds
+qc:
+  max_coefficient_variation: 0.30   # Increased for TinyGo GC variability
+  outlier_iqr_multiplier: 1.5
+  min_valid_samples: 10
+  # timeout handling
+  treat_timeout_as: "failure"
+  failure_rate: 0.1          # 10% failure rate maximum
+
+  # Overall quality evaluation thresholds (layered threshold strategy)
+  quality_invalid_threshold: 0.6    # 60% invalid groups triggers INVALID overall
+  quality_warning_threshold: 0.7    # 70% warning groups triggers WARNING overall
+
+  # Language-specific QC thresholds
+  rust_thresholds:
+    max_coefficient_variation: 0.12
+    extreme_cv_threshold: 0.5
+  
+  tinygo_thresholds:
+    max_coefficient_variation: 0.2
+    extreme_cv_threshold: 1.0
+
+# Engineering-focused statistical analysis
+statistics:
+  confidence_level: 0.95           # Standard 95% confidence
+  significance_alpha: 0.05         # Standard α = 0.05
+  effect_size_metric: "cohens_d"   # Cohen's d for effect size
+
+  effect_size_thresholds:
+    small: 0.3
+    medium: 0.6
+    large: 1.0
+  minimum_detectable_effect: 0.3
+
+# Visualization and plotting configuration
+plots:
+  # Output settings
+  dpi_basic: 150                   # DPI for basic comparison charts
+  dpi_detailed: 300                # DPI for detailed analysis charts
+  output_format: "png"             # Output file format
+
+  figure_sizes:
+    basic: [10, 6]                  # Figure size for basic charts [width, height]
+    detailed: [16, 12]              # Figure size for detailed charts [width, height]
+
+  font_sizes: 
+    default: 11                       # Default font size
+    labels: 12                        # Axis and label font size
+    titles: 14                        # Title font size
+
+  # Color scheme for languages
+  color_scheme:
+    rust: "#CE422B"                # Rust orange-red
+    tinygo: "#00ADD8"              # Go cyan-blue
+
+# Quick mode validation (relaxed for speed)
+validation:
+  required_success_rate: 0.90      # Minimum 90% success rate (relaxed)
+  hash_tolerance: 1e-6             # More relaxed hash tolerance
+  sample_limit: 50                 # Reduced sample limit for speed
+
+
