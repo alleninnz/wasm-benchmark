@@ -48,7 +48,64 @@ make all quick   # Complete pipeline with quick settings
 make all         # Complete research-grade pipeline
 ```
 
-**📋 Requirements**: Rust 1.89+, TinyGo 0.39+, Go 1.25+, Node.js 24+, Python 3.13+, WebAssembly tools
+## ⚙️ Installation & Setup
+
+### 💻 **System Requirements**
+
+- **macOS** 15+ (primary development platform)
+- **Linux** Ubuntu 20.04+ (manual setup required)
+- **Hardware**: 8GB+ RAM recommended for full benchmarks
+
+### 🛠️ **Required Components**
+
+| Tool | Version | Purpose |
+|------|---------|----------|
+| **Rust** | 1.89+ | WASM compilation with `wasm32-unknown-unknown` target |
+| **TinyGo** | 0.39+ | Go-to-WASM compilation |
+| **Node.js** | 24+ | Test harness and automation |
+| **Python** | 3.11+ | Statistical analysis with Poetry |
+| **Binaryen** | Latest | `wasm-opt` optimization |
+| **WABT** | Latest | `wasm-strip` binary processing |
+
+## 🏃 Running Benchmarks
+
+### 🔄 **Development Workflow**
+
+```bash
+# Quick validation (~2-3 minutes)
+make run quick
+
+# With visible browser (debugging)
+make run quick headed
+
+# Full benchmark suite (~30+ minutes)
+make run
+
+# Complete experimental pipeline
+make all     # build → run → qc → analyze → plots
+```
+
+### 📋 **Command Reference**
+
+| Command | Purpose | Duration | Use Case |
+|---------|---------|----------|----------|
+| `make run quick` | Fast development test | 2-3 min | Development validation |
+| `make run` | Full benchmark suite | 30+ min | Research analysis |
+| `make run quick headed` | Debug with visible browser | 2-3 min | Troubleshooting |
+| `make all quick` | Complete pipeline (quick) | 5-8 min | CI/CD validation |
+| `make all` | Complete research pipeline | 45-60 min | Publication data |
+
+### ⚙️ **Advanced Options**
+
+```bash
+# Custom benchmark execution
+node scripts/run_bench.js --parallel --max-concurrent=4
+node scripts/run_bench.js --verbose
+node scripts/run_bench.js --timeout=120000
+
+# Configuration editing
+# Edit configs/bench.yaml or configs/bench-quick.yaml
+```
 
 ## 🐳 Docker Setup (Recommended)
 
@@ -215,110 +272,26 @@ This project includes comprehensive documentation in both English and Chinese to
 | Document | Language | Description | Link |
 |----------|----------|-------------|------|
 | **Command Reference** | English | Complete guide to all available commands, workflows, and troubleshooting | [`command-reference_en.md`](docs/command-reference_en.md) |
-| **命令参考指南** | 中文 | 完整命令使用指南，包含所有可用命令、工作流程和故障排除 | [`command-reference.md`](docs/command-reference.md) |
 | **Statistical Terminology** | English | Comprehensive statistical concepts and methods used in the project | [`statistical-terminology_en.md`](docs/statistical-terminology_en.md) |
-| **统计学术语指南** | 中文 | 项目中使用的统计概念和方法的完整说明 | [`statistical-terminology.md`](docs/statistical-terminology.md) |
 | **Statistical Design Implementation** | English | Detailed architecture and implementation of statistical analysis system | [`statistical-design-impl_en.md`](docs/statistical-design-impl_en.md) |
-| **统计设计实现架构** | 中文 | 统计分析系统的详细架构和实现说明 | [`statistical-design-impl.md`](docs/statistical-design-impl.md) |
 
 ### 🔬 **Development & Research Documentation**
 
 | Document | Language | Description | Link |
 |----------|----------|-------------|------|
 | **Development TODO** | English | Project development roadmap and implementation status | [`development-todo_en.md`](docs/development-todo_en.md) |
-| **开发待办事项** | 中文 | 项目开发路线图和实现状态 | [`development-todo.md`](docs/development-todo.md) |
 | **Experiment Plan** | English | Research methodology and experimental design | [`experiment-plan_en.md`](docs/experiment-plan_en.md) |
-| **实验计划** | 中文 | 研究方法和实验设计说明 | [`experiment-plan.md`](docs/experiment-plan.md) |
 | **Quick Flow Guide** | English | Fast development and testing workflow | [`run-quick-flow_en.md`](docs/run-quick-flow_en.md) |
-| **快速流程指南** | 中文 | 快速开发和测试工作流程 | [`run-quick-flow.md`](docs/run-quick-flow.md) |
 
 ### ⚙️ **Configuration Documentation**
 
 | Document | Language | Description | Link |
 |----------|----------|-------------|------|
 | **Timeout Configuration** | English | Timeout settings and configuration guide | [`timeout-configuration_en.md`](docs/timeout-configuration_en.md) |
-| **超时配置** | 中文 | 超时设置和配置指南 | [`timeout-configuration.md`](docs/timeout-configuration.md) |
 
 > **💡 Tip**: Start with the Command Reference for practical usage, then explore Statistical Terminology for methodology understanding.
 
 ---
-
-## ⚙️ Installation & Setup
-
-### 💻 **System Requirements**
-
-- **macOS** 15+ (primary development platform)
-- **Linux** Ubuntu 20.04+ (manual setup required)
-- **Hardware**: 8GB+ RAM recommended for full benchmarks
-
-### ⚡ **Quick Setup**
-
-```bash
-# 1. Install required toolchains
-# Rust: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-# Go 1.25+: https://golang.org/dl/
-# TinyGo 0.39+: go install tinygo.org/x/tools/...@latest
-# Node.js 24+: nvm install 24 && nvm use 24
-# Python 3.13+: curl -sSL https://install.python-poetry.org | python3 -
-
-# 2. WebAssembly tools (macOS)
-brew install binaryen wabt
-
-# 3. Verify setup and install dependencies
-make check deps
-make init
-```
-
-### 🛠️ **Required Components**
-
-| Tool | Version | Purpose |
-|------|---------|----------|
-| **Rust** | 1.89+ | WASM compilation with `wasm32-unknown-unknown` target |
-| **TinyGo** | 0.39+ | Go-to-WASM compilation |
-| **Node.js** | 24+ | Test harness and automation |
-| **Python** | 3.13+ | Statistical analysis with Poetry |
-| **Binaryen** | Latest | `wasm-opt` optimization |
-| **WABT** | Latest | `wasm-strip` binary processing |
-
-## 🏃 Running Benchmarks
-
-### 🔄 **Development Workflow**
-
-```bash
-# Quick validation (~2-3 minutes)
-make run quick
-
-# With visible browser (debugging)
-make run quick headed
-
-# Full benchmark suite (~30+ minutes)
-make run
-
-# Complete experimental pipeline
-make all     # build → run → qc → analyze → plots
-```
-
-### 📋 **Command Reference**
-
-| Command | Purpose | Duration | Use Case |
-|---------|---------|----------|----------|
-| `make run quick` | Fast development test | 2-3 min | Development validation |
-| `make run` | Full benchmark suite | 30+ min | Research analysis |
-| `make run quick headed` | Debug with visible browser | 2-3 min | Troubleshooting |
-| `make all quick` | Complete pipeline (quick) | 5-8 min | CI/CD validation |
-| `make all` | Complete research pipeline | 45-60 min | Publication data |
-
-### ⚙️ **Advanced Options**
-
-```bash
-# Custom benchmark execution
-node scripts/run_bench.js --parallel --max-concurrent=4
-node scripts/run_bench.js --verbose
-node scripts/run_bench.js --timeout=120000
-
-# Configuration editing
-# Edit configs/bench.yaml or configs/bench-quick.yaml
-```
 
 ## 🔧 Technical Implementation
 
