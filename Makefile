@@ -231,9 +231,14 @@ define check_command
 $(shell command -v $(1) >/dev/null 2>&1 && echo "$(1)" || echo "")
 endef
 
-# Function to start development server if not already running
+# Function to start development server
 define start_dev_server
-	@bash -lc 'if ! pgrep -f "dev-server.js" > /dev/null 2>&1; then echo "[INFO] Starting development server in background..."; if [ ! -f scripts/dev-server.js ]; then echo "[ERROR] scripts/dev-server.js not found"; exit 1; fi; chmod +x scripts/dev-server.js 2>/dev/null || true; nohup node scripts/dev-server.js > dev-server.log 2>&1 & sleep 2; echo "[SUCCESS] Development server started successfully"; else echo "[SUCCESS] Development server already running"; fi'
+	@if ! lsof -ti:2025 > /dev/null 2>&1; then \
+		echo "[INFO] Starting development server..."; \
+		npm run dev > /dev/null 2>&1 & \
+		sleep 2; \
+	fi; \
+	echo "[SUCCESS] Development server ready"
 endef
 
 
@@ -313,7 +318,12 @@ help: ## Show complete list of all available targets
 # Environment Setup Targets
 # ============================================================================
 
-init: $(NODE_MODULES) versions.lock ## Initialize environment and install dependencies (use: make init FORCE=1)
+init: $(NODE_MODULES) ## Initialize environment and install dependencies (use: make init FORCE=1)
+ifeq ($(FORCE_MODE),true)
+	$(call log_info,Force mode enabled - cleaning existing state...)
+	@rm -f versions.lock meta.json 2>/dev/null || true
+endif
+	$(MAKE) versions.lock
 	$(MAKE) check deps
 	$(call require_file,pyproject.toml,Python project configuration missing - check repository integrity)
 	$(call safe_execute,poetry install,Installing Python dependencies,🐍 Python dependencies installed)
@@ -334,13 +344,7 @@ $(NODE_MODULES): package.json
 versions.lock: scripts/fingerprint.sh
 	$(call require_file,scripts/fingerprint.sh,Environment fingerprinting script missing - check repository integrity)
 	@chmod +x scripts/fingerprint.sh
-ifeq ($(FORCE_MODE),true)
-	$(call log_info,Force mode enabled - regenerating environment fingerprint...)
-	@rm -f versions.lock meta.json 2>/dev/null || true
-	$(call safe_execute,scripts/fingerprint.sh --force,Force regenerating environment fingerprint,🔐 Environment fingerprint forcefully regenerated)
-else
 	$(call safe_execute,scripts/fingerprint.sh,Generating environment fingerprint,🔐 Environment fingerprint generated)
-endif
 
 # ============================================================================
 # Build Targets

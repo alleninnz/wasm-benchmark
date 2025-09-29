@@ -56,45 +56,7 @@ async function writeLog(message) {
     }
 }
 
-// Clean up any existing dev server processes
-async function cleanupExistingServers() {
-    try {
-        console.log('🔍 Checking for existing dev server processes...');
-
-        let processKilled = false;
-
-        // Method 1: Kill by process name
-        try {
-            await execAsync('pkill -f dev-server.js 2>/dev/null');
-            console.log('✅ Stopped existing dev-server.js processes');
-            await writeLog('CLEANUP: Killed existing dev-server.js processes');
-            processKilled = true;
-        } catch {
-            // No processes found, which is fine
-        }
-
-        // Method 2: Kill by port (only if Method 1 didn't find processes)
-        if (!processKilled) {
-            try {
-                const { stdout } = await execAsync(`lsof -ti:${PORT} 2>/dev/null`);
-                if (stdout.trim()) {
-                    await execAsync(`lsof -ti:${PORT} | xargs kill -9 2>/dev/null`);
-                    console.log(`✅ Freed up port ${PORT}`);
-                    await writeLog(`CLEANUP: Freed up port ${PORT}`);
-                }
-            } catch {
-                // Port not in use, which is fine
-            }
-        }
-
-        // Give processes time to clean up
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-    } catch (error) {
-        console.log('⚠️  Cleanup had some issues, but continuing...');
-        await writeLog(`CLEANUP WARNING: ${error.message}`);
-    }
-}// Enable CORS for all routes
+// Enable CORS for all routes
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'OPTIONS'],
@@ -382,9 +344,6 @@ function checkRequiredConfigFiles() {
 
 // Start the server
 async function startServer() {
-    // Clean up any existing servers first
-    await cleanupExistingServers();
-
     // Check for required configuration files
     checkRequiredConfigFiles();
 

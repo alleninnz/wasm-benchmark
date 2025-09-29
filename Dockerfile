@@ -210,10 +210,13 @@ FROM base AS development
 # Copy Node package files first (keep layer small so node deps cache is effective)
 COPY package*.json /app/
 
+# Set working directory for npm operations
+WORKDIR /app
+
 # Install Node dependencies including dev dependencies for development environment
-RUN if [ -f /app/package-lock.json ]; then \
+RUN if [ -f package-lock.json ]; then \
     npm ci; \
-    elif [ -f /app/package.json ]; then \
+    elif [ -f package.json ]; then \
     npm install; \
     else \
     echo "no node package files found, skipping npm step"; \
@@ -227,7 +230,7 @@ ENV POETRY_VIRTUALENVS_CREATE=false \
     POETRY_CACHE_DIR=/root/.cache/pypoetry
 
 # Install Python dependencies with Poetry
-RUN if [ -f /app/pyproject.toml ]; then \
+RUN if [ -f pyproject.toml ]; then \
     poetry install --only main --no-interaction --no-ansi --no-root; \
     else \
     echo "no pyproject.toml found, skipping poetry step"; \
@@ -238,8 +241,6 @@ COPY . /app/
 
 # Create volume mount points for output directories
 VOLUME ["/app/reports", "/app/results", "/app/builds"]
-
-WORKDIR /app
 
 # Enhanced health check for container readiness
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \

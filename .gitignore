@@ -56,3 +56,7 @@ test-results.json
 
 # playwright
 .playwright-mcp/
+
+# Misc
+meta.json
+versions.lock
