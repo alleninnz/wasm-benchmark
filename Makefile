@@ -762,6 +762,7 @@ ifeq ($(TEST_VALIDATE_MODE),true)
 	$(call log_success,✅ Task validation completed)
 else
 	# Default: run all available tests
+	$(call start_dev_server)
 	$(call log_step,Running all available tests...)
 	@TEST_RAN=false; \
 	if [ -d tests ]; then \
