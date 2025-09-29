@@ -5,12 +5,14 @@ services:
       context: .
       dockerfile: Dockerfile
       target: development
+      platforms:
+        - linux/arm64
+        - linux/amd64
     container_name: wasm-benchmark
     working_dir: /app
 
     # Volume mounts for persistent data and development
     volumes:
-      - .:/app
       - ./results:/app/results
       - ./reports:/app/reports
       - ./builds:/app/builds
@@ -25,19 +27,13 @@ services:
           memory: 1G
           cpus: "0.5"
 
-    # Environment variables
+    # Environment variables (browser config inherited from Dockerfile)
     environment:
-      - DEBIAN_FRONTEND=noninteractive
       - PYTHONUNBUFFERED=1
       - RUST_BACKTRACE=1
+      - CHROME_ARGS=--headless --no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222
 
     # Keep container running for exec commands
     command: tail -f /dev/null
 
-    # Health check
-    healthcheck:
-      test: ["CMD", "bash", "-lc", "python3 --version && rustc --version && wasm-strip --version"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+    # Health check (uses Dockerfile HEALTHCHECK)
