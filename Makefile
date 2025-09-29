@@ -352,15 +352,10 @@ versions.lock: scripts/fingerprint.sh
 
 build: ## Build WebAssembly modules or config (use: make build [rust/tinygo/all/config/parallel/no-checksums])
 ifeq ($(CONFIG_MODE),true)
-ifeq ($(QUICK_MODE),true)
-	$(call log_step,Building quick configuration file...)
-	node scripts/build_config.js --quick
-	$(call log_success,⚡ Quick configuration file built successfully)
-else
-	$(call log_step,Building configuration file...)
+	$(call log_step,Building configuration files (bench.json and bench-quick.json)...)
 	node scripts/build_config.js
+	node scripts/build_config.js --quick
 	$(call log_success,⚙️ Configuration files built successfully)
-endif
 else ifeq ($(BUILD_ALL_MODE),true)
 	$(call log_step,Building all modules with optimized pipeline...)
 	$(call check_script_exists,scripts/build_all.sh)
@@ -401,7 +396,7 @@ endif
 # ============================================================================
 
 run: $(NODE_MODULES) ## Run browser benchmark suite (use quick headed for options)
-	@$(MAKE) build config $(if $(filter true,$(QUICK_MODE)),quick,)
+	@$(MAKE) build config
 	$(call start_dev_server)
 	$(call check_script_exists,scripts/run_bench.js)
 ifeq ($(HEADED_MODE),true)
@@ -527,8 +522,8 @@ all: ## Run complete experiment pipeline (use quick for quick mode)
 ifeq ($(QUICK_MODE),true)
 	$(call log_step,Running QUICK complete pipeline (lightweight) -> init, config, run, analyze...)
 	$(MAKE) init
-	# Build config only (quick) and skip full compilation to save time in quick mode
-	$(MAKE) build config quick
+	# Build config (both bench.json and bench-quick.json) and skip full compilation to save time in quick mode
+	$(MAKE) build config
 	$(MAKE) run quick
 	$(MAKE) analyze quick
 	$(call log_success,⚡ Quick experiment pipeline completed!)
