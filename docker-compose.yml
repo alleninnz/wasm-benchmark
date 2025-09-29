@@ -5,9 +5,6 @@ services:
       context: .
       dockerfile: Dockerfile
       target: development
-      platforms:
-        - linux/arm64
-        - linux/amd64
     container_name: wasm-benchmark
     working_dir: /app
 
