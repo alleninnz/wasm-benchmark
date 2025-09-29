@@ -229,10 +229,10 @@ build_make_command() {
     # Parse common flags
     for arg in "$@"; do
         case "$arg" in
-            quick|headed|rust|tinygo|config|python|go|js|deps|validate|parallel|no-checksums)
+            quick|rust|tinygo|config|python|go|js|deps|validate|parallel|no-checksums)
                 flags+=("$arg")
                 ;;
-            --quick|--headed|--rust|--tinygo|--config|--python|--go|--js|--deps|--validate|--parallel|--no-checksums)
+            --quick|--rust|--tinygo|--config|--python|--go|--js|--deps|--validate|--parallel|--no-checksums)
                 flags+=("${arg#--}")  # Remove -- prefix
                 ;;
             *)
@@ -355,7 +355,6 @@ Usage: ./scripts/docker-run.sh [command] [flags...]
 
 🎯 MAKEFILE FLAGS (can be combined):
   quick           Fast/development mode
-  headed          Show browser during benchmarks
   rust            Build only Rust modules
   tinygo          Build only TinyGo modules
   config          Build configuration only
@@ -366,7 +365,6 @@ Usage: ./scripts/docker-run.sh [command] [flags...]
 💡 USAGE EXAMPLES:
   $0 start                    # Start container with health checks
   $0 full quick               # Quick complete pipeline
-  $0 run quick headed         # Quick benchmarks with visible browser
   $0 build rust parallel      # Build Rust modules with parallelization
   $0 analyze quick            # Quick analysis pipeline
   $0 status                   # Show container health and resources

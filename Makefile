@@ -1081,8 +1081,7 @@ endef
 
 define docker_run_flags
 $(strip \
-$(if $(filter true,$(QUICK_MODE)), quick) \
-$(if $(filter true,$(HEADED_MODE)), headed))
+$(if $(filter true,$(QUICK_MODE)), quick)
 endef
 
 define docker_test_flags

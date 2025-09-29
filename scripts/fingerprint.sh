@@ -356,7 +356,7 @@ main() {
             log_info "Environment fingerprint files already exist:"
             log_info "  - $VERSIONS_LOCK"
             log_info "  - $META_JSON"
-            log_info "Use --force option to regenerate"
+            log_info "Use --force option or make init FORCE=1 to regenerate"
             return 0
         fi
     fi
