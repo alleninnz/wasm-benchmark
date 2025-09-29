@@ -47,9 +47,9 @@ check_docker() {
         exit 1
     fi
 
-    if ! command -v docker-compose &> /dev/null; then
-        log_error "Docker Compose is not installed."
-        echo "  💡 Install with: pip install docker-compose"
+    if ! docker compose version &> /dev/null; then
+        log_error "Docker Compose v2 is not available."
+        echo "  💡 Docker Compose v2 is included with Docker Desktop or install Docker CLI with Compose plugin"
         exit 1
     fi
 
@@ -65,7 +65,7 @@ check_docker() {
 # Smart container status checking
 is_container_running() {
     local container_status
-    container_status=$(docker-compose ps -q "$COMPOSE_SERVICE" 2>/dev/null)
+    container_status=$(docker compose ps -q "$COMPOSE_SERVICE" 2>/dev/null)
     if [[ -n "$container_status" ]]; then
         # Check if the container is actually running
         docker inspect "$container_status" --format '{{.State.Running}}' 2>/dev/null | grep -q "true" || return 1
@@ -76,7 +76,7 @@ is_container_running() {
 
 is_container_exists() {
     local container_id
-    container_id=$(docker-compose ps -q "$COMPOSE_SERVICE" 2>/dev/null)
+    container_id=$(docker compose ps -q "$COMPOSE_SERVICE" 2>/dev/null)
     [[ -n "$container_id" ]]
 }
 
@@ -89,7 +89,7 @@ check_container_health() {
     local health_check_interval=3
 
     while [ $retries -lt $max_retries ]; do
-        if docker-compose exec -T "$COMPOSE_SERVICE" python3 --version >/dev/null 2>&1; then
+        if docker compose exec -T "$COMPOSE_SERVICE" python3 --version >/dev/null 2>&1; then
             log_debug "Container health check passed"
             return 0
         fi
@@ -113,7 +113,7 @@ ensure_container_running() {
     log_step "Starting WebAssembly Benchmark container..."
 
     # Build and start with progress feedback
-    if docker-compose up -d --build 2>&1; then
+    if docker compose up -d --build 2>&1; then
         log_info "Container startup initiated, checking health..."
 
         if check_container_health; then
@@ -157,7 +157,7 @@ run_in_container() {
         log_info "Running: $cmd"
     fi
 
-    if docker-compose exec -T "$COMPOSE_SERVICE" bash -c "$cmd"; then
+    if docker compose exec -T "$COMPOSE_SERVICE" bash -c "$cmd"; then
         log_debug "Command executed successfully"
         return 0
     else
@@ -178,7 +178,7 @@ show_container_logs() {
     fi
 
     log_info "Recent container logs (last $tail_lines lines):"
-    if ! docker-compose logs --tail="$tail_lines" "$COMPOSE_SERVICE" 2>/dev/null; then
+    if ! docker compose logs --tail="$tail_lines" "$COMPOSE_SERVICE" 2>/dev/null; then
         log_warning "Could not retrieve container logs"
         echo "💡 Try: make docker start"
     fi
@@ -187,7 +187,7 @@ show_container_logs() {
 show_container_status() {
     log_info "Container status information:"
     echo "📊 Container Status:"
-    docker-compose ps 2>/dev/null || true
+    docker compose ps 2>/dev/null || true
     echo ""
 
     # Check if container is running before trying to get stats (ensure this doesn't fail the script)
@@ -312,7 +312,7 @@ run_development_tools() {
 enter_container() {
     log_info "Entering container for development..."
     log_info "💡 Available commands: make help, make status, make all quick"
-    if ! docker-compose exec "$COMPOSE_SERVICE" bash; then
+    if ! docker compose exec "$COMPOSE_SERVICE" bash; then
         log_error "Failed to enter container"
         return 1
     fi
@@ -388,7 +388,7 @@ EOF
 stop_container() {
     if is_container_running; then
         log_step "Stopping container gracefully..."
-        docker-compose down
+        docker compose down
         log_success "Container stopped successfully"
     else
         log_info "No containers are currently running"
@@ -430,7 +430,7 @@ clean_container() {
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             log_step "Performing full cleanup..."
-            if docker-compose down --rmi all --volumes --remove-orphans; then
+            if docker compose down --rmi all --volumes --remove-orphans; then
                 # Also clean up any orphaned containers/images
                 docker system prune -f
                 log_success "Full cleanup completed"
@@ -443,7 +443,7 @@ clean_container() {
         fi
     else
         log_step "Cleaning containers and images..."
-        if docker-compose down --rmi local --volumes; then
+        if docker compose down --rmi local --volumes; then
             log_success "Standard cleanup completed"
         else
             log_error "Standard cleanup encountered errors"
