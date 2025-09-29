@@ -88,12 +88,15 @@ describe('Cross-Language Consistency', () => {
             const tinygoHash = results.tinygo.resultHash;
 
             // Known valid hashes from both implementations after standardization
-            const validRustHashes = [1768234204];
-            const validTinygoHashes = [1151341662];
+            // Both implementations should produce the same hash for the same input
+            const validHashes = [1151341662];
 
             // Verify each implementation produces expected hash
-            expect(validRustHashes).toContain(rustHash);
-            expect(validTinygoHashes).toContain(tinygoHash);
+            expect(validHashes).toContain(rustHash);
+            expect(validHashes).toContain(tinygoHash);
+
+            // Most importantly: both implementations should produce the same hash
+            expect(rustHash).toBe(tinygoHash);
 
             // Validate dimensions match expected
             expect(results.rust.resultDimensions).toEqual(matrixData.expectedProperties.resultDimensions);
