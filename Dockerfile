@@ -60,6 +60,7 @@ RUN set -eux; \
     wabt \
     lsof \
     procps \
+    vim \
     # Python runtime & build tools
     python3 \
     python3-venv \
