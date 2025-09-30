@@ -17,7 +17,7 @@ export class BenchmarkRunner {
 
         // Constants
         this.DEFAULT_RANDOM_SEED = 12345;
-        this.MAX_CONFIG_TIMEOUT = 30 * 60 * 1000; // 30 minutes for WASM tasks
+        this.MAX_CONFIG_TIMEOUT = 60 * 60 * 1000; // 60 minutes for WASM tasks
 
         // FNV-1a constants for input data hashing
         this.FNV_OFFSET_BASIS = 2166136261;
