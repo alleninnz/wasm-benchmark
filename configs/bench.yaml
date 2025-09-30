@@ -11,10 +11,10 @@ experiment:
 environment:
   warmup_runs: 15
   measure_runs: 50
-  repetitions: 4
+  repetitions: 3
 
   # Global timeout for each individual task execution (in seconds)
-  timeout: 1800
+  timeout: 3600
 # Simplified task definitions - keep core scales only
 tasks:
   mandelbrot:
