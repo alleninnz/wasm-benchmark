@@ -52,8 +52,25 @@ get_system_info() {
         OS_BUILD=$(uname -r)
         ARCHITECTURE=$(uname -m)
         
-        # Get CPU information
-        CPU_BRAND=$(grep "model name" /proc/cpuinfo | head -n1 | cut -d: -f2 | sed 's/^ *//' || echo "unknown")
+        # Get CPU information (handle both x86_64 and ARM architectures)
+        if grep -q "model name" /proc/cpuinfo 2>/dev/null; then
+            # x86_64 architecture
+            CPU_BRAND=$(grep "model name" /proc/cpuinfo | head -n1 | cut -d: -f2 | sed 's/^ *//')
+        elif grep -q "Model" /proc/cpuinfo 2>/dev/null; then
+            # ARM architecture (capitalized Model)
+            CPU_BRAND=$(grep "Model" /proc/cpuinfo | head -n1 | cut -d: -f2 | sed 's/^ *//')
+        elif [ -f /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq ]; then
+            # Fallback: show architecture and max frequency
+            MAX_FREQ=$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq 2>/dev/null)
+            if [ -n "$MAX_FREQ" ]; then
+                FREQ_MHZ=$(awk "BEGIN {printf \"%.2f\", $MAX_FREQ / 1000}")
+                CPU_BRAND="$ARCHITECTURE CPU @ ${FREQ_MHZ}MHz"
+            else
+                CPU_BRAND="$ARCHITECTURE CPU"
+            fi
+        else
+            CPU_BRAND="$ARCHITECTURE CPU"
+        fi
         CPU_CORES=$(nproc 2>/dev/null || echo "unknown")
 
         # Get memory information (avoid bc dependency, use awk instead)
@@ -129,15 +146,11 @@ get_python_libs() {
     if command -v python3 &> /dev/null; then
         NUMPY_VERSION=$(python3 -c "import numpy; print(numpy.__version__)" 2>/dev/null || echo "not found")
         SCIPY_VERSION=$(python3 -c "import scipy; print(scipy.__version__)" 2>/dev/null || echo "not found")
-        PANDAS_VERSION=$(python3 -c "import pandas; print(pandas.__version__)" 2>/dev/null || echo "not found")
         MATPLOTLIB_VERSION=$(python3 -c "import matplotlib; print(matplotlib.__version__)" 2>/dev/null || echo "not found")
-        SEABORN_VERSION=$(python3 -c "import seaborn; print(seaborn.__version__)" 2>/dev/null || echo "not found")
     else
         NUMPY_VERSION="python3 not found"
         SCIPY_VERSION="python3 not found"
-        PANDAS_VERSION="python3 not found"
         MATPLOTLIB_VERSION="python3 not found"
-        SEABORN_VERSION="python3 not found"
     fi
     
     log_info "Scientific libraries checked"
@@ -203,9 +216,7 @@ pip_version=$PIP_VERSION
 # Python Scientific Libraries
 numpy_version=$NUMPY_VERSION
 scipy_version=$SCIPY_VERSION
-pandas_version=$PANDAS_VERSION
 matplotlib_version=$MATPLOTLIB_VERSION
-seaborn_version=$SEABORN_VERSION
 
 # Browser Engine
 chrome_version=$CHROME_VERSION
@@ -279,10 +290,8 @@ generate_meta_json() {
             "pip_version": "$PIP_VERSION",
             "libraries": {
                 "numpy": "$NUMPY_VERSION",
-                "scipy": "$SCIPY_VERSION", 
-                "pandas": "$PANDAS_VERSION",
-                "matplotlib": "$MATPLOTLIB_VERSION",
-                "seaborn": "$SEABORN_VERSION"
+                "scipy": "$SCIPY_VERSION",
+                "matplotlib": "$MATPLOTLIB_VERSION"
             }
         }
     },
@@ -334,9 +343,7 @@ display_summary() {
     echo "Python Libraries:"
     echo "  NumPy: $NUMPY_VERSION"
     echo "  SciPy: $SCIPY_VERSION"
-    echo "  Pandas: $PANDAS_VERSION"
     echo "  Matplotlib: $MATPLOTLIB_VERSION"
-    echo "  Seaborn: $SEABORN_VERSION"
     echo
     
     echo "Browser:"
