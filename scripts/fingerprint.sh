@@ -55,7 +55,14 @@ get_system_info() {
         # Get CPU information
         CPU_BRAND=$(grep "model name" /proc/cpuinfo | head -n1 | cut -d: -f2 | sed 's/^ *//' || echo "unknown")
         CPU_CORES=$(nproc 2>/dev/null || echo "unknown")
-        MEMORY_GB=$(echo "scale=2; $(grep MemTotal /proc/meminfo | awk '{print $2}') / 1024 / 1024" | bc -l 2>/dev/null || echo "unknown")
+
+        # Get memory information (avoid bc dependency, use awk instead)
+        MEMORY_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}' 2>/dev/null)
+        if [[ -n "$MEMORY_KB" && "$MEMORY_KB" != "0" ]]; then
+            MEMORY_GB=$(awk "BEGIN {printf \"%.2f\", $MEMORY_KB / 1024 / 1024}")
+        else
+            MEMORY_GB="unknown"
+        fi
         
     else
         OS_NAME="$OSTYPE"
