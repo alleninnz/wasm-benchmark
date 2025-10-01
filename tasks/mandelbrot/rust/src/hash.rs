@@ -6,12 +6,14 @@ use crate::types::{FNV_OFFSET_BASIS, FNV_PRIME};
 pub fn fnv1a_hash_u32(data: &[u32]) -> u32 {
     let mut hash = FNV_OFFSET_BASIS;
 
-    for &value in data {
+    for i in 0..data.len() {
+        let value = data[i];
         // Convert u32 to bytes (little-endian for cross-platform consistency)
         let bytes = value.to_le_bytes();
 
-        for byte in &bytes {
-            hash ^= *byte as u32;
+        for j in 0..bytes.len() {
+            let byte = bytes[j];
+            hash ^= byte as u32;
             hash = hash.wrapping_mul(FNV_PRIME);
         }
     }
