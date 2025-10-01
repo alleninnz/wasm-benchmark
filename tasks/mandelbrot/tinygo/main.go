@@ -123,16 +123,16 @@ func mandelbrotPixel(cReal, cImag float64, maxIter uint32) uint32 {
 	var iterations uint32 = 0
 
 	for iterations < maxIter {
-		// Compute squares once and reuse them
-		zRealSq := zReal * zReal
-		zImagSq := zImag * zImag
-
-		// Check divergence using cached squares
-		if zRealSq+zImagSq > divergenceThreshold {
+		// Check divergence FIRST (must match original order for cross-implementation compatibility)
+		if complexMagnitudeSquared(zReal, zImag) > divergenceThreshold {
 			break
 		}
 
-		// Calculate z² + c using cached squares (eliminates 2 multiplications per iteration)
+		// NOW compute squares and reuse them (optimization that doesn't affect computation order)
+		zRealSq := zReal * zReal
+		zImagSq := zImag * zImag
+
+		// Calculate z² + c using cached squares
 		zRealNew := zRealSq - zImagSq + cReal
 		zImagNew := 2.0*zReal*zImag + cImag
 

@@ -3,23 +3,23 @@
 use crate::types::DIVERGENCE_THRESHOLD;
 
 /// Computes the number of iterations for a single Mandelbrot set pixel
-/// Optimized version that caches squared values to avoid redundant multiplications
+/// Optimized version that caches squared values while preserving exact computation order
 pub fn mandelbrot_pixel(c_real: f64, c_imag: f64, max_iter: u32) -> u32 {
     let mut z_real = 0.0;
     let mut z_imag = 0.0;
     let mut iterations = 0;
 
     while iterations < max_iter {
-        // Compute squares once and reuse them
-        let z_real_sq = z_real * z_real;
-        let z_imag_sq = z_imag * z_imag;
-
-        // Check divergence using cached squares
-        if z_real_sq + z_imag_sq > DIVERGENCE_THRESHOLD {
+        // Check divergence FIRST (must match original order for cross-implementation compatibility)
+        if complex_magnitude_squared(z_real, z_imag) > DIVERGENCE_THRESHOLD {
             break;
         }
 
-        // Calculate z² + c using cached squares (eliminates 2 multiplications per iteration)
+        // NOW compute squares and reuse them (optimization that doesn't affect computation order)
+        let z_real_sq = z_real * z_real;
+        let z_imag_sq = z_imag * z_imag;
+
+        // Calculate z² + c using cached squares
         let z_real_new = z_real_sq - z_imag_sq + c_real;
         let z_imag_new = 2.0 * z_real * z_imag + c_imag;
 
