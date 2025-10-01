@@ -104,7 +104,7 @@ git pull → make build → make test → [代码更改] → make test → git c
 #### 验证流程
 
 ```bash
-make clean all → make build → make test → make all quick
+make clean → make build → make test → make all quick
 ```
 
 #### 验证时间线
@@ -148,7 +148,7 @@ make build → make run quick
 #### 研究流程
 
 ```bash
-make clean all → make all
+make clean → make all
 ```
 
 #### 研究时间线
@@ -321,23 +321,29 @@ make build → make run → make analyze
 
 #### make clean
 
-**目的**：清理构建产物和临时文件（使用：make clean all 获取完整清理）
-**何时使用**：构建问题、磁盘空间清理
-
-**选项**：
-
-- `make clean` - 清理生成产物（builds、configs、reports、results）
-- `make clean all` - 完整清理包括依赖项、缓存、日志（带确认）
+**目的**：清理所有内容，包括依赖项、结果和缓存
+**何时使用**：构建问题、磁盘空间清理、环境重置
 
 **清理的项目**：
 
-- 构建产物（*.wasm、checksums.txt、sizes.csv）
-- 配置文件（bench.json、bench-quick.json）
-- 报告和结果目录
+- Node.js 依赖项（node_modules/）
+- 构建产物（*.wasm、checksums.txt、sizes.csv、metrics.json）
+- 生成的配置文件（bench.json、bench-quick.json）
+- 报告和图表（除了 templates/）
+- 结果目录
+- 环境锁文件（versions.lock、poetry.lock、package-lock.json）
+- 元数据文件（meta.json）
+- 日志文件（*.log、dev-server.log）
 - 缓存文件（.cache.*）
 - 临时文件（*.tmp、**pycache**、*.pyc）
+- Rust 构建产物（target/、Cargo.lock）
 
-**常见问题**：受保护文件的权限问题、意外数据丢失
+**保留的项目**：
+
+- 源 YAML 配置（bench.yaml、bench-quick.yaml）
+- 报告模板（reports/plots/templates/）
+
+**常见问题**：受保护文件的权限问题、意外数据丢失（需要确认）
 
 #### make lint
 
@@ -591,7 +597,7 @@ make status
 make info
 
 # 清理并重建
-make clean all
+make clean
 make init
 make build all
 
@@ -599,6 +605,8 @@ make build all
 make validate
 make test
 ```
+
+**注意**：`make clean` 现在执行完整清理（无需 `make clean all`）
 
 ## ✅ 最佳实践总结
 
@@ -608,7 +616,7 @@ make test
 - **检查日志** 在 dev-server.log 中查找服务器问题
 - **使用 `make status`** 验证系统就绪状态和环境状态
 - **使用 `make info`** 获取详细的系统和工具链信息
-- **在切换工具链时使用 `make clean all` 清理构建**
+- **在切换工具链或重置环境时使用 `make clean` 清理构建**
 
 ### ⚙️ 运行基准测试脚本选项
 

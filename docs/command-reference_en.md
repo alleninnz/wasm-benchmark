@@ -104,7 +104,7 @@ Comprehensive validation before deployment
 #### Validation Flow
 
 ```bash
-make clean all → make build → make test → make all quick
+make clean → make build → make test → make all quick
 ```
 
 #### Validation Timeline
@@ -148,7 +148,7 @@ Full research-grade performance analysis
 #### Research Flow
 
 ```bash
-make clean all → make all
+make clean → make all
 ```
 
 #### Research Timeline
@@ -321,23 +321,29 @@ Detailed analysis of single benchmark task
 
 #### make clean
 
-**Purpose**: Clean build artifacts and temporary files (use: make clean all for complete cleanup)
-**When to Use**: Build issues, disk space cleanup
-
-**Options**:
-
-- `make clean` - Clean generated artifacts (builds, configs, reports, results)
-- `make clean all` - Complete cleanup including dependencies, caches, logs (with confirmation)
+**Purpose**: Clean everything including dependencies, results, and caches
+**When to Use**: Build issues, disk space cleanup, environment reset
 
 **Cleaned Items**:
 
-- Build artifacts (*.wasm, checksums.txt, sizes.csv)
-- Configuration files (bench.json, bench-quick.json)
-- Reports and results directories
+- Node.js dependencies (node_modules/)
+- Build artifacts (*.wasm, checksums.txt, sizes.csv, metrics.json)
+- Generated configuration files (bench.json, bench-quick.json)
+- Reports and plots (except templates/)
+- Results directories
+- Environment locks (versions.lock, poetry.lock, package-lock.json)
+- Metadata files (meta.json)
+- Log files (*.log, dev-server.log)
 - Cache files (.cache.*)
 - Temporary files (\*.tmp, \_\_pycache\_\_, \*.pyc)
+- Rust build artifacts (target/, Cargo.lock)
 
-**Common Issues**: Permission issues on protected files, accidental data loss
+**Preserved Items**:
+
+- Source YAML configs (bench.yaml, bench-quick.yaml)
+- Report templates (reports/plots/templates/)
+
+**Common Issues**: Permission issues on protected files, accidental data loss (confirmation required)
 
 #### make lint
 
@@ -591,7 +597,7 @@ make status
 make info
 
 # Clean and rebuild
-make clean all
+make clean
 make init
 make build all
 
@@ -599,6 +605,8 @@ make build all
 make validate
 make test
 ```
+
+**Note**: `make clean` now performs complete cleanup (no need for `make clean all`)
 
 ## ✅ Best Practices Summary
 
@@ -608,7 +616,7 @@ make test
 - **Check logs** in dev-server.log for server issues
 - **Use `make status`** to verify system readiness and environment state
 - **Use `make info`** for detailed system and toolchain information
-- **Clean builds** with `make clean all` when switching toolchains
+- **Clean builds** with `make clean` when switching toolchains or resetting environment
 
 ### ⚙️ Run Bench Script Options
 
