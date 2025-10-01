@@ -256,35 +256,35 @@ mod tests {
     #[test]
     fn test_parse_utilities() {
         // Test string parsing
-        let json_chars: Vec<char> = r#""hello world""#.chars().collect();
+        let json_bytes = br#""hello world""#;
         let mut pos = 0;
         let parsed_string =
-            parse_json_string_value(&json_chars, &mut pos).expect("Failed to parse string");
+            parse_json_string_value(json_bytes, &mut pos).expect("Failed to parse string");
         assert_eq!(parsed_string, "hello world");
 
         // Test number parsing
-        let num_chars: Vec<char> = "123".chars().collect();
+        let num_bytes = b"123";
         let mut pos = 0;
-        let parsed_num = parse_json_number(&num_chars, &mut pos).expect("Failed to parse number");
+        let parsed_num = parse_json_number(num_bytes, &mut pos).expect("Failed to parse number");
         assert_eq!(parsed_num, 123);
 
         // Test negative number parsing
-        let neg_chars: Vec<char> = "-456".chars().collect();
+        let neg_bytes = b"-456";
         let mut pos = 0;
         let parsed_neg =
-            parse_json_number(&neg_chars, &mut pos).expect("Failed to parse negative number");
+            parse_json_number(neg_bytes, &mut pos).expect("Failed to parse negative number");
         assert_eq!(parsed_neg, -456);
 
         // Test boolean parsing
-        let true_chars: Vec<char> = "true".chars().collect();
+        let true_bytes = b"true";
         let mut pos = 0;
-        let parsed_true = parse_json_boolean(&true_chars, &mut pos).expect("Failed to parse true");
+        let parsed_true = parse_json_boolean(true_bytes, &mut pos).expect("Failed to parse true");
         assert!(parsed_true);
 
-        let false_chars: Vec<char> = "false".chars().collect();
+        let false_bytes = b"false";
         let mut pos = 0;
         let parsed_false =
-            parse_json_boolean(&false_chars, &mut pos).expect("Failed to parse false");
+            parse_json_boolean(false_bytes, &mut pos).expect("Failed to parse false");
         assert!(!parsed_false);
     }
 

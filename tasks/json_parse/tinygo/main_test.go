@@ -223,7 +223,7 @@ func TestParseJsonString(t *testing.T) {
 func TestParseJsonStringValue(t *testing.T) {
 	tests := []struct {
 		name        string
-		input       []rune
+		input       []byte
 		pos         int
 		expected    string
 		expectedPos int
@@ -231,7 +231,7 @@ func TestParseJsonStringValue(t *testing.T) {
 	}{
 		{
 			name:        "simple string",
-			input:       []rune(`"hello"`),
+			input:       []byte(`"hello"`),
 			pos:         0,
 			expected:    "hello",
 			expectedPos: 7,
@@ -239,7 +239,7 @@ func TestParseJsonStringValue(t *testing.T) {
 		},
 		{
 			name:        "empty string",
-			input:       []rune(`""`),
+			input:       []byte(`""`),
 			pos:         0,
 			expected:    "",
 			expectedPos: 2,
@@ -247,7 +247,7 @@ func TestParseJsonStringValue(t *testing.T) {
 		},
 		{
 			name:        "string with escaped quote",
-			input:       []rune(`"hello \"world\""`),
+			input:       []byte(`"hello \"world\""`),
 			pos:         0,
 			expected:    `hello "world"`,
 			expectedPos: 17,
@@ -255,7 +255,7 @@ func TestParseJsonStringValue(t *testing.T) {
 		},
 		{
 			name:        "string with escaped backslash",
-			input:       []rune(`"path\\to\\file"`),
+			input:       []byte(`"path\\to\\file"`),
 			pos:         0,
 			expected:    `path\to\file`,
 			expectedPos: 16,
@@ -263,7 +263,7 @@ func TestParseJsonStringValue(t *testing.T) {
 		},
 		{
 			name:        "unterminated string",
-			input:       []rune(`"hello`),
+			input:       []byte(`"hello`),
 			pos:         0,
 			expected:    "",
 			expectedPos: 0,
@@ -271,7 +271,7 @@ func TestParseJsonStringValue(t *testing.T) {
 		},
 		{
 			name:        "no opening quote",
-			input:       []rune(`hello"`),
+			input:       []byte(`hello"`),
 			pos:         0,
 			expected:    "",
 			expectedPos: 0,
@@ -311,7 +311,7 @@ func TestParseJsonStringValue(t *testing.T) {
 func TestParseJsonNumber(t *testing.T) {
 	tests := []struct {
 		name        string
-		input       []rune
+		input       []byte
 		pos         int
 		expected    int32
 		expectedPos int
@@ -319,7 +319,7 @@ func TestParseJsonNumber(t *testing.T) {
 	}{
 		{
 			name:        "positive integer",
-			input:       []rune("123"),
+			input:       []byte("123"),
 			pos:         0,
 			expected:    123,
 			expectedPos: 3,
@@ -327,7 +327,7 @@ func TestParseJsonNumber(t *testing.T) {
 		},
 		{
 			name:        "negative integer",
-			input:       []rune("-456"),
+			input:       []byte("-456"),
 			pos:         0,
 			expected:    -456,
 			expectedPos: 4,
@@ -335,7 +335,7 @@ func TestParseJsonNumber(t *testing.T) {
 		},
 		{
 			name:        "zero",
-			input:       []rune("0"),
+			input:       []byte("0"),
 			pos:         0,
 			expected:    0,
 			expectedPos: 1,
@@ -343,7 +343,7 @@ func TestParseJsonNumber(t *testing.T) {
 		},
 		{
 			name:        "large positive number",
-			input:       []rune("2147483647"),
+			input:       []byte("2147483647"),
 			pos:         0,
 			expected:    2147483647,
 			expectedPos: 10,
@@ -351,7 +351,7 @@ func TestParseJsonNumber(t *testing.T) {
 		},
 		{
 			name:        "large negative number",
-			input:       []rune("-2147483648"),
+			input:       []byte("-2147483648"),
 			pos:         0,
 			expected:    -2147483648,
 			expectedPos: 11,
@@ -359,7 +359,7 @@ func TestParseJsonNumber(t *testing.T) {
 		},
 		{
 			name:        "invalid - no digits",
-			input:       []rune("-"),
+			input:       []byte("-"),
 			pos:         0,
 			expected:    0,
 			expectedPos: 0,
@@ -367,7 +367,7 @@ func TestParseJsonNumber(t *testing.T) {
 		},
 		{
 			name:        "invalid - not a number",
-			input:       []rune("abc"),
+			input:       []byte("abc"),
 			pos:         0,
 			expected:    0,
 			expectedPos: 0,
@@ -407,7 +407,7 @@ func TestParseJsonNumber(t *testing.T) {
 func TestParseJsonBoolean(t *testing.T) {
 	tests := []struct {
 		name        string
-		input       []rune
+		input       []byte
 		pos         int
 		expected    bool
 		expectedPos int
@@ -415,7 +415,7 @@ func TestParseJsonBoolean(t *testing.T) {
 	}{
 		{
 			name:        "true value",
-			input:       []rune("true"),
+			input:       []byte("true"),
 			pos:         0,
 			expected:    true,
 			expectedPos: 4,
@@ -423,7 +423,7 @@ func TestParseJsonBoolean(t *testing.T) {
 		},
 		{
 			name:        "false value",
-			input:       []rune("false"),
+			input:       []byte("false"),
 			pos:         0,
 			expected:    false,
 			expectedPos: 5,
@@ -431,7 +431,7 @@ func TestParseJsonBoolean(t *testing.T) {
 		},
 		{
 			name:        "invalid boolean",
-			input:       []rune("maybe"),
+			input:       []byte("maybe"),
 			pos:         0,
 			expected:    false,
 			expectedPos: 0,
@@ -439,7 +439,7 @@ func TestParseJsonBoolean(t *testing.T) {
 		},
 		{
 			name:        "partial true",
-			input:       []rune("tru"),
+			input:       []byte("tru"),
 			pos:         0,
 			expected:    false,
 			expectedPos: 0,
