@@ -108,41 +108,127 @@ node scripts/run_bench.js --timeout=120000
 
 ## 🐳 Docker Setup (Recommended)
 
-For the easiest setup experience, use the provided Docker containerization:
+For the easiest setup experience, use the provided Docker containerization that provides a fully isolated, pre-configured development and benchmarking environment.
 
 ### 📋 Prerequisites
 
-- Docker Desktop installed and running
-- At least 4GB RAM allocated to Docker
-- At least 10GB free disk space
+- **Docker Desktop** installed and running (or Docker Engine on Linux)
+- **Minimum Resources**: 4GB RAM allocated to Docker, 10GB free disk space
+- **Recommended**: 8GB+ RAM for optimal benchmark performance
+
+### 🏗️ Environment Overview
+
+The Docker container includes:
+
+- **Pre-installed toolchains**: Rust 1.90, TinyGo 0.39, Go 1.25.1, Node.js 24.7, Python 3.11+
+- **All dependencies**: Poetry, npm packages, system libraries
+- **Isolated workspace**: Persistent data volumes for results and builds
+- **Development tools**: Full development environment with debugging capabilities
 
 ### 🚀 Quick Docker Start
 
 ```bash
-# Run complete pipeline in Docker
-./scripts/docker-run.sh full
 
-# Or step by step:
-./scripts/docker-run.sh start    # Build and start container
-./scripts/docker-run.sh init     # Initialize environment
-./scripts/docker-run.sh build    # Build WebAssembly modules
-./scripts/docker-run.sh run      # Run benchmarks
-./scripts/docker-run.sh analyze  # Run analysis
+# step-by-step approach for development:
+make docker start     # Build and start container with health checks
+make docker init      # Initialize development environment
+make docker build     # Build WebAssembly modules
+make docker run       # Execute benchmarks
+make docker analyze   # Run statistical analysis and generate reports
+
+# One-command complete pipeline 
+make docker full
 ```
 
-### 🛠️ Docker Development
+### 🛠️ Development Workflow
 
 ```bash
-# Enter container shell for development
-./scripts/docker-run.sh shell
+# Enter container for interactive development
+make docker shell
 
-# Available commands
-./scripts/docker-run.sh help
+# Build with specific options
+make docker build rust        # Build only Rust modules
+make docker build tinygo      # Build only TinyGo modules
+make docker build parallel    # Parallel build for faster compilation
+
+# Run benchmarks with different configurations
+make docker run quick         # Fast development testing (~2-3 minutes)
+make docker run               # Full benchmark suite (~30+ minutes)
+
+# Quality control and analysis
+make docker qc                # Quality control validation
+make docker stats             # Statistical analysis
+make docker plots             # Generate visualization charts
+
+# Testing and validation
+make docker test              # Run test suite
+make docker validate          # Cross-language validation
 ```
 
-**Benefits**: Isolated environment, consistent builds, data persistence, all dependencies pre-configured.
+### 🐳 Container Management
 
-See [`docs/docker-setup.md`](docs/docker-setup.md) for detailed Docker documentation.
+```bash
+# Container lifecycle
+make docker start              # Start container with health verification
+make docker stop               # Gracefully stop container
+make docker restart            # Restart container
+make docker status             # Show container status and resource usage
+make docker logs               # Display recent container logs
+
+# Information and cleanup
+make docker info               # Show system information from container
+make docker clean              # Clean containers and images
+make docker help               # Display help information
+```
+
+### 💾 Data Persistence
+
+- **Results**: Benchmark data persists in `results/` directory
+- **Builds**: Compiled WASM modules saved in `builds/` directory
+- **Reports**: Analysis outputs available in `reports/` directory
+- **Environment**: Toolchain versions locked in container
+
+### 🔧 Advanced Configuration
+
+```bash
+# Build flags (combine as needed)
+make docker build rust parallel no-checksums
+
+# Run flags
+make docker run quick          # Development mode
+# Custom timeout and concurrency available via configuration
+
+# Test flags
+make docker test validate      # Run WASM validation tests
+```
+
+### ⚡ Benefits
+
+- **Zero configuration**: All dependencies pre-installed and configured
+- **Consistent environment**: Same setup across different host systems
+- **Isolated development**: No conflicts with host system packages
+- **Performance optimization**: Containerized environment tuned for benchmarks
+- **Data persistence**: Results and builds survive container restarts
+- **Easy cleanup**: Complete environment isolation with simple cleanup
+
+### 📖 Troubleshooting
+
+```bash
+# Check container status
+make docker status
+
+# View container logs for debugging
+make docker logs
+
+# Restart if issues occur
+make docker restart
+
+# Clean and rebuild if needed
+make docker clean
+make docker start
+```
+
+See [`docs/docker-setup.md`](docs/docker-setup.md) for detailed Docker documentation and advanced configuration options.
 
 ## 📊 Benchmark Tasks
 
@@ -396,15 +482,13 @@ uint32_t run_task(uint32_t params_ptr); // Execute & return result hash
 
 ## 🎯 Project Status & Features
 
-### **✅ Completed (Production Ready)**
-
 | Component | Status | Implementation |
 |-----------|--------|----------------|
 | **Statistical Analysis** | ✅ Complete | Welch's t-test, Cohen's d, confidence intervals |
 | **Quality Control** | ✅ Complete | IQR outlier detection, CV validation |
 | **Cross-Language Validation** | ✅ Complete | 449 reference test vectors |
 | **Visualization System** | ✅ Complete | Bar charts, box plots, statistical tables |
-| **Test Suite** | ✅ Complete | Unit, integration, E2E tests |
+| **Test Suite** | ✅ Complete | Unit, integration |
 | **Build System** | ✅ Complete | Rust/TinyGo optimized builds |
 | **Documentation** | ✅ Complete | Comprehensive guides and references |
 

@@ -208,7 +208,7 @@ Detailed analysis of single benchmark task
 
 #### make build
 
-**Purpose**: Build WebAssembly modules or config (use: make build [rust/tinygo/all/config])
+**Purpose**: Build WebAssembly modules or config (use: make build [rust/tinygo/all/config/parallel/no-checksums])
 **When to Use**: After code changes, before testing or benchmarking
 **Prerequisites**: init completed
 
@@ -219,17 +219,10 @@ Detailed analysis of single benchmark task
 - `make build tinygo` - Build only TinyGo modules
 - `make build all` - Build all with full pipeline and optimization analysis
 - `make build config` - Build configuration files from YAML
-- `make build config quick` - Build quick configuration for development
+- `make build parallel` - Build tasks in parallel
+- `make build no-checksums` - Skip checksum verification
 
 **Common Issues**: Compilation errors, missing source files, Rust/TinyGo toolchain issues
-
-**Note**: Individual build targets have been replaced with flag-based commands:
-
-- `make build rust` - Build only Rust modules
-- `make build tinygo` - Build only TinyGo modules
-- `make build all` - Build all with full pipeline and optimization analysis
-- `make build config` - Build configuration files from YAML
-- `make build config quick` - Build quick configuration for development
 
 #### make run
 
@@ -258,6 +251,45 @@ Detailed analysis of single benchmark task
 - `make qc quick` - Quick quality control for development
 
 **Common Issues**: Missing Python dependencies, no results data, Poetry environment issues
+
+#### make validate
+
+**Purpose**: Run benchmark validation analysis (use quick for quick mode)
+**When to Use**: After benchmark execution to validate data integrity
+**Prerequisites**: benchmark results available
+
+**Options**:
+
+- `make validate` - Full validation analysis
+- `make validate quick` - Quick validation for development
+
+**Common Issues**: Missing Python dependencies, no results data
+
+#### make stats
+
+**Purpose**: Run statistical analysis (use quick for quick mode)
+**When to Use**: After benchmark execution to compute statistical metrics
+**Prerequisites**: benchmark results available
+
+**Options**:
+
+- `make stats` - Full statistical analysis
+- `make stats quick` - Quick statistical analysis for development
+
+**Common Issues**: Missing Python dependencies, Poetry not initialized
+
+#### make plots
+
+**Purpose**: Generate analysis plots (use quick for quick mode)
+**When to Use**: After benchmark execution to create visualizations
+**Prerequisites**: benchmark results available
+
+**Options**:
+
+- `make plots` - Generate full plot suite
+- `make plots quick` - Generate quick development plots
+
+**Common Issues**: Missing Python dependencies, matplotlib display issues
 
 #### make analyze
 
@@ -383,6 +415,58 @@ Detailed analysis of single benchmark task
 **Common Issues**: None (informational only)
 
 **Note**: This is the updated syntax for dependency checking (was `make check-deps`)
+
+### 🐳 Docker Container Commands
+
+#### make docker [subcommand]
+
+**Purpose**: Docker container operations (use: make docker [start|stop|restart|status|logs|shell|init|build|run|full|analyze|validate|qc|stats|plots|test|info|clean|help] [flags])
+**When to Use**: Running the project in a containerized environment
+**Prerequisites**: Docker installed and running
+
+**Subcommands**:
+
+- `make docker start` - Start Docker container with health checks
+- `make docker stop` - Stop Docker container gracefully
+- `make docker restart` - Restart container with verification
+- `make docker status` - Show container status and resource usage
+- `make docker logs` - Show recent container logs
+- `make docker shell` - Enter container for development
+- `make docker init` - Initialize environment in container
+- `make docker build [flags]` - Build WebAssembly modules in container
+- `make docker run [flags]` - Run benchmarks in container
+- `make docker full [flags]` - Run complete pipeline in container
+- `make docker analyze [flags]` - Run analysis pipeline in container
+- `make docker validate [flags]` - Run benchmark validation in container
+- `make docker qc [flags]` - Run quality control in container
+- `make docker stats [flags]` - Run statistical analysis in container
+- `make docker plots [flags]` - Generate analysis plots in container
+- `make docker test [flags]` - Run tests in container
+- `make docker info` - Show system information from container
+- `make docker clean [all]` - Clean containers and images
+- `make docker help` - Show Docker help information
+
+**Build Flags**:
+
+- `rust` - Build only Rust modules
+- `tinygo` - Build only TinyGo modules
+- `config` - Build configuration files
+- `parallel` - Build tasks in parallel
+- `no-checksums` - Skip checksum verification
+
+**Run Flags**:
+
+- `quick` - Use quick configuration
+
+**Test Flags**:
+
+- `validate` - Run WASM task validation
+
+**Clean Flags**:
+
+- `all` - Complete cleanup including images
+
+**Common Issues**: Docker not running, container startup failures, permission issues
 
 ### 📦 NPM Script Commands
 
