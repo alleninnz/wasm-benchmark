@@ -2,66 +2,68 @@
 
 use crate::types::{JsonRecord, ParseError};
 
-/// Parse JSON string to JsonRecord objects
+/// Parse JSON string to JsonRecord objects with optimized byte-based parsing
 pub fn parse_json_string(json: &str) -> Result<Vec<JsonRecord>, ParseError> {
-    let chars: Vec<char> = json.chars().collect();
+    let bytes = json.as_bytes();
     let mut pos = 0;
 
-    skip_whitespace(&chars, &mut pos);
+    skip_whitespace(bytes, &mut pos);
 
-    if pos >= chars.len() || chars[pos] != '[' {
+    if pos >= bytes.len() || bytes[pos] != b'[' {
         return Err(ParseError::InvalidArrayFormat);
     }
 
-    parse_json_array(&chars, &mut pos)
+    parse_json_array(bytes, &mut pos)
 }
 
-fn skip_whitespace(chars: &[char], pos: &mut usize) {
-    while *pos < chars.len() {
-        match chars[*pos] {
-            ' ' | '\t' | '\n' | '\r' => *pos += 1,
+fn skip_whitespace(bytes: &[u8], pos: &mut usize) {
+    while *pos < bytes.len() {
+        match bytes[*pos] {
+            b' ' | b'\t' | b'\n' | b'\r' => *pos += 1,
             _ => break,
         }
     }
 }
 
-fn parse_json_array(chars: &[char], pos: &mut usize) -> Result<Vec<JsonRecord>, ParseError> {
+fn parse_json_array(bytes: &[u8], pos: &mut usize) -> Result<Vec<JsonRecord>, ParseError> {
     *pos += 1; // Skip opening '['
-    skip_whitespace(chars, pos);
+    skip_whitespace(bytes, pos);
 
-    let mut records = Vec::new();
+    // Pre-allocate vector based on estimated capacity
+    let estimated_capacity = bytes.len() / 50; // Estimate ~50 bytes per record
+    let mut records = Vec::with_capacity(estimated_capacity);
 
     // Handle empty array
-    if *pos < chars.len() && chars[*pos] == ']' {
+    if *pos < bytes.len() && bytes[*pos] == b']' {
         *pos += 1;
         return Ok(records);
     }
 
     // Parse comma-separated objects
     loop {
-        skip_whitespace(chars, pos);
+        skip_whitespace(bytes, pos);
 
-        let record = parse_json_object(chars, pos)?;
+        let record = parse_json_object(bytes, pos)?;
         records.push(record);
 
-        skip_whitespace(chars, pos);
+        skip_whitespace(bytes, pos);
 
-        if *pos >= chars.len() {
+        if *pos >= bytes.len() {
             return Err(ParseError::UnexpectedEndOfInput);
         }
 
-        match chars[*pos] {
-            ',' => {
+        match bytes[*pos] {
+            b',' => {
                 *pos += 1;
-                skip_whitespace(chars, pos);
+                skip_whitespace(bytes, pos);
 
                 // Handle trailing comma
-                if *pos < chars.len() && chars[*pos] == ']' {
+                if *pos < bytes.len() && bytes[*pos] == b']' {
                     *pos += 1;
                     break;
                 }
             }
-            ']' => {
+            b']' => {
                 *pos += 1;
                 break;
             }
@@ -72,10 +74,10 @@ fn parse_json_array(chars: &[char], pos: &mut usize) -> Result<Vec<JsonRecord>, 
     Ok(records)
 }
 
-fn parse_json_object(chars: &[char], pos: &mut usize) -> Result<JsonRecord, ParseError> {
-    skip_whitespace(chars, pos);
+fn parse_json_object(bytes: &[u8], pos: &mut usize) -> Result<JsonRecord, ParseError> {
+    skip_whitespace(bytes, pos);
 
-    if *pos >= chars.len() || chars[*pos] != '{' {
+    if *pos >= bytes.len() || bytes[*pos] != b'{' {
         return Err(ParseError::InvalidObjectFormat);
     }
 
@@ -86,61 +88,61 @@ fn parse_json_object(chars: &[char], pos: &mut usize) -> Result<JsonRecord, Pars
     let mut flag = None;
     let mut name = None;
 
-    skip_whitespace(chars, pos);
+    skip_whitespace(bytes, pos);
 
     // Handle empty object
-    if *pos < chars.len() && chars[*pos] == '}' {
+    if *pos < bytes.len() && bytes[*pos] == b'}' {
         *pos += 1;
         return Err(ParseError::InvalidObjectFormat);
     }
 
     // Parse key-value pairs
     loop {
-        skip_whitespace(chars, pos);
+        skip_whitespace(bytes, pos);
 
-        let key = parse_json_string_value(chars, pos)?;
+        let key = parse_json_string_value(bytes, pos)?;
 
-        skip_whitespace(chars, pos);
+        skip_whitespace(bytes, pos);
 
-        if *pos >= chars.len() || chars[*pos] != ':' {
+        if *pos >= bytes.len() || bytes[*pos] != b':' {
             return Err(ParseError::InvalidObjectFormat);
         }
         *pos += 1;
 
-        skip_whitespace(chars, pos);
+        skip_whitespace(bytes, pos);
 
         // Parse value based on field name
         match key.as_str() {
             "id" => {
-                let parsed_id = parse_json_number(chars, pos)? as u32;
+                let parsed_id = parse_json_number(bytes, pos)? as u32;
                 id = Some(parsed_id);
             }
             "value" => {
-                let parsed_value = parse_json_number(chars, pos)?;
+                let parsed_value = parse_json_number(bytes, pos)?;
                 value = Some(parsed_value);
             }
             "flag" => {
-                let parsed_flag = parse_json_boolean(chars, pos)?;
+                let parsed_flag = parse_json_boolean(bytes, pos)?;
                 flag = Some(parsed_flag);
             }
             "name" => {
-                let parsed_name = parse_json_string_value(chars, pos)?;
+                let parsed_name = parse_json_string_value(bytes, pos)?;
                 name = Some(parsed_name);
             }
             _ => return Err(ParseError::UnknownField { field: key }),
         }
 
-        skip_whitespace(chars, pos);
+        skip_whitespace(bytes, pos);
 
-        if *pos >= chars.len() {
+        if *pos >= bytes.len() {
             return Err(ParseError::UnexpectedEndOfInput);
         }
 
-        match chars[*pos] {
-            ',' => {
+        match bytes[*pos] {
+            b',' => {
                 *pos += 1;
             }
-            '}' => {
+            b'}' => {
                 *pos += 1;
                 break;
             }
@@ -162,81 +164,119 @@ fn parse_json_object(chars: &[char], pos: &mut usize) -> Result<JsonRecord, Pars
     })
 }
 
-pub fn parse_json_string_value(chars: &[char], pos: &mut usize) -> Result<String, ParseError> {
-    skip_whitespace(chars, pos);
+pub fn parse_json_string_value(bytes: &[u8], pos: &mut usize) -> Result<String, ParseError> {
+    skip_whitespace(bytes, pos);
 
-    if *pos >= chars.len() || chars[*pos] != '"' {
+    if *pos >= bytes.len() || bytes[*pos] != b'"' {
         return Err(ParseError::InvalidString {
             message: "Expected string starting with '\"'",
         });
     }
 
     *pos += 1; // Skip opening quote
-    let mut result = String::new();
+    let start = *pos;
+    let mut has_escapes = false;
 
-    while *pos < chars.len() {
-        match chars[*pos] {
-            '"' => {
-                *pos += 1;
-                return Ok(result);
+    // Fast scan to find closing quote and detect escapes
+    while *pos < bytes.len() {
+        match bytes[*pos] {
+            b'"' => {
+                // Found closing quote
+                if !has_escapes {
+                    // Zero-copy path: no escapes, use slice directly
+                    let result = std::str::from_utf8(&bytes[start..*pos])
+                        .map_err(|_| ParseError::InvalidString {
+                            message: "Invalid UTF-8 in string",
+                        })?
+                        .to_string();
+                    *pos += 1;
+                    return Ok(result);
+                } else {
+                    // Has escapes, need to process
+                    *pos += 1;
+                    break;
+                }
             }
-            '\\' => {
+            b'\\' => {
+                has_escapes = true;
                 *pos += 1;
-                if *pos >= chars.len() {
+                if *pos >= bytes.len() {
                     return Err(ParseError::InvalidString {
                         message: "Incomplete escape sequence",
                     });
                 }
+                *pos += 1;
+            }
+            _ => {
+                *pos += 1;
+            }
+        }
+    }
 
-                match chars[*pos] {
-                    '"' => result.push('"'),
-                    '\\' => result.push('\\'),
-                    'n' => result.push('\n'),
-                    'r' => result.push('\r'),
-                    't' => result.push('\t'),
+    if !has_escapes {
+        return Err(ParseError::InvalidString {
+            message: "Unterminated string",
+        });
+    }
+
+    // Process string with escapes
+    let mut result = String::new();
+    let mut i = start;
+
+    while i < *pos - 1 {
+        match bytes[i] {
+            b'\\' => {
+                i += 1;
+                if i >= *pos - 1 {
+                    break;
+                }
+                match bytes[i] {
+                    b'"' => result.push('"'),
+                    b'\\' => result.push('\\'),
+                    b'n' => result.push('\n'),
+                    b'r' => result.push('\r'),
+                    b't' => result.push('\t'),
                     _ => {
                         return Err(ParseError::InvalidString {
                             message: "Unsupported escape sequence",
                         })
                     }
                 }
-                *pos += 1;
+                i += 1;
             }
             c => {
-                result.push(c);
-                *pos += 1;
+                result.push(c as char);
+                i += 1;
             }
         }
     }
 
-    Err(ParseError::InvalidString {
-        message: "Unterminated string",
-    })
+    Ok(result)
 }
 
-pub fn parse_json_number(chars: &[char], pos: &mut usize) -> Result<i32, ParseError> {
-    skip_whitespace(chars, pos);
+pub fn parse_json_number(bytes: &[u8], pos: &mut usize) -> Result<i32, ParseError> {
+    skip_whitespace(bytes, pos);
 
-    if *pos >= chars.len() {
+    if *pos >= bytes.len() {
         return Err(ParseError::UnexpectedEndOfInput);
     }
 
     let mut result: i64 = 0;
     let mut negative = false;
 
-    if chars[*pos] == '-' {
+    if bytes[*pos] == b'-' {
         negative = true;
         *pos += 1;
     }
 
-    if *pos >= chars.len() || !chars[*pos].is_ascii_digit() {
+    if *pos >= bytes.len() || !bytes[*pos].is_ascii_digit() {
         return Err(ParseError::InvalidNumber {
             message: "Expected digit",
         });
     }
 
-    while *pos < chars.len() && chars[*pos].is_ascii_digit() {
-        let digit = chars[*pos] as i64 - '0' as i64;
+    while *pos < bytes.len() && bytes[*pos].is_ascii_digit() {
+        let digit = (bytes[*pos] - b'0') as i64;
 
         if result > (i64::MAX - digit) / 10 {
             return Err(ParseError::InvalidNumber {
@@ -259,31 +299,31 @@ pub fn parse_json_number(chars: &[char], pos: &mut usize) -> Result<i32, ParseEr
     Ok(final_result as i32)
 }
 
-pub fn parse_json_boolean(chars: &[char], pos: &mut usize) -> Result<bool, ParseError> {
-    skip_whitespace(chars, pos);
+pub fn parse_json_boolean(bytes: &[u8], pos: &mut usize) -> Result<bool, ParseError> {
+    skip_whitespace(bytes, pos);
 
-    if *pos >= chars.len() {
+    if *pos >= bytes.len() {
         return Err(ParseError::UnexpectedEndOfInput);
     }
 
     // Check for "true"
-    if *pos + 4 <= chars.len()
-        && chars[*pos] == 't'
-        && chars[*pos + 1] == 'r'
-        && chars[*pos + 2] == 'u'
-        && chars[*pos + 3] == 'e'
+    if *pos + 4 <= bytes.len()
+        && bytes[*pos] == b't'
+        && bytes[*pos + 1] == b'r'
+        && bytes[*pos + 2] == b'u'
+        && bytes[*pos + 3] == b'e'
     {
         *pos += 4;
         return Ok(true);
     }
 
     // Check for "false"
-    if *pos + 5 <= chars.len()
-        && chars[*pos] == 'f'
-        && chars[*pos + 1] == 'a'
-        && chars[*pos + 2] == 'l'
-        && chars[*pos + 3] == 's'
-        && chars[*pos + 4] == 'e'
+    if *pos + 5 <= bytes.len()
+        && bytes[*pos] == b'f'
+        && bytes[*pos + 1] == b'a'
+        && bytes[*pos + 2] == b'l'
+        && bytes[*pos + 3] == b's'
+        && bytes[*pos + 4] == b'e'
     {
         *pos += 5;
         return Ok(false);

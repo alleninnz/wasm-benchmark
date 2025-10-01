@@ -158,29 +158,29 @@ func serializeToJson(records []JsonRecord) string {
 	return builder.String()
 }
 
-// Parse JSON string to JsonRecord objects with comprehensive error handling
+// Parse JSON string to JsonRecord objects with optimized byte-based parsing
 func parseJsonString(jsonStr string) ([]JsonRecord, error) {
 	if jsonStr == "" {
 		return nil, errors.New("empty JSON string")
 	}
 
-	chars := []rune(jsonStr)
+	bytes := []byte(jsonStr)
 	pos := 0
 
 	// Skip leading whitespace
-	skipWhitespace(chars, &pos)
+	skipWhitespace(bytes, &pos)
 
-	if pos >= len(chars) || chars[pos] != '[' {
+	if pos >= len(bytes) || bytes[pos] != '[' {
 		return nil, errors.New("expected '[' at start of JSON array")
 	}
 
-	return parseJsonArray(chars, &pos)
+	return parseJsonArray(bytes, &pos)
 }
 
 // Skip whitespace characters in JSON parsing
-func skipWhitespace(chars []rune, pos *int) {
-	for *pos < len(chars) {
-		ch := chars[*pos]
+func skipWhitespace(bytes []byte, pos *int) {
+	for *pos < len(bytes) {
+		ch := bytes[*pos]
 		if ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' {
 			*pos++
 		} else {
@@ -189,41 +189,43 @@ func skipWhitespace(chars []rune, pos *int) {
 	}
 }
 
-// Parse JSON array starting with '[' character
-func parseJsonArray(chars []rune, pos *int) ([]JsonRecord, error) {
+// Parse JSON array starting with '[' character with pre-allocation
+func parseJsonArray(bytes []byte, pos *int) ([]JsonRecord, error) {
 	// Consume opening '['
 	*pos++
-	skipWhitespace(chars, pos)
+	skipWhitespace(bytes, pos)
 
-	var records []JsonRecord
+	// Pre-allocate slice based on estimated capacity
+	estimatedCapacity := len(bytes) / 50 // Estimate ~50 bytes per record
+	records := make([]JsonRecord, 0, estimatedCapacity)
 
 	// Handle empty array
-	if *pos < len(chars) && chars[*pos] == ']' {
+	if *pos < len(bytes) && bytes[*pos] == ']' {
 		*pos++
 		return records, nil
 	}
 
 	// Parse array elements
 	for {
-		record, err := parseJsonObject(chars, pos)
+		record, err := parseJsonObject(bytes, pos)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse object: %v", err)
 		}
 
 		records = append(records, record)
 
-		skipWhitespace(chars, pos)
-		if *pos >= len(chars) {
+		skipWhitespace(bytes, pos)
+		if *pos >= len(bytes) {
 			return nil, errors.New("unexpected end of JSON array")
 		}
 
-		ch := chars[*pos]
+		ch := bytes[*pos]
 		if ch == ']' {
 			*pos++ // Consume closing ']'
 			break
 		} else if ch == ',' {
 			*pos++ // Consume comma separator
-			skipWhitespace(chars, pos)
+			skipWhitespace(bytes, pos)
 		} else {
 			return nil, fmt.Errorf("expected ',' or ']', got '%c'", ch)
 		}
@@ -233,15 +235,15 @@ func parseJsonArray(chars []rune, pos *int) ([]JsonRecord, error) {
 }
 
 // Parse single JSON object starting with '{' character
-func parseJsonObject(chars []rune, pos *int) (JsonRecord, error) {
-	skipWhitespace(chars, pos)
+func parseJsonObject(bytes []byte, pos *int) (JsonRecord, error) {
+	skipWhitespace(bytes, pos)
 
-	if *pos >= len(chars) || chars[*pos] != '{' {
+	if *pos >= len(bytes) || bytes[*pos] != '{' {
 		return JsonRecord{}, errors.New("expected '{' at start of JSON object")
 	}
 
 	*pos++ // Consume opening '{'
-	skipWhitespace(chars, pos)
+	skipWhitespace(bytes, pos)
 
 	var record JsonRecord
 	var fieldsFound uint8 = 0 // Track which fields we've parsed using bitmask
@@ -249,17 +251,17 @@ func parseJsonObject(chars []rune, pos *int) (JsonRecord, error) {
 	// Parse object fields
 	for {
 		// Parse field name
-		fieldName, err := parseJsonStringValue(chars, pos)
+		fieldName, err := parseJsonStringValue(bytes, pos)
 		if err != nil {
 			return JsonRecord{}, fmt.Errorf("failed to parse field name: %v", err)
 		}
 
-		skipWhitespace(chars, pos)
-		if *pos >= len(chars) || chars[*pos] != ':' {
+		skipWhitespace(bytes, pos)
+		if *pos >= len(bytes) || bytes[*pos] != ':' {
 			return JsonRecord{}, errors.New("expected ':' after field name")
 		}
 		*pos++ // Consume ':'
-		skipWhitespace(chars, pos)
+		skipWhitespace(bytes, pos)
 
 		// Parse field value based on field name
 		switch fieldName {
@@ -267,7 +269,7 @@ func parseJsonObject(chars []rune, pos *int) (JsonRecord, error) {
 			if fieldsFound&fieldMaskID != 0 {
 				return JsonRecord{}, errors.New("duplicate id field")
 			}
-			value, err := parseJsonNumber(chars, pos)
+			value, err := parseJsonNumber(bytes, pos)
 			if err != nil {
 				return JsonRecord{}, fmt.Errorf("failed to parse id field: %v", err)
 			}
@@ -278,7 +280,7 @@ func parseJsonObject(chars []rune, pos *int) (JsonRecord, error) {
 			if fieldsFound&fieldMaskValue != 0 {
 				return JsonRecord{}, errors.New("duplicate value field")
 			}
-			value, err := parseJsonNumber(chars, pos)
+			value, err := parseJsonNumber(bytes, pos)
 			if err != nil {
 				return JsonRecord{}, fmt.Errorf("failed to parse value field: %v", err)
 			}
@@ -289,7 +291,7 @@ func parseJsonObject(chars []rune, pos *int) (JsonRecord, error) {
 			if fieldsFound&fieldMaskFlag != 0 {
 				return JsonRecord{}, errors.New("duplicate flag field")
 			}
-			flag, err := parseJsonBoolean(chars, pos)
+			flag, err := parseJsonBoolean(bytes, pos)
 			if err != nil {
 				return JsonRecord{}, fmt.Errorf("failed to parse flag field: %v", err)
 			}
@@ -300,7 +302,7 @@ func parseJsonObject(chars []rune, pos *int) (JsonRecord, error) {
 			if fieldsFound&fieldMaskName != 0 {
 				return JsonRecord{}, errors.New("duplicate name field")
 			}
-			name, err := parseJsonStringValue(chars, pos)
+			name, err := parseJsonStringValue(bytes, pos)
 			if err != nil {
 				return JsonRecord{}, fmt.Errorf("failed to parse name field: %v", err)
 			}
@@ -311,18 +313,18 @@ func parseJsonObject(chars []rune, pos *int) (JsonRecord, error) {
 			return JsonRecord{}, fmt.Errorf("unknown field: %s", fieldName)
 		}
 
-		skipWhitespace(chars, pos)
-		if *pos >= len(chars) {
+		skipWhitespace(bytes, pos)
+		if *pos >= len(bytes) {
 			return JsonRecord{}, errors.New("unexpected end of JSON object")
 		}
 
-		ch := chars[*pos]
+		ch := bytes[*pos]
 		if ch == '}' {
 			*pos++ // Consume closing '}'
 			break
 		} else if ch == ',' {
 			*pos++ // Consume comma separator
-			skipWhitespace(chars, pos)
+			skipWhitespace(bytes, pos)
 		} else {
 			return JsonRecord{}, fmt.Errorf("expected ',' or '}', got '%c'", ch)
 		}
@@ -336,93 +338,136 @@ func parseJsonObject(chars []rune, pos *int) (JsonRecord, error) {
 	return record, nil
 }
 
-// Parse JSON string value enclosed in quotes
-func parseJsonStringValue(chars []rune, pos *int) (string, error) {
-	if *pos >= len(chars) || chars[*pos] != '"' {
+// Parse JSON string value enclosed in quotes with zero-copy optimization
+func parseJsonStringValue(bytes []byte, pos *int) (string, error) {
+	if *pos >= len(bytes) || bytes[*pos] != '"' {
 		return "", errors.New("expected '\"' at start of string")
 	}
 
 	*pos++ // Skip opening quote
-	var builder strings.Builder
+	start := *pos
+	hasEscapes := false
 
-	for *pos < len(chars) {
-		ch := chars[*pos]
+	// Fast scan to find closing quote and detect escapes
+	for *pos < len(bytes) {
+		ch := bytes[*pos]
 		if ch == '"' {
-			*pos++ // Skip closing quote
-			return builder.String(), nil
-		} else if ch == '\\' {
-			// Handle escaped characters
+			// Found closing quote
+			if !hasEscapes {
+				// Zero-copy path: no escapes, use slice directly
+				result := string(bytes[start:*pos])
+				*pos++
+				return result, nil
+			}
 			*pos++
-			if *pos >= len(chars) {
+			break
+		} else if ch == '\\' {
+			hasEscapes = true
+			*pos++
+			if *pos >= len(bytes) {
 				return "", errors.New("incomplete escape sequence")
 			}
+			*pos++
+		} else {
+			*pos++
+		}
+	}
 
-			escaped := chars[*pos]
+	if !hasEscapes {
+		return "", errors.New("unterminated string")
+	}
+
+	// Process string with escapes
+	var builder strings.Builder
+	i := start
+
+	for i < *pos-1 {
+		ch := bytes[i]
+		if ch == '\\' {
+			i++
+			if i >= *pos-1 {
+				break
+			}
+			escaped := bytes[i]
 			switch escaped {
 			case '"', '\\', '/':
-				builder.WriteRune(escaped)
+				builder.WriteByte(escaped)
 			case 'n':
-				builder.WriteRune('\n')
+				builder.WriteByte('\n')
 			case 't':
-				builder.WriteRune('\t')
+				builder.WriteByte('\t')
 			case 'r':
-				builder.WriteRune('\r')
+				builder.WriteByte('\r')
 			default:
 				return "", fmt.Errorf("invalid escape sequence: \\%c", escaped)
 			}
 		} else {
-			builder.WriteRune(ch)
+			builder.WriteByte(ch)
 		}
-		*pos++
+		i++
 	}
 
-	return "", errors.New("unterminated string")
+	return builder.String(), nil
 }
 
-// Parse JSON number value (integers only for this implementation)
-func parseJsonNumber(chars []rune, pos *int) (int32, error) {
-	start := *pos
+// Parse JSON number value with manual digit parsing (no allocation)
+func parseJsonNumber(bytes []byte, pos *int) (int32, error) {
+	if *pos >= len(bytes) {
+		return 0, errors.New("unexpected end of input")
+	}
+
+	var result int64 = 0
+	negative := false
 
 	// Handle optional negative sign
-	if *pos < len(chars) && chars[*pos] == '-' {
+	if bytes[*pos] == '-' {
+		negative = true
 		*pos++
 	}
 
-	// Parse digits
-	digitCount := 0
-	for *pos < len(chars) && chars[*pos] >= '0' && chars[*pos] <= '9' {
+	if *pos >= len(bytes) || bytes[*pos] < '0' || bytes[*pos] > '9' {
+		return 0, errors.New("expected digit")
+	}
+
+	// Parse digits manually
+	for *pos < len(bytes) && bytes[*pos] >= '0' && bytes[*pos] <= '9' {
+		digit := int64(bytes[*pos] - '0')
+
+		// Check for overflow
+		if result > (9223372036854775807-digit)/10 {
+			return 0, errors.New("number overflow")
+		}
+
+		result = result*10 + digit
 		*pos++
-		digitCount++
 	}
 
-	if digitCount == 0 {
-		return 0, errors.New("invalid number format")
+	if negative {
+		result = -result
 	}
 
-	// Convert substring to integer
-	numStr := string(chars[start:*pos])
-	value, err := strconv.ParseInt(numStr, 10, 32)
-	if err != nil {
-		return 0, fmt.Errorf("number parsing error: %v", err)
+	// Check if value fits in int32
+	if result < -2147483648 || result > 2147483647 {
+		return 0, errors.New("number out of range")
 	}
 
-	return int32(value), nil
+	return int32(result), nil
 }
 
-// Parse JSON boolean value (true or false) with optimized string comparison
-func parseJsonBoolean(chars []rune, pos *int) (bool, error) {
+// Parse JSON boolean value (true or false) with byte-based comparison
+func parseJsonBoolean(bytes []byte, pos *int) (bool, error) {
 	// Check for "true" without creating temporary string
-	if *pos+4 <= len(chars) &&
-		chars[*pos] == 't' && chars[*pos+1] == 'r' &&
-		chars[*pos+2] == 'u' && chars[*pos+3] == 'e' {
+	if *pos+4 <= len(bytes) &&
+		bytes[*pos] == 't' && bytes[*pos+1] == 'r' &&
+		bytes[*pos+2] == 'u' && bytes[*pos+3] == 'e' {
 		*pos += 4
 		return true, nil
 	}
 
 	// Check for "false" without creating temporary string
-	if *pos+5 <= len(chars) &&
-		chars[*pos] == 'f' && chars[*pos+1] == 'a' &&
-		chars[*pos+2] == 'l' && chars[*pos+3] == 's' && chars[*pos+4] == 'e' {
+	if *pos+5 <= len(bytes) &&
+		bytes[*pos] == 'f' && bytes[*pos+1] == 'a' &&
+		bytes[*pos+2] == 'l' && bytes[*pos+3] == 's' && bytes[*pos+4] == 'e' {
 		*pos += 5
 		return false, nil
 	}
