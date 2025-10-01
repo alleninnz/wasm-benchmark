@@ -606,7 +606,14 @@ class VisualizationGenerator:
         col_labels = ["Execution Time", "Memory Usage"]
 
         # Create diverging colormap centered at 0
-        # Positive values (Rust advantage) = red, Negative values (TinyGo advantage) = blue
+        # IMPORTANT: For performance metrics (execution time & memory), lower is better
+        # Cohen's d = (rust_mean - tinygo_mean) / pooled_std
+        # Negative d → Rust has lower values → Rust performs better → RED (reversed colormap)
+        # Positive d → TinyGo has lower values → TinyGo performs better → BLUE (reversed colormap)
+        
+        # Use reversed colormap (RdBu instead of RdBu_r) to map:
+        # - Negative values (Rust better) → RED (colorbar top)
+        # - Positive values (TinyGo better) → BLUE (colorbar bottom)
 
         # Determine color scale limits
         vmax = max(abs(effect_matrix.min()), abs(effect_matrix.max()))
@@ -614,11 +621,12 @@ class VisualizationGenerator:
 
         norm = TwoSlopeNorm(vmin=-vmax, vcenter=0, vmax=vmax)
 
-        # Create heatmap
+        # Create heatmap with ORIGINAL values and REVERSED colormap
+        # This makes: negative values (Rust better) = RED (top), positive values (TinyGo better) = BLUE (bottom)
         im = ax_main.imshow(
-            effect_matrix,
-            cmap="RdBu_r",  # Red=positive (Rust advantage), Blue=negative (TinyGo advantage)
-            norm=norm,
+            effect_matrix,  # Use original matrix (negative = Rust better, positive = TinyGo better)
+            cmap="RdBu",  # REVERSED colormap: Red=negative (top), Blue=positive (bottom)
+            norm=TwoSlopeNorm(vmin=-vmax, vcenter=0, vmax=vmax),
             aspect="auto",
         )
 
@@ -636,6 +644,7 @@ class VisualizationGenerator:
         # same font settings from configuration.
         for i in range(len(row_labels)):
             for j in range(len(col_labels)):
+                # Display original Cohen's d value
                 cohens_d_value = effect_matrix[i, j]
 
                 # Map the value to an RGBA color using the image's colormap
@@ -643,7 +652,7 @@ class VisualizationGenerator:
                     rgba = im.cmap(norm(cohens_d_value))
                 except Exception:
                     # Fallback: normalize manually and sample cmap
-                    cmap = plt.get_cmap("RdBu_r")
+                    cmap = plt.get_cmap("RdBu")
                     normalized_value = (cohens_d_value + vmax) / (2 * vmax)
                     rgba = cmap(normalized_value)
 
@@ -679,9 +688,12 @@ class VisualizationGenerator:
                 )
 
         # Add colorbar
+        # Colorbar shows original Cohen's d values
+        # Negative (red, top) = Rust better, Positive (blue, bottom) = TinyGo better
         cbar = fig.colorbar(im, ax=ax_main, shrink=0.8)
         cbar.set_label(
-            "Cohen's d Effect Size", fontsize=self.config.font_sizes["labels"]
+            "Cohen's d Effect Size", 
+            fontsize=self.config.font_sizes["labels"]
         )
 
         # Add threshold lines on colorbar
@@ -712,20 +724,26 @@ class VisualizationGenerator:
         # Use a structured `legend_items` list to drive rendering so editing
         # the list will change the figure. This avoids duplicated manual
         # text blocks and makes future edits easier.
+        #
+        # IMPORTANT: Color mapping reflects performance direction
+        # Cohen's d = (rust_mean - tinygo_mean) / pooled_std
+        # - Negative d (Rust has lower/better values) → RED (shown at colorbar top)
+        # - Positive d (TinyGo has lower/better values) → BLUE (shown at colorbar bottom)
+        # Colormap: RdBu (Red for negative, Blue for positive)
         legend_items = [
             {"type": "title", "text": "Effect Size Interpretation"},
             {"type": "spacer"},
             {
                 "type": "marker",
                 "color": self.rust_color,
-                "label": "Positive",
+                "label": "Rust (Negative d)",
                 "desc": "Rust performs better",
             },
             {"type": "spacer_small"},
             {
                 "type": "marker",
                 "color": self.tinygo_color,
-                "label": "Negative",
+                "label": "TinyGo (Positive d)",
                 "desc": "TinyGo performs better",
             },
             {"type": "spacer"},
