@@ -27,9 +27,6 @@ CONFIG_MODE := $(if $(filter config,$(MAKECMDGOALS)),true,false)
 PARALLEL_MODE := $(if $(filter parallel,$(MAKECMDGOALS)),true,false)
 NO_CHECKSUMS_MODE := $(if $(filter no-checksums,$(MAKECMDGOALS)),true,false)
 
-# Clean mode detection (only when both clean and all are present)
-CLEAN_ALL_MODE := $(if $(and $(filter clean,$(MAKECMDGOALS)),$(filter all,$(MAKECMDGOALS))),true,false)
-
 # Language mode detection for format/lint
 PYTHON_MODE := $(if $(filter python,$(MAKECMDGOALS)),true,false)
 GO_MODE := $(if $(filter go,$(MAKECMDGOALS)),true,false)
@@ -260,8 +257,7 @@ help: ## Show complete list of all available targets
 	$(call log_info,  all                    🎯 Run complete experiment pipeline (add quick for quick mode))
 	@echo ""
 	$(call log_info,🧹 Cleanup Targets:)
-	$(call log_info,  clean                  🧹 Clean build artifacts and temporary files)
-	$(call log_info,  clean all              💥 Clean everything including dependencies, results, and caches)
+	$(call log_info,  clean                  💥 Clean everything including dependencies, results, and caches)
 	@echo ""
 	$(call log_info,🛠️  Development Targets:)
 	$(call log_info,  lint                   ✨ Run code quality checks (add python/rust/go/js for specific language))
@@ -303,7 +299,7 @@ help: ## Show complete list of all available targets
 	$(call log_info,  make lint python       🐍 Run Python linting only)
 	$(call log_info,  make format rust       🦀 Format Rust code only)
 	$(call log_info,  make test validate     ✅ Run WASM task validation)
-	$(call log_info,  make clean all         💥 Clean everything)
+	$(call log_info,  make clean             💥 Clean everything)
 	$(call log_info,  make check deps        🔍 Check all dependencies)
 	@echo ""
 	$(call log_info,🐳 Docker Examples:)
@@ -311,7 +307,7 @@ help: ## Show complete list of all available targets
 	$(call log_info,  make docker run quick headed 🐳👁️ Quick benchmarks with browser)
 	$(call log_info,  make docker build rust parallel 🐳🦀 Build Rust with parallelization)
 	$(call log_info,  make docker status     🐳📊 Show container health)
-	$(call log_info,  make docker clean all  🐳🧹 Full container cleanup)
+	$(call log_info,  make docker clean      🐳🧹 Full container cleanup)
 
 
 # ============================================================================
@@ -546,16 +542,15 @@ endif
 # Cleanup Targets
 # ============================================================================
 
-clean: ## Clean build artifacts and temporary files (use: make clean all for complete cleanup)
-ifeq ($(CLEAN_ALL_MODE),true)
+clean: ## Clean everything including dependencies, results, and caches
 	$(call log_warning,Cleaning everything including dependencies, caches, and results...)
-	@read -p "Are you sure? This will delete node_modules, results, caches, and logs [y/N]: " -n 1 -r; \
+	@read -p "Are you sure? This will delete node_modules, results, caches, and logs [y/N]: " -n 1 -r REPLY; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		rm -rf $(NODE_MODULES) 2>/dev/null || true; \
 		rm -rf $(RESULTS_DIR)/* 2>/dev/null || true; \
-		rm -rf $(CONFIGS_DIR)/* 2>/dev/null || true; \
-		rm -rf reports/* 2>/dev/null || true; \
+		rm -f $(CONFIGS_DIR)/bench.json $(CONFIGS_DIR)/bench-quick.json 2>/dev/null || true; \
+		find reports/plots -mindepth 1 ! -path 'reports/plots/templates' ! -path 'reports/plots/templates/*' -delete 2>/dev/null || true; \
 		rm -f versions.lock 2>/dev/null || true; \
 		rm -f package-lock.json 2>/dev/null || true; \
 		rm -f poetry.lock 2>/dev/null || true; \
@@ -568,7 +563,7 @@ ifeq ($(CLEAN_ALL_MODE),true)
 		find $(TASKS_DIR) -name '*.wasm' -delete 2>/dev/null || true; \
 		find $(BUILDS_RUST_DIR) -type f ! -name '.gitkeep' -delete 2>/dev/null || true; \
 		find $(BUILDS_TINYGO_DIR) -type f ! -name '.gitkeep' -delete 2>/dev/null || true; \
-		rm -f $(BUILDS_DIR)/checksums.txt $(BUILDS_DIR)/sizes.csv 2>/dev/null || true; \
+		rm -f $(BUILDS_DIR)/checksums.txt $(BUILDS_DIR)/sizes.csv $(BUILDS_DIR)/metrics.json 2>/dev/null || true; \
 		find . -name "*.tmp" -delete 2>/dev/null || true; \
 		find . -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true; \
 		find . -name "*.pyc" -delete 2>/dev/null || true; \
@@ -578,22 +573,6 @@ ifeq ($(CLEAN_ALL_MODE),true)
 	else \
 		$(call log_info,Operation cancelled,shell); \
 	fi
-else
-	$(call log_step,Cleaning generated artifacts from builds, configs, reports, results, tasks...)
-	@find $(BUILDS_RUST_DIR) -type f ! -name '.gitkeep' -delete 2>/dev/null || true
-	@find $(BUILDS_TINYGO_DIR) -type f ! -name '.gitkeep' -delete 2>/dev/null || true
-	@rm -f $(BUILDS_DIR)/checksums.txt $(BUILDS_DIR)/sizes.csv 2>/dev/null || true
-	@rm -rf $(CONFIGS_DIR)/* 2>/dev/null || true
-	@rm -rf reports/* 2>/dev/null || true
-	@rm -rf $(RESULTS_DIR)/* 2>/dev/null || true
-	@find $(TASKS_DIR) -name '*.wasm' -delete 2>/dev/null || true
-	@find $(TASKS_DIR) -name 'target' -type d -exec rm -rf {} + 2>/dev/null || true
-	@find . -name "*.tmp" -delete 2>/dev/null || true
-	@find . -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	@find . -name "*.pyc" -delete 2>/dev/null || true
-	@rm -f .cache.* 2>/dev/null || true
-	$(call log_success,🧹 Generated artifacts cleaned)
-endif
 
 # ============================================================================
 # Development Targets
@@ -1090,8 +1069,7 @@ $(if $(filter true,$(TEST_VALIDATE_MODE)), validate))
 endef
 
 define docker_clean_flags
-$(strip \
-$(if $(filter true,$(CLEAN_ALL_MODE)), all))
+$(strip)
 endef
 
 docker: ## Docker container operations (use: make docker [subcommand] [flags])
