@@ -1261,13 +1261,13 @@ class VisualizationGenerator:
             # Use appropriate vertical spacing in the reserved bottom area
             center_x = 0.5
             # Position the text with appropriate distance from the plot area
-            text_y = 0.05
+            text_y = 0.02
 
             fig.text(
                 center_x,
                 text_y,
                 summary_text,
-                fontsize=9,
+                fontsize=13,
                 ha="center",
                 va="bottom",
                 bbox=dict(
