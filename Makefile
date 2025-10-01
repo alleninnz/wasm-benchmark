@@ -521,7 +521,7 @@ endif
 all: ## Run complete experiment pipeline (use quick for quick mode)
 ifeq ($(QUICK_MODE),true)
 	$(call log_step,Running QUICK complete pipeline (lightweight) -> init, config, run, analyze...)
-	$(MAKE) init
+	$(MAKE) init FORCE=1
 	# Build config (both bench.json and bench-quick.json) and skip full compilation to save time in quick mode
 	$(MAKE) build config
 	$(MAKE) run quick
@@ -529,7 +529,7 @@ ifeq ($(QUICK_MODE),true)
 	$(call log_success,⚡ Quick experiment pipeline completed!)
 else
 	$(call log_step,Running full complete pipeline -> init, build, run, analyze...)
-	$(MAKE) init
+	$(MAKE) init FORCE=1
 	$(MAKE) build config
 	$(MAKE) build
 	$(MAKE) run
@@ -753,7 +753,7 @@ test: ## Run tests (use: make test [validate] or run all tests)
 ifeq ($(TEST_VALIDATE_MODE),true)
 	$(call log_step,Running WASM task validation...)
 	$(call check_script_exists,scripts/validate-tasks.sh)
-	@scripts/validate-tasks.sh
+	@scripts/validate-tasks.sh --all
 	$(call log_success,✅ Task validation completed)
 else
 	# Default: run all available tests
