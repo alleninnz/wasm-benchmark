@@ -21,7 +21,7 @@ This project provides a rigorous performance comparison between:
 **Test Environment:**
 
 - **Hardware:** AWS EC2 c7g.2xlarge (4 CPU, 16GB RAM)
-- **OS:** Amazon Linux 2 (Linux/x86_64)
+- **OS:** Ubuntu 22.04 (Linux/x86_64)
 - **Runtime:** Headless Chromium v140+ (Puppeteer)
 - **Toolchain:** Rust 1.90, Go 1.25.1, TinyGo 0.39, Node.js 24.7, Python 3.11+
 
@@ -52,7 +52,7 @@ make all         # Complete research-grade pipeline
 
 ### 💻 **System Requirements**
 
-- **Linux** Amazon Linux 2+ (AWS EC2 c7g instances recommended)
+- **Linux** Ubuntu 22.04+ (AWS EC2 c7g instances recommended)
 - **Hardware**: 4 CPU cores, 16GB RAM minimum for benchmark execution
 
 ### 🛠️ **Required Components**
