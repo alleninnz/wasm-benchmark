@@ -263,30 +263,89 @@ run_cross_implementation_test() {
     log_step "Running cross-implementation validation for $task..."
     cd "$tinygo_dir"
     
-    if go test "$test_file" main.go -run TestCrossImplementationHashMatching -timeout 120s > /dev/null 2>&1; then
-        local hash_count=$(jq length "../../../data/reference_hashes/$task.json" 2>/dev/null || echo "0")
+    # Validate that reference hashes exist
+    local hash_count=$(jq length "../../../data/reference_hashes/$task.json" 2>/dev/null || echo "0")
+    
+    if [[ $hash_count -eq 0 ]]; then
+        log_error "❌ No reference hashes found for $task"
+        add_validation_result "$task" "FAIL" "reference hashes missing"
+        return 1
+    fi
+    
+    # Check if TinyGo is available
+    if ! command -v tinygo &> /dev/null; then
+        log_warning "⚠️  TinyGo compiler not found"
+        log_info "Reference hashes verified: $hash_count test vectors"
+        log_info "Run 'make test' for browser-based WASM validation"
+        add_validation_result "$task" "SKIP" "TinyGo compiler not available"
+        return 0
+    fi
+    
+    # Run cross-implementation test using TinyGo compiler
+    # This ensures the same compiler optimizations and behavior as the WASM build
+    # Note: TinyGo test runs all tests in the package (no -run filter support)
+    log_step "Testing TinyGo implementation against Rust reference hashes..."
+    
+    local test_output
+    local test_exit_code
+    
+    # Capture both stdout and stderr for detailed error reporting
+    # TinyGo test syntax: tinygo test [options]
+    if test_output=$(tinygo test 2>&1); then
+        test_exit_code=0
+    else
+        test_exit_code=$?
+    fi
+    
+    if [[ $test_exit_code -eq 0 ]]; then
         log_success "✅ All $hash_count test vectors passed for $task"
+        log_info "TinyGo implementation matches Rust reference implementation"
         add_validation_result "$task" "PASS" "implementations match exactly"
         return 0
     else
         # Special handling for matrix_mul partial compatibility
         if [[ "$task" == "matrix_mul" ]]; then
-            log_warning "⚠️  Partial compatibility detected for $task - this is expected"
-            log_info "Matrix multiplication shows floating-point precision differences for larger matrices"
-            log_success "✅ Critical test cases (small matrices) are verified to work correctly"
-            add_validation_result "$task" "PARTIAL" "small matrices match, larger matrices differ (expected)"
-            return 0
+            # Check if small matrices passed (critical functionality)
+            if echo "$test_output" | grep -q "small_2x2.*MATCH" && \
+               echo "$test_output" | grep -q "small_3x3.*MATCH" && \
+               echo "$test_output" | grep -q "small_4x4.*MATCH"; then
+                
+                # Extract pass/fail statistics
+                local stats=$(echo "$test_output" | grep -E "Passed:.*[0-9]+/[0-9]+")
+                
+                log_warning "⚠️  Partial compatibility detected for $task"
+                log_info "Test results: $stats"
+                log_info "✅ Small matrices (2x2, 3x3, 4x4) match correctly"
+                log_info "❌ Larger matrices show floating-point precision differences"
+                log_info "This is expected due to accumulated rounding errors in FP arithmetic"
+                log_success "✅ Core functionality verified"
+                add_validation_result "$task" "PARTIAL" "small matrices match, larger matrices differ (expected)"
+                return 0
+            fi
         fi
         
+        # Genuine test failure
         log_error "❌ Cross-implementation validation failed for $task"
+        log_error "Exit code: $test_exit_code"
+        
+        # Extract failure summary from test output
+        if echo "$test_output" | grep -q "CROSS-IMPLEMENTATION VALIDATION FAILED"; then
+            local failure_info=$(echo "$test_output" | grep -A2 "CROSS-IMPLEMENTATION VALIDATION FAILED")
+            log_error "Test failure details:"
+            echo "$failure_info" | while IFS= read -r line; do
+                log_error "  $line"
+            done
+        fi
+        
         add_validation_result "$task" "FAIL" "implementations do not match"
         
         echo
         log_error "TROUBLESHOOTING for $task:"
-        log_error "  • Check algorithm implementations for differences"
-        log_error "  • Verify floating-point arithmetic consistency"
-        log_error "  • Compare coordinate mapping and iteration logic"
-        log_error "  • Run detailed test: cd $tinygo_dir && go test $test_file main.go -v"
+        log_error "  • Run detailed test: cd $tinygo_dir && tinygo test $test_file main.go -v"
+        log_error "  • Compare algorithm implementations between Rust and TinyGo"
+        log_error "  • Check floating-point arithmetic consistency"
+        log_error "  • Verify coordinate mapping and iteration logic"
+        
         return 1
     fi
 }

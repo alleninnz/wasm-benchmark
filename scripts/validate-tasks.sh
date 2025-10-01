@@ -160,7 +160,10 @@ display_task_status() {
 
 show_usage() {
     cat << EOF
-$(echo -e "${BLUE}${BOLD}Unified WASM Task Validation Suite${NC}")
+$(echo -e "${BLUE}${BOLD}WASM Task Build Validation Suite${NC}")
+$(echo -e "${DIM}Validates reference hashes and WASM builds (not runtime behavior)${NC}")
+$(echo -e "${DIM}For full cross-implementation testing, use: make test${NC}")
+
 Usage: $SCRIPT_NAME [options] [tasks...]
 
 $(echo -e "${BOLD}Options:${NC}")
@@ -190,6 +193,16 @@ $(echo -e "${BOLD}Examples:${NC}")
   $SCRIPT_NAME --summary mandelbrot      # Specific task with summary reporting
   $SCRIPT_NAME --verbose --all           # All tasks with verbose debug output
 
+$(echo -e "${BOLD}What This Script Does:${NC}")
+  ✅ Validates reference hash files exist and are properly formatted
+  ✅ Checks that WASM builds are present and valid
+  ✅ Verifies project structure and dependencies
+  
+  $(echo -e "${YELLOW}Note:${NC}") This script does NOT test runtime behavior or cross-implementation
+  consistency. For complete validation including actual WASM execution:
+  
+  $(echo -e "${CYAN}make test${NC}")  or  $(echo -e "${CYAN}npm test${NC}")
+
 $(echo -e "${BOLD}Return Codes:${NC}")
   0  All validations passed
   1  One or more validations failed
@@ -199,11 +212,14 @@ EOF
 
 show_version() {
     echo "$SCRIPT_NAME version $SCRIPT_VERSION"
-    echo "Unified WASM Task Validation Suite"
+    echo "WASM Task Build Validation Suite"
     echo ""
-    echo "Replaces:"
-    echo "  - validate_all_tasks.sh"
-    echo "  - validate_cross_implementation.sh"
+    echo "Purpose:"
+    echo "  - Validates reference hash files"
+    echo "  - Checks WASM build artifacts"
+    echo "  - Verifies project structure"
+    echo ""
+    echo "Note: For runtime cross-implementation testing, use 'make test'"
 }
 
 list_tasks() {
@@ -395,24 +411,29 @@ generate_report() {
     fi
     
     echo ""
-    log_info "=== BENCHMARK READINESS ==="
+    log_info "=== BUILD VALIDATION STATUS ==="
     if [[ ${#FAILED_TASKS[@]} -eq 0 ]]; then
-        log_success "${CHECKMARK} READY FOR BENCHMARK EXECUTION"
+        log_success "${CHECKMARK} BUILD ARTIFACTS VALIDATED"
         if [[ "$VALIDATION_MODE" == "detailed" ]]; then
-            log_info "All implemented tasks are validated and ready for performance measurement"
+            log_info "All reference hashes and WASM builds are present and valid"
             if [[ ${#PARTIAL_TASKS[@]} -gt 0 ]]; then
-                log_warning "Note: Partial compatibility tasks have known floating-point precision differences"
-                log_warning "This is expected behavior and does not affect benchmark validity"
+                log_warning "Note: Some tasks marked as partial compatibility"
+                log_warning "This typically means known floating-point precision differences exist"
             fi
+            echo ""
+            log_info "📋 Next Steps:"
+            log_info "   For complete cross-implementation validation with runtime testing:"
+            log_info "   ${CYAN}make test${NC}  or  ${CYAN}npm test${NC}"
         fi
     else
-        log_error "${CROSS} BENCHMARK EXECUTION BLOCKED"
-        log_error "Some tasks failed validation and require investigation"
+        log_error "${CROSS} BUILD VALIDATION FAILED"
+        log_error "Some tasks are missing required artifacts"
         if [[ "$VALIDATION_MODE" == "detailed" ]]; then
             echo ""
-            log_error "FAILED TASKS TROUBLESHOOTING:"
+            log_error "TROUBLESHOOTING:"
             for task in "${FAILED_TASKS[@]}"; do
-                log_error "$BULLET Run individual validation: bash scripts/validate_${task}.sh"
+                log_error "$BULLET Check: bash scripts/validate_${task}.sh --verbose"
+                log_error "$BULLET Build: make build (or make build rust/tinygo)"
             done
         fi
     fi
