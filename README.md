@@ -1,8 +1,8 @@
 # WebAssembly Performance Benchmark: Rust vs TinyGo
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey.svg)
-![Rust](https://img.shields.io/badge/rust-1.89.0-orange.svg)
+![Platform](https://img.shields.io/badge/platform-Linux%20%28AWS%20EC2%29-lightgrey.svg)
+![Rust](https://img.shields.io/badge/rust-1.90-orange.svg)
 ![TinyGo](https://img.shields.io/badge/tinygo-0.39.0-00ADD8.svg)
 ![Node.js](https://img.shields.io/badge/node-24.7.0-green.svg)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)
@@ -15,15 +15,15 @@ This project provides a rigorous performance comparison between:
 
 | Language | Target | Runtime | Optimization |
 |----------|--------|---------|--------------|
-| **Rust 1.89** | `wasm32-unknown-unknown` | Zero-cost abstractions, no GC | `-O3`, fat LTO |
+| **Rust 1.90** | `wasm32-unknown-unknown` | Zero-cost abstractions, no GC | `-O3`, fat LTO |
 | **TinyGo 0.39** | `wasm` | Garbage collected runtime | `-opt=3`, no scheduler |
 
 **Test Environment:**
 
-- **Hardware:** MacBook Pro M4 10-Core CPU, 16GB RAM
-- **OS:** macOS 15.6+ (Darwin/arm64)
+- **Hardware:** AWS EC2 c7g.2xlarge (4 CPU, 16GB RAM)
+- **OS:** Amazon Linux 2 (Linux/x86_64)
 - **Runtime:** Headless Chromium v140+ (Puppeteer)
-- **Toolchain:** Rust 1.89, Go 1.25, TinyGo 0.39, Node.js 24.7, Python 3.11+
+- **Toolchain:** Rust 1.90, Go 1.25.1, TinyGo 0.39, Node.js 24.7, Python 3.11+
 
 ## 🚀 Quick Start
 
@@ -52,15 +52,14 @@ make all         # Complete research-grade pipeline
 
 ### 💻 **System Requirements**
 
-- **macOS** 15+ (primary development platform)
-- **Linux** Ubuntu 20.04+ (manual setup required)
-- **Hardware**: 8GB+ RAM recommended for full benchmarks
+- **Linux** Amazon Linux 2+ (AWS EC2 c7g instances recommended)
+- **Hardware**: 4 CPU cores, 16GB RAM minimum for benchmark execution
 
 ### 🛠️ **Required Components**
 
 | Tool | Version | Purpose |
 |------|---------|----------|
-| **Rust** | 1.89+ | WASM compilation with `wasm32-unknown-unknown` target |
+| **Rust** | 1.90+ | WASM compilation with `wasm32-unknown-unknown` target |
 | **TinyGo** | 0.39+ | Go-to-WASM compilation |
 | **Node.js** | 24+ | Test harness and automation |
 | **Python** | 3.11+ | Statistical analysis with Poetry |
@@ -457,7 +456,7 @@ python analysis/plots.py       # Matplotlib chart generation
 
 ### 🌍 **Environmental Factors**
 
-- **Single-platform Testing**: Results primarily from macOS/Chromium environment
+- **Single-platform Testing**: Results from AWS EC2 Linux/Chromium environment
 - **System Interference**: Background processes may affect timing precision
 - **Browser Variations**: Results specific to Chromium V8 WebAssembly implementation
 

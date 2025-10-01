@@ -15,8 +15,8 @@
 
 **Language Toolchains:**
 
-• **Rust** 1.89.0 (stable) targeting `wasm32-unknown-unknown`, using `#[no_mangle]` bare interface (zero-cost abstraction)
-• **TinyGo** 0.39.0 + **Go** 1.25+ targeting WebAssembly (`-target=wasm`)
+• **Rust** 1.90.0 (stable) targeting `wasm32-unknown-unknown`, using `#[no_mangle]` bare interface (zero-cost abstraction)
+• **TinyGo** 0.39.0 + **Go** 1.25.1 targeting WebAssembly (`-target=wasm`)
 • **Node.js** 24.7.0 LTS
 • **Python** 3.11+ with scientific computing stack (NumPy 2.3.3+, SciPy 1.10.0+, Matplotlib 3.6.0+)
 
@@ -153,8 +153,8 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 
 • Install and lock:
 
-- **Rust 1.89.0** + `wasm32-unknown-unknown` target (no wasm-bindgen/wasm-pack needed)
-- **Go 1.25+** + **TinyGo 0.39.0**
+- **Rust 1.90.0** + `wasm32-unknown-unknown` target (no wasm-bindgen/wasm-pack needed)
+- **Go 1.25.1** + **TinyGo 0.39.0**
 - **Node.js 24.7.0 LTS**
 - **Python 3.11+** + scientific computing libraries (NumPy 2.3.3, SciPy 1.10.0+, Matplotlib 3.6.0+)
 

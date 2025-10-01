@@ -15,8 +15,8 @@
 
 **语言工具链：**
 
-• **Rust** 1.89.0（稳定版）目标 `wasm32-unknown-unknown`，使用 `#[no_mangle]` 裸接口（零开销抽象）
-• **TinyGo** 0.39.0 + **Go** 1.25+ 目标 WebAssembly（`-target=wasm`）
+• **Rust** 1.90.0（稳定版）目标 `wasm32-unknown-unknown`，使用 `#[no_mangle]` 裸接口（零开销抽象）
+• **TinyGo** 0.39.0 + **Go** 1.25.1 目标 WebAssembly（`-target=wasm`）
 • **Node.js** 24.7.0 LTS
 • **Python** 3.11+ 配科学计算栈（NumPy 2.3.3+, SciPy 1.10.0+, Matplotlib 3.6.0+）
 
@@ -153,8 +153,8 @@ async function benchmarkTask(taskName, wasmInstance, inputData) {
 
 • 安装并固定：
 
-- **Rust 1.89.0** + `wasm32-unknown-unknown` 目标（无需 wasm-bindgen/wasm-pack）
-- **Go 1.25+** + **TinyGo 0.39.0**
+- **Rust 1.90.0** + `wasm32-unknown-unknown` 目标（无需 wasm-bindgen/wasm-pack）
+- **Go 1.25.1** + **TinyGo 0.39.0**
 - **Node.js 24.7.0 LTS**
 - **Python 3.11+** + 科学计算库（NumPy 2.3.3, SciPy 1.10.0+, Matplotlib 3.6.0+）
 
