@@ -23,10 +23,11 @@ pub fn naive_triple_loop_multiply(a: &[Vec<f32>], b: &[Vec<f32>], c: &mut [Vec<f
     let n = a.len();
 
     // Use i,j,k order for consistent cross-language behavior
-    for (i, c_row) in c.iter_mut().enumerate().take(n) {
-        for (j, c_elem) in c_row.iter_mut().enumerate().take(n) {
-            for (k, b_row) in b.iter().enumerate().take(n) {
-                *c_elem += a[i][k] * b_row[j];
+    // Direct indexing for optimal WASM performance (matches TinyGo implementation)
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
+                c[i][j] += a[i][k] * b[k][j];
             }
         }
     }
