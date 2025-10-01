@@ -3,19 +3,22 @@
 use crate::types::{FNV_OFFSET_BASIS, FNV_PRIME};
 
 /// Computes FNV-1a hash of u32 array for cross-implementation verification
+/// Optimized version using direct indexing without array allocation
 pub fn fnv1a_hash_u32(data: &[u32]) -> u32 {
     let mut hash = FNV_OFFSET_BASIS;
 
     for i in 0..data.len() {
         let value = data[i];
-        // Convert u32 to bytes (little-endian for cross-platform consistency)
-        let bytes = value.to_le_bytes();
 
-        for j in 0..bytes.len() {
-            let byte = bytes[j];
-            hash ^= byte as u32;
-            hash = hash.wrapping_mul(FNV_PRIME);
-        }
+        // Process bytes directly without creating array (little-endian)
+        hash ^= (value & 0xFF) as u32;
+        hash = hash.wrapping_mul(FNV_PRIME);
+        hash ^= ((value >> 8) & 0xFF) as u32;
+        hash = hash.wrapping_mul(FNV_PRIME);
+        hash ^= ((value >> 16) & 0xFF) as u32;
+        hash = hash.wrapping_mul(FNV_PRIME);
+        hash ^= ((value >> 24) & 0xFF) as u32;
+        hash = hash.wrapping_mul(FNV_PRIME);
     }
 
     hash

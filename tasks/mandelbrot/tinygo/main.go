@@ -123,12 +123,17 @@ func mandelbrotPixel(cReal, cImag float64, maxIter uint32) uint32 {
 	var iterations uint32 = 0
 
 	for iterations < maxIter {
-		if complexMagnitudeSquared(zReal, zImag) > divergenceThreshold {
+		// Compute squares once and reuse them
+		zRealSq := zReal * zReal
+		zImagSq := zImag * zImag
+
+		// Check divergence using cached squares
+		if zRealSq+zImagSq > divergenceThreshold {
 			break
 		}
 
-		// Calculate z² + c
-		zRealNew := zReal*zReal - zImag*zImag + cReal
+		// Calculate z² + c using cached squares (eliminates 2 multiplications per iteration)
+		zRealNew := zRealSq - zImagSq + cReal
 		zImagNew := 2.0*zReal*zImag + cImag
 
 		zReal = zRealNew
@@ -150,19 +155,19 @@ func complexMagnitudeSquared(real, imag float64) float64 {
 func fnv1aHashU32(data []uint32) uint32 {
 	hash := fnvOffsetBasis
 
-	for _, value := range data {
-		// Convert uint32 to bytes (little-endian)
-		bytes := [4]byte{
-			byte(value),
-			byte(value >> 8),
-			byte(value >> 16),
-			byte(value >> 24),
-		}
+	// Use direct indexing instead of iterator to avoid allocations
+	for i := 0; i < len(data); i++ {
+		value := data[i]
 
-		for _, b := range bytes {
-			hash ^= uint32(b)
-			hash *= fnvPrime
-		}
+		// Process bytes directly without creating array
+		hash ^= uint32(value & 0xFF)
+		hash *= fnvPrime
+		hash ^= uint32((value >> 8) & 0xFF)
+		hash *= fnvPrime
+		hash ^= uint32((value >> 16) & 0xFF)
+		hash *= fnvPrime
+		hash ^= uint32((value >> 24) & 0xFF)
+		hash *= fnvPrime
 	}
 
 	return hash
