@@ -399,7 +399,17 @@ uint32_t run_task(uint32_t params_ptr); // Execute & return result hash
 
 ### ✅ **Result Verification**
 
-**FNV-1a Hash** ensures correctness across languages with **449 reference test vectors** (320 Mandelbrot, 112 JSON, 17 Matrix).
+To ensure **implementation correctness** and **cross-language consistency** in this performance comparison, the project employs a comprehensive validation framework. Since compiler optimizations and language-specific runtime behaviors can potentially affect computational results, establishing algorithmic equivalence is critical before comparing performance metrics.
+
+**Cross-Language Validation Mechanism:**
+
+The framework uses **FNV-1a Hash** algorithm to verify that both Rust and TinyGo implementations produce identical computational results across all benchmark tasks. This validation strategy includes **449 reference test vectors** systematically generated to cover diverse computational scenarios:
+
+- **320 Mandelbrot vectors**: Covering various grid sizes (2×2 to 256×256), iteration counts (10-2000), complex plane regions, and zoom scales to validate floating-point computation consistency
+- **112 JSON Parse vectors**: Testing different record counts (0-65,535), seed variations, and edge cases to ensure parsing logic and data structure handling equivalence  
+- **17 Matrix Mul vectors**: Spanning matrix dimensions (1×1 to 128×128) with varied seeds to validate numerical computation and memory access patterns
+
+**Purpose**: This comprehensive validation ensures that any observed performance differences stem purely from language/compiler efficiency rather than algorithmic discrepancies, providing a fair and scientifically rigorous foundation for the benchmark comparison.
 
 ## 📊 Statistical Methodology
 
