@@ -14,16 +14,16 @@ services:
       - ./reports:/app/reports
       - ./builds:/app/builds
 
-    # Resource limits optimized for AWS EC2 c7g.2xlarge (8 vCPU, 16GB RAM)
-    # Reserves 1 CPU and 2GB RAM for system/Docker overhead
+    # Resource limits optimized for AWS EC2 c7g.2xlarge (4 vCPU, 16GB RAM)
+    # Reserves 0.5 CPU and 2GB RAM for system/Docker overhead
     deploy:
       resources:
         limits:
           memory: 14G
-          cpus: "7.0"
+          cpus: "3.5"
         reservations:
           memory: 8G
-          cpus: "4.0"
+          cpus: "2.0"
 
     # Increase shared memory for Chromium headless browser
     shm_size: 2G
