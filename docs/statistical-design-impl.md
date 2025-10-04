@@ -1,9 +1,8 @@
 # 🎯 WebAssembly基准测试系统：实现架构指南
 
-> **文档版本**: v2.1 (基于实际实现更新)
-> **更新时间**: 2025-09-27
-> **目标读者**: 核心开发团队、架构决策者、新开发者
-> **范围**: Rust vs TinyGo语言选择决策支持系统架构与实现
+> **更新时间**: 2025-09-27  
+> **目标读者**: 核心开发团队、架构决策者、新开发者  
+> **范围**: Rust vs TinyGo语言选择决策支持系统架构与实现  
 
 ---
 
@@ -148,7 +147,7 @@ qc:                           # 质量控制配置
 statistics:                   # 统计分析配置
   confidence_level: 0.95
   significance_alpha: 0.05
-  effect_size_thresholds: {small: 0.3, medium: 0.6, large: 1.0}
+  effect_size_thresholds: {small: 0.2, medium: 0.5, large: 0.8}
   minimum_detectable_effect: 0.3
 
 plots:                        # 可视化配置
@@ -213,8 +212,8 @@ s_pooled = √[((n₁-1)×s₁² + (n₂-1)×s₂²) / (n₁+n₂-2)]
 **效应量解释标准**：
 
 - |d| < 0.2: 忽略不计 (negligible)
-- |d| < 0.5: 小效应 (small effect)
-- |d| < 0.8: 中等效应 (medium effect)
+- 0.2 ≤ |d| < 0.5: 小效应 (small effect)
+- 0.5 ≤ |d| < 0.8: 中等效应 (medium effect)
 - |d| ≥ 0.8: 大效应 (large effect)
 
 ### **数据质量验证**
@@ -415,7 +414,7 @@ class StatisticalAnalysis:
 
 - **简化的统计方法**: 专注核心比较分析，避免过度复杂的学术功能
 - **实用的显著性阈值**: α = 0.05 (工程标准)
-- **效应量分类**: 实用的Cohen's d阈值 (小=0.3, 中=0.6, 大=1.0)
+- **效应量分类**: 实用的Cohen's d阈值 (小=0.2, 中=0.5, 大=0.8)
 - **决策支持**: 直接的语言选择建议和置信度评估
 
 ### **3. 质量控制模块 (analysis/qc.py)**
@@ -653,9 +652,9 @@ class DecisionSummaryGenerator:
     """
 
     DEFAULT_CONFIDENCE_LEVEL = 0.95
-    SMALL_EFFECT_SIZE = 0.3
-    MEDIUM_EFFECT_SIZE = 0.6
-    LARGE_EFFECT_SIZE = 1.0
+    SMALL_EFFECT_SIZE = 0.2
+    MEDIUM_EFFECT_SIZE = 0.5
+    LARGE_EFFECT_SIZE = 0.8
 
     def __init__(self, logger: Optional[logging.Logger] = None) -> None:
         """Initialize the generator with an optional logger."""
@@ -733,9 +732,9 @@ statistics:
   significance_alpha: 0.05
   effect_size_metric: "cohens_d"
   effect_size_thresholds:
-    small: 0.3
-    medium: 0.6
-    large: 1.0
+    small: 0.2
+    medium: 0.5
+    large: 0.8
   minimum_detectable_effect: 0.3
 
 # Visualization and plotting configuration

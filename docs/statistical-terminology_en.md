@@ -1,9 +1,8 @@
 # 📊 WebAssembly Benchmark Project Statistical Terminology Guide
 
-> **Document Version**: v2.0 (Optimized based on actual implementation)
-> **Last Updated**: 2025-09-26
-> **Target Audience**: Development team, data analysts, decision makers
-> **Project Scope**: WebAssembly Rust vs TinyGo performance comparison
+> **Last Updated**: 2025-09-26  
+> **Target Audience**: Development team, data analysts, decision makers  
+> **Project Scope**: WebAssembly Rust vs TinyGo performance comparison  
 
 ---
 

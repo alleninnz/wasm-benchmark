@@ -1,7 +1,7 @@
 # WebAssembly Benchmark: Rust vs TinyGo Performance Comparison Study
 
-> **Last Updated**: 2025-09-26
-> **Experiment Completion**: 449 reference test vectors, complete statistical analysis pipeline, automated quality control
+> **Last Updated**: 2025-09-26  
+> **Experiment Completion**: 449 reference test vectors, complete statistical analysis pipeline, automated quality control  
 
 ---
 

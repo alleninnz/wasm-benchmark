@@ -1,8 +1,8 @@
 # 🕒 WebAssembly Benchmark Timeout Configuration Guide
 
-> **Created**: 2025-09-26
-> **Scope**: Solving WASM intensive task timeout issues
-> **Based on**: Configuration v2.1, Service Architecture v2.0
+> **Created**: 2025-09-26  
+> **Scope**: Solving WASM intensive task timeout issues  
+> **Based on**: Configuration v2.1, Service Architecture v2.0  
 
 ---
 

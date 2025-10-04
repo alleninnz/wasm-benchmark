@@ -1,7 +1,7 @@
 # 📋 `make run quick` Execution Chain Detailed Analysis
 
-> **Document Version**: v2.0
-> **Last Updated**: 2025-09-26
+> **Document Version**: v2.0  
+> **Last Updated**: 2025-09-26  
 
 ---
 

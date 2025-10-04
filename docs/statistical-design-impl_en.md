@@ -1,6 +1,5 @@
 # 🎯 WebAssembly Benchmark System: Implementation Architecture Guide
 
-> **Document Version**: v2.1 (Updated based on actual implementation)
 > **Last Updated**: 2025-09-27
 > **Target Audience**: Core development team, architecture decision makers, new developers
 > **Scope**: Rust vs TinyGo language selection decision support system architecture and implementation
@@ -148,7 +147,7 @@ qc:                           # Quality control configuration
 statistics:                   # Statistical analysis configuration
   confidence_level: 0.95
   significance_alpha: 0.05
-  effect_size_thresholds: {small: 0.3, medium: 0.6, large: 1.0}
+  effect_size_thresholds: {small: 0.2, medium: 0.5, large: 0.8}
   minimum_detectable_effect: 0.3
 
 plots:                        # Visualization configuration
@@ -213,8 +212,8 @@ s_pooled = √[((n₁-1)×s₁² + (n₂-1)×s₂²) / (n₁+n₂-2)]
 **Effect Size Interpretation Standards**:
 
 - |d| < 0.2: Negligible (negligible)
-- |d| < 0.5: Small effect (small effect)
-- |d| < 0.8: Medium effect (medium effect)
+- 0.2 ≤ |d| < 0.5: Small effect (small effect)
+- 0.5 ≤ |d| < 0.8: Medium effect (medium effect)
 - |d| ≥ 0.8: Large effect (large effect)
 
 ### **Data Quality Validation**
@@ -653,9 +652,9 @@ class DecisionSummaryGenerator:
     """
 
     DEFAULT_CONFIDENCE_LEVEL = 0.95
-    SMALL_EFFECT_SIZE = 0.3
-    MEDIUM_EFFECT_SIZE = 0.6
-    LARGE_EFFECT_SIZE = 1.0
+    SMALL_EFFECT_SIZE = 0.2
+    MEDIUM_EFFECT_SIZE = 0.5
+    LARGE_EFFECT_SIZE = 0.8
 
     def __init__(self, logger: Optional[logging.Logger] = None) -> None:
         """Initialize the generator with an optional logger."""
@@ -733,9 +732,9 @@ statistics:
   significance_alpha: 0.05
   effect_size_metric: "cohens_d"
   effect_size_thresholds:
-    small: 0.3
-    medium: 0.6
-    large: 1.0
+    small: 0.2
+    medium: 0.5
+    large: 0.8
   minimum_detectable_effect: 0.3
 
 # Visualization and plotting configuration
