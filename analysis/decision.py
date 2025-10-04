@@ -39,9 +39,9 @@ class DecisionSummaryGenerator:
     SCALE_ORDER = {"small": 0, "medium": 1, "large": 2}
 
     # Effect size thresholds
-    SMALL_EFFECT_SIZE = 0.3
-    MEDIUM_EFFECT_SIZE = 0.6
-    LARGE_EFFECT_SIZE = 1.0
+    SMALL_EFFECT_SIZE = 0.2
+    MEDIUM_EFFECT_SIZE = 0.5
+    LARGE_EFFECT_SIZE = 0.8
 
     def __init__(self, logger: Optional[logging.Logger] = None) -> None:
         """

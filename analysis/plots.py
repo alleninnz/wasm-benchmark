@@ -617,7 +617,7 @@ class VisualizationGenerator:
 
         # Determine color scale limits
         vmax = max(abs(effect_matrix.min()), abs(effect_matrix.max()))
-        vmax = max(vmax, 1.0)  # Ensure we can see at least up to large effect size
+        vmax = max(vmax, 0.8)  # Ensure we can see at least up to large effect size
 
         norm = TwoSlopeNorm(vmin=-vmax, vcenter=0, vmax=vmax)
 
@@ -697,7 +697,7 @@ class VisualizationGenerator:
         )
 
         # Add threshold lines on colorbar
-        effect_thresholds = [0.3, 0.6, 1.0]  # small, medium, large
+        effect_thresholds = [0.2, 0.5, 0.8]  # small, medium, large
         for threshold in effect_thresholds:
             cbar.ax.axhline(
                 y=threshold, color="black", linestyle="--", alpha=0.7, linewidth=1
@@ -753,10 +753,10 @@ class VisualizationGenerator:
             {"type": "threshold", "text": f"    Large: ±{effect_thresholds[2]:.1f}"},
             {"type": "spacer"},
             {"type": "subheading", "text": "Cohen's d Guidelines"},
-            {"type": "guideline", "text": "    |d| < 0.3: Negligible"},
-            {"type": "guideline", "text": "    |d| ≥ 0.3: Small effect"},
-            {"type": "guideline", "text": "    |d| ≥ 0.6: Medium effect"},
-            {"type": "guideline", "text": "    |d| ≥ 1.0: Large effect"},
+            {"type": "guideline", "text": "    |d| < 0.2: Negligible"},
+            {"type": "guideline", "text": "    |d| ≥ 0.2: Small effect"},
+            {"type": "guideline", "text": "    |d| ≥ 0.5: Medium effect"},
+            {"type": "guideline", "text": "    |d| ≥ 0.8: Large effect"},
         ]
 
         # Layout parameters
