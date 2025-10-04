@@ -128,9 +128,9 @@ statistics:
   effect_size_metric: "cohens_d"   # Cohen's d for effect size
 
   effect_size_thresholds:
-    small: 0.3
-    medium: 0.6
-    large: 1.0
+    small: 0.2
+    medium: 0.5
+    large: 0.8
   minimum_detectable_effect: 0.3
 
 # Visualization and plotting configuration
