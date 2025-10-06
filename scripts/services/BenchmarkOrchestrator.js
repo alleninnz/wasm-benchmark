@@ -63,6 +63,22 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             const benchmarks = this.configService.getBenchmarks();
             const parallelConfig = this.configService.getParallelConfig();
 
+            // Enable progress UI in headless mode
+            const shouldEnableUI = this.browserService.isHeadless
+                && !options.disableProgressUI
+                && benchmarks.length > 0;
+
+            if (shouldEnableUI) {
+                const uiEnabled = await this.logger.enableProgressUI(benchmarks.length, {
+                    minTerminalHeight: 10,
+                    progressHeight: 3
+                });
+
+                if (!uiEnabled) {
+                    this.logger.warn('Progress UI disabled, using standard output');
+                }
+            }
+
             this.logger.info(`Starting execution of ${benchmarks.length} benchmarks...`);
 
             // In headed mode, navigate to benchmark page first
@@ -152,6 +168,11 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                 }
             }
 
+            // Wait for user to exit if progress UI is enabled
+            if (this.logger.progressUI) {
+                await this.logger.waitForProgressUIExit();
+            }
+
             return {
                 summary: this.resultsService.getSummary(),
                 results: this.resultsService.getResults(),
@@ -162,6 +183,9 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             this.logger.error('Benchmark execution failed:', error.message);
             throw error;
         } finally {
+            // Cleanup progress UI
+            this.logger.disableProgressUI();
+
             this.isRunning = false;
             this.abortController = null;
         }
@@ -182,9 +206,17 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
         const results = [];
         const executing = new Set();
         let benchmarkIndex = 0;
+        let completedCount = 0;
 
         // Helper function to execute single benchmark
         const executeBenchmark = async (benchmark, index) => {
+            const taskName = `${benchmark.task}_${benchmark.language}_${benchmark.scale}`;
+
+            // Update progress at start
+            if (this.logger.progressUI) {
+                this.logger.progressUI.updateProgress(completedCount, benchmarks.length, taskName);
+            }
+
             try {
                 const result = await this.executeSingleBenchmark(benchmark, {
                     ...options,
@@ -192,6 +224,13 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                     total: benchmarks.length
                 });
                 results.push(result);
+
+                // Update progress on completion
+                completedCount++;
+                if (this.logger.progressUI) {
+                    this.logger.progressUI.updateProgress(completedCount, benchmarks.length, taskName);
+                }
+
                 return result;
             } catch (error) {
                 const failedResult = {
@@ -202,6 +241,13 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                 };
                 results.push(failedResult);
                 this.resultsService.addResult(failedResult);
+
+                // Update progress on failure
+                completedCount++;
+                if (this.logger.progressUI) {
+                    this.logger.progressUI.updateProgress(completedCount, benchmarks.length, `${taskName} (failed)`);
+                }
+
                 return failedResult;
             }
         };
@@ -242,6 +288,14 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
         for (let i = 0; i < benchmarks.length; i++) {
             const benchmark = benchmarks[i];
 
+            // Update progress before starting task
+            const taskName = `${benchmark.task}_${benchmark.language}_${benchmark.scale || 'default'}`;
+            if (this.logger.progressUI) {
+                this.logger.progressUI.updateProgress(i, benchmarks.length, taskName);
+            }
+
+            this.logger.info(`[${i + 1}/${benchmarks.length}] Running: ${taskName}`);
+
             try {
                 const result = await this.executeSingleBenchmark(benchmark, {
                     ...options,
@@ -249,6 +303,11 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                     total: benchmarks.length
                 });
                 results.push(result);
+
+                // Update progress after completing task
+                if (this.logger.progressUI) {
+                    this.logger.progressUI.updateProgress(i + 1, benchmarks.length, taskName);
+                }
             } catch (error) {
                 const failedResult = {
                     benchmark: benchmark.name,
@@ -258,6 +317,11 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                 };
                 results.push(failedResult);
                 this.resultsService.addResult(failedResult);
+
+                // Update progress even on failure
+                if (this.logger.progressUI) {
+                    this.logger.progressUI.updateProgress(i + 1, benchmarks.length, `${taskName} (failed)`);
+                }
             }
         }
 

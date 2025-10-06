@@ -54,6 +54,7 @@ function parseOptions(args) {
         verbose: args.includes('--verbose'),
         parallel: args.includes('--parallel'),
         quick: isQuick,
+        disableProgressUI: args.includes('--no-progress'),
         timeout: parseArgumentValue(
             args,
             '--timeout=',
@@ -79,6 +80,42 @@ function parseOptions(args) {
 }
 
 /**
+ * Global error handlers for graceful cleanup
+ */
+let logger = null;
+let orchestrator = null;
+
+process.on('uncaughtException', (error) => {
+    if (logger && logger.progressUI) {
+        logger.progressUI.destroy();
+    }
+    console.error('Fatal error:', error);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+    if (logger && logger.progressUI) {
+        logger.progressUI.destroy();
+    }
+    console.error('Unhandled rejection:', reason);
+    process.exit(1);
+});
+
+process.on('SIGINT', async () => {
+    if (logger && logger.progressUI) {
+        logger.progressUI.destroy();
+    }
+    if (orchestrator) {
+        try {
+            await orchestrator.cleanup();
+        } catch (error) {
+            // Ignore cleanup errors on exit
+        }
+    }
+    process.exit(0);
+});
+
+/**
  * Main CLI entry point using pure service-oriented architecture
  */
 async function main() {
@@ -95,6 +132,7 @@ Options:
   --verbose                   Enable verbose logging
   --parallel                  Enable parallel benchmark execution
   --quick                     Use quick configuration for fast development testing
+  --no-progress               Disable progress UI (use plain console output)
   --timeout=<ms>              Set timeout in milliseconds (default: ${DEFAULT_TIMEOUT_MS}, quick: ${QUICK_TIMEOUT_MS})
   --max-concurrent=<n>        Max concurrent benchmarks in parallel mode (default: ${DEFAULT_MAX_PARALLEL}, max: 20)
   --failure-threshold=<rate>  Failure threshold rate 0-1 (default: ${DEFAULT_FAILURE_THRESHOLD})
@@ -114,7 +152,7 @@ Examples:
     }
 
     // Initialize services with dependency injection
-    const logger = new LoggingService({
+    logger = new LoggingService({
         logLevel: options.verbose ? 'debug' : 'info',
         enableColors: true,
         enableTimestamp: false
@@ -123,7 +161,7 @@ Examples:
     const configService = new ConfigurationService();
     const browserService = new BrowserService();
     const resultsService = new ResultsService();
-    const orchestrator = new BenchmarkOrchestrator(configService, browserService, resultsService);
+    orchestrator = new BenchmarkOrchestrator(configService, browserService, resultsService);
 
     try {
         logger.section('Initializing Pure Service Architecture');

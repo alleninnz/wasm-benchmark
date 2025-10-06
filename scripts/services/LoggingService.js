@@ -5,6 +5,8 @@
 
 import chalk from 'chalk';
 import { ILoggingService } from '../interfaces/ILoggingService.js';
+// Temporarily comment out to debug hang issue
+// import { TerminalProgressUI } from '../utils/TerminalProgressUI.js';
 
 export class LoggingService extends ILoggingService {
     constructor(options = {}) {
@@ -21,6 +23,9 @@ export class LoggingService extends ILoggingService {
             info: 2,
             debug: 3
         };
+
+        // Progress UI integration
+        this.progressUI = null;
     }
 
     /**
@@ -50,12 +55,29 @@ export class LoggingService extends ILoggingService {
     }
 
     /**
+     * Format message with args
+     * @param {string} message - Message to format
+     * @param {...any} args - Additional arguments
+     * @returns {string}
+     */
+    _formatMessage(message, args) {
+        if (args.length === 0) return message;
+        return `${message} ${args.join(' ')}`;
+    }
+
+    /**
      * Log info message
      * @param {string} message - Message to log
      * @param {...any} args - Additional arguments
      */
     info(message, ...args) {
         if (!this.shouldLog('info')) return;
+
+        // Route to progress UI if enabled
+        if (this.progressUI) {
+            this.progressUI.log('info', this._formatMessage(message, args));
+            return;
+        }
 
         const formattedMessage = this.enableColors
             ? chalk.blue('[INFO]')
@@ -78,6 +100,12 @@ export class LoggingService extends ILoggingService {
     success(message, ...args) {
         if (!this.shouldLog('info')) return;
 
+        // Route to progress UI if enabled
+        if (this.progressUI) {
+            this.progressUI.log('success', this._formatMessage(message, args));
+            return;
+        }
+
         const formattedMessage = this.enableColors
             ? chalk.green('[SUCCESS]')
             : '[SUCCESS]';
@@ -98,6 +126,12 @@ export class LoggingService extends ILoggingService {
      */
     warn(message, ...args) {
         if (!this.shouldLog('warn')) return;
+
+        // Route to progress UI if enabled
+        if (this.progressUI) {
+            this.progressUI.log('warn', this._formatMessage(message, args));
+            return;
+        }
 
         const formattedMessage = this.enableColors
             ? chalk.yellow('[WARNING]')
@@ -120,6 +154,12 @@ export class LoggingService extends ILoggingService {
     error(message, ...args) {
         if (!this.shouldLog('error')) return;
 
+        // Route to progress UI if enabled
+        if (this.progressUI) {
+            this.progressUI.log('error', this._formatMessage(message, args));
+            return;
+        }
+
         const formattedMessage = this.enableColors
             ? chalk.red('[ERROR]')
             : '[ERROR]';
@@ -140,6 +180,12 @@ export class LoggingService extends ILoggingService {
      */
     debug(message, ...args) {
         if (!this.shouldLog('debug')) return;
+
+        // Route to progress UI if enabled
+        if (this.progressUI) {
+            this.progressUI.log('debug', this._formatMessage(message, args));
+            return;
+        }
 
         const formattedMessage = this.enableColors
             ? chalk.gray('[DEBUG]')
@@ -263,5 +309,73 @@ export class LoggingService extends ILoggingService {
             enableTimestamp: this.enableTimestamp,
             prefix: this.prefix ? `${this.prefix}:${prefix}` : prefix
         });
+    }
+
+    /**
+     * Enable progress UI for terminal display
+     * @param {number} totalTasks - Total number of tasks
+     * @param {Object} options - Progress UI options
+     * @returns {boolean} - True if successfully enabled
+     */
+    async enableProgressUI(totalTasks, options = {}) {
+        // Suppress blessed terminfo debug output completely during import
+        const originalStderrWrite = process.stderr.write;
+        const originalTerm = process.env.TERM;
+
+        try {
+            // Suppress stderr during blessed module loading
+            // blessed outputs JS code when parsing xterm-256color's Setulc
+            process.stderr.write = function() { return true; };
+
+            // Set TERM to xterm to avoid triggering the problematic Setulc parsing
+            if (process.env.TERM === 'xterm-256color') {
+                process.env.TERM = 'xterm';
+            }
+
+            // Lazy load TerminalProgressUI (this triggers blessed import)
+            const { TerminalProgressUI } = await import('../utils/TerminalProgressUI.js');
+
+            // Restore stderr and TERM immediately after import
+            process.stderr.write = originalStderrWrite;
+            if (originalTerm) {
+                process.env.TERM = originalTerm;
+            }
+
+            this.progressUI = new TerminalProgressUI(options);
+            this.progressUI.initialize();
+            this.progressUI.updateProgress(0, totalTasks, 'Initializing...');
+            return true;
+        } catch (error) {
+            // Make sure to restore stderr even on error
+            process.stderr.write = originalStderrWrite;
+            if (originalTerm) {
+                process.env.TERM = originalTerm;
+            }
+
+            this.warn(`Failed to initialize progress UI: ${error.message}`);
+            this.warn('Falling back to standard console output');
+            this.progressUI = null;
+            return false;
+        }
+    }
+
+    /**
+     * Wait for user to exit progress UI (shows completion message)
+     * @returns {Promise<void>}
+     */
+    async waitForProgressUIExit() {
+        if (this.progressUI) {
+            await this.progressUI.waitForExit();
+        }
+    }
+
+    /**
+     * Disable and cleanup progress UI
+     */
+    disableProgressUI() {
+        if (this.progressUI) {
+            this.progressUI.destroy();
+            this.progressUI = null;
+        }
     }
 }
