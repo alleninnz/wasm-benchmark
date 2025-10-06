@@ -40,7 +40,12 @@ Thumbs.db
 # Cache directories
 .cache/
 .npm/
+# Cargo
 .cargo/
+
+# Prevent macOS Finder duplicate files
+*\ 2.*
+*\ 3.*
 
 # Testing artifacts
 test-results.json
