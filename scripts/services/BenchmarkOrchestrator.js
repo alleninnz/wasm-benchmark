@@ -368,11 +368,12 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
 
             this.resultsService.addResult(benchmarkResult);
             
-            // Extract scale from benchmark name (format: taskName_scale_language)
+            // Extract scale and language from benchmark name (format: taskName_scale_language)
             const nameParts = benchmark.name.split('_');
+            const language = nameParts.length >= 3 ? nameParts[nameParts.length - 1] : 'unknown';
             const scale = nameParts.length >= 3 ? nameParts[nameParts.length - 2] : 'unknown';
             const taskName = benchmark.task || benchmark.name.replace(/_[^_]+_[^_]+$/, '');
-            this.logger.success(`✅ Completed: ${taskName} ${scale} (${duration}ms)`);
+            this.logger.success(`✅ Completed: ${taskName} ${scale} (${language}) - ${duration}ms`);
 
             return benchmarkResult;
 
@@ -476,7 +477,7 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                     }
 
                     // Add progress monitoring for long-running WASM tasks
-                    this.logger.info(`🚀 Starting WASM benchmark: ${taskName} ${scale} (${language}) - this may take several minutes...`);
+                    this.logger.info(`⚡ Starting WASM benchmark: ${taskName} ${scale} (${language}) - this may take several minutes...`);
                     const taskStartTime = Date.now();
 
                     // Set up progress heartbeat for long tasks
