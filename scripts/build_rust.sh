@@ -112,26 +112,34 @@ build_rust_task() {
     fi
     
     log_info "Building ${task_name}..."
-    
+
     # Create output directory
     mkdir -p "${RUST_OUTPUT_DIR}"
-    
+
+    # Extract package name from Cargo.toml
+    local package_name=$(grep '^name = ' "${task_dir}/Cargo.toml" | head -1 | sed 's/name = "\(.*\)"/\1/')
+    if [[ -z "${package_name}" ]]; then
+        log_error "Could not extract package name from Cargo.toml"
+        return 1
+    fi
+    log_info "Package name: ${package_name}"
+
     # Build the project
     cd "${task_dir}"
-    
+
     # Clean previous build
     cargo clean --target "${WASM_TARGET}" --release
-    
+
     # Build with optimizations
     if ! cargo build --target "${WASM_TARGET}" --${PROFILE}; then
         log_error "Failed to build ${task_name}"
         return 1
     fi
-    
-    # Copy the built wasm file
-    local built_wasm="${task_dir}/target/${WASM_TARGET}/${PROFILE}/*.wasm"
-    if ls ${built_wasm} 1> /dev/null 2>&1; then
-        cp ${built_wasm} "${output_path}"
+
+    # Copy the built wasm file using the exact package name
+    local built_wasm="${task_dir}/target/${WASM_TARGET}/${PROFILE}/${package_name}.wasm"
+    if [[ -f "${built_wasm}" ]]; then
+        cp "${built_wasm}" "${output_path}"
         log_info "Copied WASM binary to: ${output_path}"
     else
         log_error "Built WASM binary not found: ${built_wasm}"
