@@ -178,7 +178,7 @@ endef
 
 # Enhanced error handling with context
 define safe_execute
-	@$(call log_step,$(2)); \
+	$(call log_step,$(2)); \
 	if ! $(1); then \
 		$(call log_error,Failed: $(2)); \
 		$(call log_info,Command was: $(1)); \
@@ -236,6 +236,40 @@ define start_dev_server
 		sleep 2; \
 	fi; \
 	echo "[SUCCESS] Development server ready"
+endef
+
+# Function to validate WASM build artifacts exist
+define check_wasm_builds
+	@RUST_COUNT=$$(find $(BUILDS_RUST_DIR) -name "*.wasm" 2>/dev/null | wc -l | tr -d ' '); \
+	TINYGO_COUNT=$$(find $(BUILDS_TINYGO_DIR) -name "*.wasm" 2>/dev/null | wc -l | tr -d ' '); \
+	if [ "$$RUST_COUNT" = "0" ] && [ "$$TINYGO_COUNT" = "0" ]; then \
+		$(call log_error,No WASM build artifacts found!,shell); \
+		echo ""; \
+		$(call log_info,📦 WASM modules must be built before running benchmarks,shell); \
+		echo ""; \
+		$(call log_info,Quick fix - build everything:,shell); \
+		$(call log_info,  make build              # Build all WASM modules (~3-8 min),shell); \
+		$(call log_info,  make build parallel     # Faster parallel build (~1-3 min),shell); \
+		echo ""; \
+		$(call log_info,Or build specific language:,shell); \
+		$(call log_info,  make build rust         # Build Rust modules only,shell); \
+		$(call log_info,  make build tinygo       # Build TinyGo modules only,shell); \
+		echo ""; \
+		$(call log_info,Or run complete pipeline:,shell); \
+		$(call log_info,  make all quick          # Build + run + analyze,shell); \
+		echo ""; \
+		exit 1; \
+	elif [ "$$RUST_COUNT" = "0" ]; then \
+		$(call log_warning,No Rust WASM modules found,shell); \
+		$(call log_info,Build with: make build rust,shell); \
+		exit 1; \
+	elif [ "$$TINYGO_COUNT" = "0" ]; then \
+		$(call log_warning,No TinyGo WASM modules found,shell); \
+		$(call log_info,Build with: make build tinygo,shell); \
+		exit 1; \
+	else \
+		$(call log_info,Found $$RUST_COUNT Rust and $$TINYGO_COUNT TinyGo WASM modules,shell); \
+	fi
 endef
 
 
@@ -393,6 +427,7 @@ endif
 
 run: $(NODE_MODULES) ## Run browser benchmark suite (use quick headed for options)
 	@$(MAKE) build config
+	$(call check_wasm_builds)
 	$(call start_dev_server)
 	$(call check_script_exists,scripts/run_bench.js)
 ifeq ($(HEADED_MODE),true)
@@ -550,7 +585,6 @@ clean: ## Clean everything including dependencies, results, and caches
 		rm -rf $(NODE_MODULES) 2>/dev/null || true; \
 		rm -rf $(RESULTS_DIR)/* 2>/dev/null || true; \
 		rm -f $(CONFIGS_DIR)/bench.json $(CONFIGS_DIR)/bench-quick.json 2>/dev/null || true; \
-		find reports/plots -mindepth 1 ! -path 'reports/plots/templates' ! -path 'reports/plots/templates/*' -delete 2>/dev/null || true; \
 		rm -f versions.lock 2>/dev/null || true; \
 		rm -f package-lock.json 2>/dev/null || true; \
 		rm -f poetry.lock 2>/dev/null || true; \
@@ -568,6 +602,18 @@ clean: ## Clean everything including dependencies, results, and caches
 		find . -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true; \
 		find . -name "*.pyc" -delete 2>/dev/null || true; \
 		rm -f .cache.* 2>/dev/null || true; \
+		echo ""; \
+		read -p "Do you also want to clean analysis reports in reports/*? [y/N]: " -n 1 -r REPLY_REPORTS; \
+		echo; \
+		if [[ $$REPLY_REPORTS =~ ^[Yy]$$ ]]; then \
+			$(call log_warning,Cleaning all analysis reports...,shell); \
+			find reports/plots -mindepth 1 ! -path 'reports/plots/templates' ! -path 'reports/plots/templates/*' -delete 2>/dev/null || true; \
+			find reports/qc -mindepth 1 -delete 2>/dev/null || true; \
+			find reports/validation -mindepth 1 -delete 2>/dev/null || true; \
+			$(call log_success,📊 Analysis reports cleaned,shell); \
+		else \
+			$(call log_info,Keeping analysis reports,shell); \
+		fi; \
 		$(call log_success,🧹 Complete cleanup finished,shell); \
 		$(call log_info,Run 'make init' to reinitialize,shell); \
 	else \
