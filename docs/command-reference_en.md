@@ -133,7 +133,7 @@ make build → make run quick
 
 #### Quick Analysis Timeline
 
-2-3 minutes
+5-10s
 
 #### Quick Analysis Expected Outcome
 

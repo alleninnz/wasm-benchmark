@@ -36,7 +36,7 @@ make init        # Install project dependencies
 make build       # Build all WASM modules for both languages
 
 # 3. Run benchmarks
-make run quick   # Fast development test (~2-3 minutes)
+make run quick   # Fast development test (~5-10s)
 make run         # Full benchmark suite (~30+ minutes)
 
 # 4. Analyze results
@@ -71,7 +71,7 @@ make all         # Complete research-grade pipeline
 ### 🔄 **Development Workflow**
 
 ```bash
-# Quick validation (~2-3 minutes)
+# Quick validation (~5-10s)
 make run quick
 
 # With visible browser (debugging)
@@ -88,9 +88,9 @@ make all     # build → run → qc → analyze → plots
 
 | Command | Purpose | Duration | Use Case |
 |---------|---------|----------|----------|
-| `make run quick` | Fast development test | 2-3 min | Development validation |
+| `make run quick` | Fast development test | 5-10s | Development validation |
 | `make run` | Full benchmark suite | 30+ min | Research analysis |
-| `make run quick headed` | Debug with visible browser | 2-3 min | Troubleshooting |
+| `make run quick headed` | Debug with visible browser | 5-10s | Troubleshooting |
 | `make all quick` | Complete pipeline (quick) | 5-8 min | CI/CD validation |
 | `make all` | Complete research pipeline | 45-60 min | Publication data |
 
@@ -152,7 +152,7 @@ make docker build tinygo      # Build only TinyGo modules
 make docker build parallel    # Parallel build for faster compilation
 
 # Run benchmarks with different configurations
-make docker run quick         # Fast development testing (~2-3 minutes)
+make docker run quick         # Fast development testing (~5-10s)
 make docker run               # Full benchmark suite (~30+ minutes)
 
 # Quality control and analysis

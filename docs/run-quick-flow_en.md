@@ -7,14 +7,14 @@
 
 ## 🎯 **Overview**
 
-`make run quick` is a key command in the WebAssembly Benchmark project for rapid development testing, providing 1-2 minute rapid feedback, significantly improving development efficiency compared to the 30+ minutes of the complete test suite.
+`make run quick` is a key command in the WebAssembly Benchmark project for rapid development testing, providing 5-10s rapid feedback, significantly improving development efficiency compared to the 30+ minutes of the complete test suite.
 
 ### 📊 **Execution Performance Comparison**
 
 | Mode             | Execution Time                   | Task Scale | Applicable Scenarios               |
 | ---------------- | -------------------------------- | ---------- | ---------------------------------- |
 | `make run`       | Parallel 5+ min Serial 20+ min   | Full scale | Formal benchmarks, research release |
-| `make run quick` | 1-2 minutes                      | Micro scale | Development validation, CI smoke tests |
+| `make run quick` | 5-10s                            | Micro scale | Development validation, CI smoke tests |
 
 ---
 
