@@ -6,10 +6,8 @@ use crate::types::{JsonRecord, FNV_OFFSET_BASIS, FNV_PRIME};
 pub fn fnv1a_hash_records(records: &[JsonRecord]) -> u32 {
     let mut hash = FNV_OFFSET_BASIS;
 
-    // Use direct indexing for consistency with TinyGo implementation
-    for i in 0..records.len() {
-        let record = &records[i];
-
+    // Use iterator for consistency with Rust best practices
+    for record in records {
         // Hash id field (u32 as little-endian bytes)
         for byte in record.id.to_le_bytes() {
             hash ^= byte as u32;

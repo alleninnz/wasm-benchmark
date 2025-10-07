@@ -86,9 +86,9 @@ pub fn naive_triple_loop_multiply(a: &[Vec<f32>], b: &[Vec<f32>], c: &mut [Vec<f
     }
 
     // Copy result back
-    for i in 0..n {
-        for j in 0..n {
-            c[i][j] = flat_c.data[i * n + j];
+    for (i, row) in c.iter_mut().enumerate().take(n) {
+        for (j, cell) in row.iter_mut().enumerate().take(n) {
+            *cell = flat_c.data[i * n + j];
         }
     }
 }

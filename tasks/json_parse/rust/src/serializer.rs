@@ -13,13 +13,11 @@ pub fn serialize_to_json(records: &[JsonRecord]) -> String {
     let mut json = String::with_capacity(estimated_capacity);
     json.push('[');
 
-    // Use direct indexing for consistency with TinyGo implementation
-    for i in 0..records.len() {
+    // Use iterator with enumerate for idiomatic Rust
+    for (i, record) in records.iter().enumerate() {
         if i > 0 {
             json.push(',');
         }
-
-        let record = &records[i];
 
         // Build JSON object with optimized string operations
         json.push_str("{\"id\":");
