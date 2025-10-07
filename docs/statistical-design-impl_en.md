@@ -1,4 +1,4 @@
-# 🎯 WebAssembly Benchmark System: Implementation Architecture Guide
+# 🎯 WebAssembly Benchmark Project Statistical Design Implementation Guide
 
 > **Last Updated**: 2025-09-27
 > **Target Audience**: Core development team, architecture decision makers, new developers
