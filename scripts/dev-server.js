@@ -7,15 +7,11 @@
  * Logs all requests to dev-server.log with minimal terminal output
  */
 
-import { exec } from 'child_process';
 import cors from 'cors';
 import express from 'express';
 import fs, { promises as fsPromises } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

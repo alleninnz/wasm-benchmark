@@ -110,6 +110,7 @@ process.on('SIGINT', async () => {
             await orchestrator.cleanup();
         } catch (error) {
             // Ignore cleanup errors on exit
+            console.error('Error during cleanup:', error);
         }
     }
     process.exit(0);
