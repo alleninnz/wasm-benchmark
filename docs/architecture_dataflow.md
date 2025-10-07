@@ -177,42 +177,116 @@ mindmap
 
 ```mermaid
 sequenceDiagram
-    participant H as Harness (JS)
-    participant W as WASM Module
-    participant V as Validator
-
-    Note over H,V: Benchmark Execution Flow
-
-    H->>W: 1. Load WASM (Rust/TinyGo)
-    activate W
-
-    H->>W: 2. Call init(seed)
-    W-->>H: Initialize
-
-    H->>W: 3. Allocate params memory
-    W-->>H: Return pointer
-
-    H->>W: 4. Write parameters
-
-    rect rgb(220, 240, 255)
-        Note over H,W: Performance Measurement
-        H->>H: Start timer (performance.now())
-        H->>W: 5. Call run_task(params_ptr)
-        W->>W: Execute computation
-        W->>W: Compute FNV-1a hash
-        W-->>H: Return u32 hash
-        H->>H: Stop timer
-        H->>H: Record: time, memory, hash
+    autonumber
+    actor User
+    participant CLI as run_bench.js<br/>(Node.js CLI)
+    participant Orchestrator as BenchmarkOrchestrator
+    participant Browser as BrowserService<br/>(Puppeteer)
+    participant WebPage as bench.html<br/>(Web Harness)
+    participant Runner as BenchmarkRunner<br/>(JavaScript)
+    participant WASM as WASM Module<br/>(Rust/TinyGo)
+    participant Results as ResultsService
+    
+    User->>CLI: npm run bench<br/>[--quick|--headed|--parallel]
+    
+    rect rgb(240, 248, 255)
+    Note over CLI,Orchestrator: ⚙️ Initialization Phase
+    CLI->>CLI: Parse CLI options<br/>(headless, timeout, parallel, etc)
+    CLI->>Orchestrator: Create services with<br/>dependency injection
+    CLI->>Orchestrator: initialize(configPath, options)
+    Orchestrator->>Orchestrator: Load config<br/>(bench.json or bench-quick.json)
+    Orchestrator->>Browser: initialize(browserConfig)
+    Browser->>Browser: Launch Puppeteer<br/>(headed or headless)
+    Orchestrator->>Results: initialize(metadata)
     end
-
-    deactivate W
-
-    H->>V: 6. Submit hash for validation
-    activate V
-    V->>V: Compare with reference
-    V-->>H: ✅ Pass / ❌ Fail
-    deactivate V
-
-    H->>H: 7. Store results
-    Note over H: {lang, task, scale, time, hash, valid}
+    
+    rect rgb(255, 250, 240)
+    Note over Orchestrator,WebPage: 🌐 Browser Setup Phase
+    alt Headed Mode
+        Browser->>WebPage: Navigate to bench.html
+        Browser->>Browser: Wait for #status element
+        Orchestrator->>WebPage: initializeBenchmarkSuite(taskList)
+    else Headless Mode
+        Note over Browser: Defer page navigation<br/>until task execution
+    end
+    end
+    
+    rect rgb(240, 255, 240)
+    Note over Orchestrator,WASM: 🚀 Execution Phase
+    
+    alt Parallel Mode (Headless Only)
+        loop For each benchmark (max N concurrent)
+            Orchestrator->>Browser: createNewPage()
+            Browser-->>Orchestrator: new page instance
+            Orchestrator->>Orchestrator: executeSingleBenchmark()
+            
+            Orchestrator->>WebPage: goto(benchmarkUrl)
+            Orchestrator->>WebPage: evaluate(runTaskBenchmark)
+            
+            WebPage->>Runner: runTaskBenchmark(taskConfig)
+            Runner->>Runner: Generate input data<br/>(scale-specific params)
+            Runner->>WASM: Load .wasm file
+            WASM-->>Runner: Module ready
+            Runner->>WASM: Call init(seed)
+            WASM-->>Runner: Initialize internal state
+            
+            loop Warmup runs (e.g., 3 times)
+                Runner->>WASM: Allocate params memory
+                WASM-->>Runner: Memory pointer
+                Runner->>WASM: Write parameters
+                Runner->>WASM: run_task(params_ptr)
+                WASM-->>Runner: Result hash (discard)
+            end
+            
+            rect rgb(230, 240, 255)
+            Note over Runner,WASM: ⏱️ Performance Measurement
+            Runner->>Runner: Start timer<br/>(performance.now())
+            loop Measure runs (e.g., 10 times)
+                Runner->>WASM: run_task(params_ptr)
+                WASM->>WASM: Execute computation<br/>(Mandelbrot/JSON/Matrix)
+                WASM->>WASM: Compute FNV-1a hash
+                WASM-->>Runner: Return u32 hash
+                Runner->>Runner: Record time & memory
+            end
+            Runner->>Runner: Stop timer
+            end
+            
+            Runner-->>WebPage: Task results<br/>(times, hash, memory)
+            WebPage-->>Orchestrator: Benchmark result
+            Orchestrator->>Results: addResult(benchmarkResult)
+            Orchestrator->>Browser: Close dedicated page
+        end
+        
+    else Sequential Mode (Headed or Headless)
+        loop For each benchmark
+            Note over Orchestrator: Same execution flow as parallel,<br/>but reuses main browser page
+            Orchestrator->>Orchestrator: executeSingleBenchmark()
+            Note over WebPage,WASM: [Same WASM execution steps as above]
+            Orchestrator->>Results: addResult(benchmarkResult)
+        end
+    end
+    end
+    
+    rect rgb(255, 240, 240)
+    Note over Orchestrator,Results: 💾 Results Phase
+    Orchestrator->>Results: finalize(metadata)
+    Orchestrator->>Results: saveToFile(outputPath)
+    Results->>Results: Write JSON file<br/>(results/TIMESTAMP.json)
+    Results-->>User: Results saved
+    end
+    
+    alt Headed Mode
+        Orchestrator-->>User: Browser kept open<br/>(Press Ctrl+C to exit)
+        Note over Browser: Browser remains open<br/>for inspection
+    else Headless Mode
+        Orchestrator->>Browser: cleanup()
+        Browser->>Browser: Close browser
+        CLI-->>User: Exit process
+    end
+    
+    rect rgb(255, 255, 230)
+    Note over User: 🔬 Manual Validation (Separate Step)
+    User->>User: Run: make validate<br/>or: make test validate
+    Note over User: This runs validate-tasks.sh<br/>to compare hashes with<br/>reference data
+    end
 ```
