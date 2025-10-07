@@ -12,7 +12,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -43,7 +43,7 @@ class DecisionSummaryGenerator:
     MEDIUM_EFFECT_SIZE = 0.5
     LARGE_EFFECT_SIZE = 0.8
 
-    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
+    def __init__(self, logger: logging.Logger | None = None) -> None:
         """
         Initialize the DecisionSummaryGenerator.
 
@@ -80,27 +80,43 @@ class DecisionSummaryGenerator:
         for i, comparison in enumerate(comparisons):
             # Check for required attributes instead of strict type checking
             required_attrs = [
-                'rust_performance', 'tinygo_performance',
-                'execution_time_comparison', 'memory_usage_comparison',
-                'task', 'scale'
+                "rust_performance",
+                "tinygo_performance",
+                "execution_time_comparison",
+                "memory_usage_comparison",
+                "task",
+                "scale",
             ]
             for attr in required_attrs:
                 if not hasattr(comparison, attr):
-                    raise ValueError(f"Comparison result at index {i} missing required attribute: {attr}")
+                    raise ValueError(
+                        f"Comparison result at index {i} missing required attribute: {attr}"
+                    )
 
             # Additional validation for performance data structure
             try:
                 # Check that performance objects have required structure
-                for perf_attr in ['rust_performance', 'tinygo_performance']:
+                for perf_attr in ["rust_performance", "tinygo_performance"]:
                     perf_obj = getattr(comparison, perf_attr)
-                    if not all(hasattr(perf_obj, req_attr) for req_attr in ['execution_time', 'memory_usage', 'success_rate']):
-                        raise ValueError(f"Invalid performance data structure at index {i}")
+                    if not all(
+                        hasattr(perf_obj, req_attr)
+                        for req_attr in [
+                            "execution_time",
+                            "memory_usage",
+                            "success_rate",
+                        ]
+                    ):
+                        raise ValueError(
+                            f"Invalid performance data structure at index {i}"
+                        )
 
             except AttributeError as e:
-                raise ValueError(f"Invalid comparison result structure at index {i}: {e}") from e
+                raise ValueError(
+                    f"Invalid comparison result structure at index {i}: {e}"
+                ) from e
 
         # Validate chart paths
-        required_charts = ['execution_time', 'memory_usage', 'effect_size']
+        required_charts = ["execution_time", "memory_usage", "effect_size"]
         for chart_name in required_charts:
             if chart_name not in chart_paths:
                 raise ValueError(f"Missing required chart path: {chart_name}")
@@ -109,9 +125,13 @@ class DecisionSummaryGenerator:
             if not isinstance(chart_path, Path):
                 raise TypeError(f"chart_paths['{chart_name}'] must be a Path instance")
 
-        self._logger.debug(f"Input validation passed for {len(comparisons)} comparisons")
+        self._logger.debug(
+            f"Input validation passed for {len(comparisons)} comparisons"
+        )
 
-    def _prepare_comparison_results_data(self, comparisons: list[ComparisonResult]) -> list[dict[str, str]]:
+    def _prepare_comparison_results_data(
+        self, comparisons: list[ComparisonResult]
+    ) -> list[dict[str, str]]:
         """
         Prepare comparison results data for table display.
 
@@ -130,42 +150,55 @@ class DecisionSummaryGenerator:
             try:
                 # Safely access attributes with error handling
                 data_entry = {
-                    "task": getattr(result, 'task', 'unknown'),
-                    "scale": getattr(result, 'scale', 'unknown'),
+                    "task": getattr(result, "task", "unknown"),
+                    "scale": getattr(result, "scale", "unknown"),
                     "rust_time_ms": f"{result.rust_performance.execution_time.mean:.1f}",
                     "tinygo_time_ms": f"{result.tinygo_performance.execution_time.mean:.1f}",
                     "rust_memory_mb": f"{result.rust_performance.memory_usage.mean:.1f}",
                     "tinygo_memory_mb": f"{result.tinygo_performance.memory_usage.mean:.1f}",
-                    "time_winner": getattr(result, 'execution_time_winner', None) or "neutral",
-                    "memory_winner": getattr(result, 'memory_usage_winner', None) or "neutral",
-                    "time_advantage": self._calculate_advantage_text(result, "execution_time"),
-                    "memory_advantage": self._calculate_advantage_text(result, "memory"),
-                    "overall_recommendation": getattr(result, 'overall_recommendation', 'No recommendation'),
+                    "time_winner": getattr(result, "execution_time_winner", None)
+                    or "neutral",
+                    "memory_winner": getattr(result, "memory_usage_winner", None)
+                    or "neutral",
+                    "time_advantage": self._calculate_advantage_text(
+                        result, "execution_time"
+                    ),
+                    "memory_advantage": self._calculate_advantage_text(
+                        result, "memory"
+                    ),
+                    "overall_recommendation": getattr(
+                        result, "overall_recommendation", "No recommendation"
+                    ),
                     "recommendation_level": getattr(
-                        getattr(result, 'recommendation_level', None),
-                        'value',
-                        'neutral'
-                    ) or "neutral",
+                        getattr(result, "recommendation_level", None),
+                        "value",
+                        "neutral",
+                    )
+                    or "neutral",
                 }
                 comparison_results_data.append(data_entry)
 
             except (AttributeError, TypeError) as e:
-                self._logger.warning(f"Error processing comparison result at index {i}: {e}")
+                self._logger.warning(
+                    f"Error processing comparison result at index {i}: {e}"
+                )
                 # Add placeholder data to maintain table structure
-                comparison_results_data.append({
-                    "task": "error",
-                    "scale": "unknown",
-                    "rust_time_ms": "N/A",
-                    "tinygo_time_ms": "N/A",
-                    "rust_memory_mb": "N/A",
-                    "tinygo_memory_mb": "N/A",
-                    "time_winner": "neutral",
-                    "memory_winner": "neutral",
-                    "time_advantage": "N/A",
-                    "memory_advantage": "N/A",
-                    "overall_recommendation": "Data unavailable",
-                    "recommendation_level": "neutral",
-                })
+                comparison_results_data.append(
+                    {
+                        "task": "error",
+                        "scale": "unknown",
+                        "rust_time_ms": "N/A",
+                        "tinygo_time_ms": "N/A",
+                        "rust_memory_mb": "N/A",
+                        "tinygo_memory_mb": "N/A",
+                        "time_winner": "neutral",
+                        "memory_winner": "neutral",
+                        "time_advantage": "N/A",
+                        "memory_advantage": "N/A",
+                        "overall_recommendation": "Data unavailable",
+                        "recommendation_level": "neutral",
+                    }
+                )
 
         return comparison_results_data
 
@@ -207,9 +240,9 @@ class DecisionSummaryGenerator:
         self,
         values: list[float],
         metric_name: str,
-        scale_factor: Optional[float] = None,
+        scale_factor: float | None = None,
         as_percentage: bool = False,
-        decimal_places: int = 2
+        decimal_places: int = 2,
     ) -> str:
         """
         Calculate average with safe error handling and formatting.
@@ -310,7 +343,9 @@ class DecisionSummaryGenerator:
             else:
                 min_str = f"{min_p:.3f}"
 
-            return f"min {min_str}; median {median_p:.3f}; {n_significant}/{n} significant"
+            return (
+                f"min {min_str}; median {median_p:.3f}; {n_significant}/{n} significant"
+            )
 
         except (TypeError, ValueError, Exception):
             return "N/A"
@@ -418,15 +453,19 @@ class DecisionSummaryGenerator:
             # Sort comparison_results_data: group by task, then sort by scale within each group
             comparison_results_data = sorted(
                 comparison_results_data,
-                key=lambda x: (x["task"], self.SCALE_ORDER.get(x["scale"], 99))
+                key=lambda x: (x["task"], self.SCALE_ORDER.get(x["scale"], 99)),
             )
 
             # Prepare final template data
             template_data = {
-                "timestamp": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "timestamp": datetime.now()
+                .astimezone()
+                .strftime("%Y-%m-%d %H:%M:%S %Z"),
                 "comparison_results": comparison_results_data,
                 "charts": {
-                    "distribution_variance_analysis": os.path.basename(chart_paths["distribution_variance_analysis"]),
+                    "distribution_variance_analysis": os.path.basename(
+                        chart_paths["distribution_variance_analysis"]
+                    ),
                     "execution_time": os.path.basename(chart_paths["execution_time"]),
                     "memory_usage": os.path.basename(chart_paths["memory_usage"]),
                     "effect_size": os.path.basename(chart_paths["effect_size"]),
@@ -463,7 +502,9 @@ class DecisionSummaryGenerator:
             ValueError: If language is not supported
         """
         if language not in ("rust", "tinygo"):
-            raise ValueError(f"Unsupported language: {language}. Must be 'rust' or 'tinygo'")
+            raise ValueError(
+                f"Unsupported language: {language}. Must be 'rust' or 'tinygo'"
+            )
 
         self._logger.debug(f"Calculating metrics for {language}")
 
@@ -477,7 +518,9 @@ class DecisionSummaryGenerator:
             avg_memory_usage = self._safe_average(
                 memory_values, "memory usage", scale_factor=self.MEMORY_UNIT_CONVERSION
             )
-            success_rate = self._safe_average(success_rates, "success rate", as_percentage=True)
+            success_rate = self._safe_average(
+                success_rates, "success rate", as_percentage=True
+            )
 
             return {
                 f"{language}_avg_execution_time": avg_execution_time,
@@ -512,14 +555,26 @@ class DecisionSummaryGenerator:
 
         try:
             # Extract statistical values with error handling
-            exec_p_values = self._extract_statistical_values(results, "execution_time", "p_value")
-            mem_p_values = self._extract_statistical_values(results, "memory_usage", "p_value")
-            exec_effect_sizes = self._extract_statistical_values(results, "execution_time", "cohens_d")
-            mem_effect_sizes = self._extract_statistical_values(results, "memory_usage", "cohens_d")
+            exec_p_values = self._extract_statistical_values(
+                results, "execution_time", "p_value"
+            )
+            mem_p_values = self._extract_statistical_values(
+                results, "memory_usage", "p_value"
+            )
+            exec_effect_sizes = self._extract_statistical_values(
+                results, "execution_time", "cohens_d"
+            )
+            mem_effect_sizes = self._extract_statistical_values(
+                results, "memory_usage", "cohens_d"
+            )
 
             # Calculate overall effect size
             all_effect_sizes = exec_effect_sizes + mem_effect_sizes
-            overall_effect_size = self._categorize_effect_size(all_effect_sizes) if all_effect_sizes else "N/A"
+            overall_effect_size = (
+                self._categorize_effect_size(all_effect_sizes)
+                if all_effect_sizes
+                else "N/A"
+            )
 
             return {
                 "execution_time_p_value": self._format_p_value(exec_p_values),
@@ -644,14 +699,20 @@ class DecisionSummaryGenerator:
             return "No significant difference"
 
         if winner == "rust":
-            advantage_pct = ((tinygo_mean - rust_mean) / tinygo_mean) * 100 if tinygo_mean != 0 else 0
+            advantage_pct = (
+                ((tinygo_mean - rust_mean) / tinygo_mean) * 100
+                if tinygo_mean != 0
+                else 0
+            )
             return (
                 f"Rust {advantage_pct:.1f}% faster"
                 if metric_type == "execution_time"
                 else f"Rust {advantage_pct:.1f}% less memory"
             )
         else:  # tinygo
-            advantage_pct = ((rust_mean - tinygo_mean) / rust_mean) * 100 if rust_mean != 0 else 0
+            advantage_pct = (
+                ((rust_mean - tinygo_mean) / rust_mean) * 100 if rust_mean != 0 else 0
+            )
             return (
                 f"TinyGo {advantage_pct:.1f}% faster"
                 if metric_type == "execution_time"

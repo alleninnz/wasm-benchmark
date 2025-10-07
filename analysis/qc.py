@@ -14,9 +14,17 @@ from pathlib import Path
 from typing import Any
 
 from . import common
-from .data_models import (BenchmarkResult, BenchmarkSample, CleanedDataset,
-                          DataQuality, MetricQuality, QCConfiguration,
-                          QualityAssessment, QualityMetrics, TaskResult)
+from .data_models import (
+    BenchmarkResult,
+    BenchmarkSample,
+    CleanedDataset,
+    DataQuality,
+    MetricQuality,
+    QCConfiguration,
+    QualityAssessment,
+    QualityMetrics,
+    TaskResult,
+)
 
 
 class QCConstants:
@@ -359,7 +367,9 @@ class QualityController:
         failure_rate = failed_samples / total_samples if total_samples > 0 else 0.0
 
         # Build per-metric issues and quality using similar rules for each metric
-        def _assess_metric_quality(sample_count: int, cv: float, language: str, metric_name: str) -> tuple[DataQuality, list[str]]:
+        def _assess_metric_quality(
+            sample_count: int, cv: float, language: str, metric_name: str
+        ) -> tuple[DataQuality, list[str]]:
             issues: list[str] = []
             quality = DataQuality.VALID
             if sample_count < self.config.min_valid_samples:
@@ -405,8 +415,12 @@ class QualityController:
 
             return quality, issues
 
-        exec_quality, exec_issues = _assess_metric_quality(sample_count, cv_exec, task_result.language, "execution_time")
-        mem_quality, mem_issues = _assess_metric_quality(sample_count, cv_mem, task_result.language, "memory_usage")
+        exec_quality, exec_issues = _assess_metric_quality(
+            sample_count, cv_exec, task_result.language, "execution_time"
+        )
+        mem_quality, mem_issues = _assess_metric_quality(
+            sample_count, cv_mem, task_result.language, "memory_usage"
+        )
 
         # Unknown outliers are tracked elsewhere; set counts to 0 here for simplicity
         exec_metric = MetricQuality(
@@ -476,10 +490,10 @@ class QualityController:
             DataQuality.VALID: 0,
         }
 
-    # Use execution time only for group-level quality decisions.
-    # - Each group's quality is set equal to the execution_time metric's quality.
-    # - Memory usage is intentionally ignored at the group level to avoid
-    #   penalizing groups for transient GC/noise in memory measurements.
+        # Use execution time only for group-level quality decisions.
+        # - Each group's quality is set equal to the execution_time metric's quality.
+        # - Memory usage is intentionally ignored at the group level to avoid
+        #   penalizing groups for transient GC/noise in memory measurements.
         for metrics in quality_summary.values():
             exec_q = metrics.execution_time.data_quality
             group_quality = exec_q
@@ -692,12 +706,16 @@ def _generate_qc_report(
             "min_samples": qc_config.min_valid_samples,
             "failure_rate": qc_config.failure_rate,
             # Serialize dataclass instances to plain dicts for JSON compatibility
-            "rust_thresholds": asdict(qc_config.rust_thresholds)
-            if qc_config.rust_thresholds is not None
-            else None,
-            "tinygo_thresholds": asdict(qc_config.tinygo_thresholds)
-            if qc_config.tinygo_thresholds is not None
-            else None,
+            "rust_thresholds": (
+                asdict(qc_config.rust_thresholds)
+                if qc_config.rust_thresholds is not None
+                else None
+            ),
+            "tinygo_thresholds": (
+                asdict(qc_config.tinygo_thresholds)
+                if qc_config.tinygo_thresholds is not None
+                else None
+            ),
         },
         "data_summary": {
             "total_task_results": len(cleaned_dataset.task_results),
@@ -721,6 +739,7 @@ def _convert_quality_metrics_to_dict(
     """Convert quality metrics to dictionary format for JSON serialization."""
     if not quality_assessment.quality_summary:
         return {}
+
     def _metric_to_dict(m):
         return {
             "sample_count": m.sample_count,

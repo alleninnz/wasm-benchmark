@@ -9,7 +9,6 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from . import common
 from .data_models import (
@@ -28,8 +27,8 @@ class SampleData:
     """Extracted sample data for validation."""
 
     hash: int = 0
-    dimensions: Optional[list[int]] = None
-    records: Optional[int] = None
+    dimensions: list[int] | None = None
+    records: int | None = None
 
 
 class ValidationConstants:
@@ -225,11 +224,11 @@ class BenchmarkValidator:
         scale: str,
         rust_hash: int = 0,
         tinygo_hash: int = 0,
-        rust_dimensions: Optional[list[int]] = None,
-        tinygo_dimensions: Optional[list[int]] = None,
-        rust_records: Optional[int] = None,
-        tinygo_records: Optional[int] = None,
-        issues: Optional[list[str]] = None,
+        rust_dimensions: list[int] | None = None,
+        tinygo_dimensions: list[int] | None = None,
+        rust_records: int | None = None,
+        tinygo_records: int | None = None,
+        issues: list[str] | None = None,
     ) -> ValidationResult:
         """Create ValidationResult with standard parameters."""
         return ValidationResult(

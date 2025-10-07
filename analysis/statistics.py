@@ -216,7 +216,7 @@ class StatisticalAnalysis:
         # Check for numeric values
         for i, value in enumerate(group1):
             if (
-                not isinstance(value, (int, float))
+                not isinstance(value, int | float)
                 or math.isnan(value)
                 or math.isinf(value)
             ):
@@ -226,7 +226,7 @@ class StatisticalAnalysis:
 
         for i, value in enumerate(group2):
             if (
-                not isinstance(value, (int, float))
+                not isinstance(value, int | float)
                 or math.isnan(value)
                 or math.isinf(value)
             ):

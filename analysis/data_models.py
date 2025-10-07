@@ -172,8 +172,8 @@ class BenchmarkSample:
     jsHeapAfter: int
     success: bool
     implementation: str
-    resultDimensions: Optional[list[int]] = None
-    recordsProcessed: Optional[int] = None
+    resultDimensions: list[int] | None = None
+    recordsProcessed: int | None = None
 
 
 @dataclass
@@ -254,7 +254,7 @@ class QualityMetrics:
 
 @dataclass
 class QualityAssessment:
-    quality_summary: Optional[dict[str, QualityMetrics]]
+    quality_summary: dict[str, QualityMetrics] | None
     overall_quality: DataQuality
     quality_reason: str
     quality_stats: dict[str, int]
@@ -411,7 +411,7 @@ class ComparisonResult:
     confidence_level: str
 
     @property
-    def execution_time_winner(self) -> Optional[str]:
+    def execution_time_winner(self) -> str | None:
         """
         Determine the execution time performance winner based on statistical and practical significance.
 
@@ -431,7 +431,7 @@ class ComparisonResult:
         return "rust" if rust_mean < tinygo_mean else "tinygo"
 
     @property
-    def memory_usage_winner(self) -> Optional[str]:
+    def memory_usage_winner(self) -> str | None:
         """
         Determine the memory usage efficiency winner based on statistical and practical significance.
 
@@ -581,10 +581,10 @@ class ValidationResult:
     scale: str
     rust_hash: int
     tinygo_hash: int
-    rust_dimensions: Optional[list[int]]
-    tinygo_dimensions: Optional[list[int]]
-    rust_records: Optional[int]
-    tinygo_records: Optional[int]
+    rust_dimensions: list[int] | None
+    tinygo_dimensions: list[int] | None
+    rust_records: int | None
+    tinygo_records: int | None
     validation_passed: bool
     validation_issues: list[str]
 

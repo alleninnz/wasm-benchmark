@@ -6,13 +6,17 @@ to quality control, statistical analysis, and visualization parameters.
 """
 
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
-from .data_models import (ConfigurationData, LanguageThresholds,
-                          PlotsConfiguration, QCConfiguration,
-                          StatisticsConfiguration, ValidationConfiguration)
+from .data_models import (
+    ConfigurationData,
+    LanguageThresholds,
+    PlotsConfiguration,
+    QCConfiguration,
+    StatisticsConfiguration,
+    ValidationConfiguration,
+)
 
 
 class ConfigParser:
@@ -21,7 +25,7 @@ class ConfigParser:
     def __init__(self, config_path: str = "configs/bench.yaml"):
         """Initialize configuration parser with path to bench.yaml"""
         self.config_path = Path(config_path)
-        self._configuration_data: Optional[ConfigurationData] = None
+        self._configuration_data: ConfigurationData | None = None
 
     def load(self) -> "ConfigParser":
         """
@@ -79,7 +83,9 @@ class ConfigParser:
         tinygo_section = qc_section.get("tinygo_thresholds")
         if isinstance(tinygo_section, dict):
             qc_config.tinygo_thresholds = LanguageThresholds(
-                max_coefficient_variation=tinygo_section.get("max_coefficient_variation"),
+                max_coefficient_variation=tinygo_section.get(
+                    "max_coefficient_variation"
+                ),
                 extreme_cv_threshold=tinygo_section.get("extreme_cv_threshold"),
             )
 
