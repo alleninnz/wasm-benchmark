@@ -148,10 +148,11 @@ export class TerminalProgressUI {
             },
             keys: true,
             mouse: true,
+            vi: true,  // Enable vi-style navigation for better scrolling
             style: {
                 border: { fg: 'green' }
             },
-            label: ' Logs (scroll: ↑↓ or mouse wheel) ',
+            label: ' Logs (↑↓/PgUp/PgDn | Hold Shift/Option + Mouse to select & copy) ',
             tags: true
         });
 
