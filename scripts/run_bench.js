@@ -184,10 +184,8 @@ Examples:
 
         await orchestrator.initialize(configPath, browserOptions);
 
-        logger.section('Initializing Pure Service Architecture');
-
-        // Execute benchmarks
-        const results = await orchestrator.executeBenchmarks(options);
+        // Execute benchmarks (this will show completion summary and wait for user)
+        await orchestrator.executeBenchmarks(options);
 
         // Save results with local timezone
         const now = new Date();
@@ -202,15 +200,8 @@ Examples:
         const outputPath = path.join(__dirname, '..', 'results', filename);
         await orchestrator.saveResults(outputPath, 'json');
 
-        logger.section('Benchmark Process Completed Successfully');
-        logger.success(`Results saved to: ${outputPath}`);
-        logger.success(`Total benchmarks: ${results.summary.totalTasks}`);
-        logger.success(`Successful: ${results.summary.successfulTasks}`);
-        logger.success(`Success rate: ${(results.summary.successRate * 100).toFixed(1)}%`);
-
-        if (results.summary.failedTasks > 0) {
-            logger.warn(`Failed: ${results.summary.failedTasks}`);
-        }
+        // Show final result location (after progressUI is closed)
+        logger.info(`Results saved to: ${outputPath}`);
 
         // In headed mode, don't exit immediately to keep browser open
         if (!options.headless) {

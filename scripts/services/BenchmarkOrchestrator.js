@@ -79,6 +79,9 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                 }
             }
 
+            // Show initialization section
+            this.logger.section('Initializing Pure Service Architecture');
+
             this.logger.info(`Starting execution of ${benchmarks.length} benchmarks...`);
 
             // In headed mode, navigate to benchmark page first
@@ -122,19 +125,18 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                 }
             }
 
-            let _results;
             // In headed mode, force sequential execution to avoid multiple windows
             const isHeadedMode = this.browserService.isHeadless === false;
             const shouldUseParallel = parallelConfig.enabled && benchmarks.length > 1 && !isHeadedMode;
-            
+
             if (shouldUseParallel) {
                 this.logger.info('Using parallel execution (headless mode)');
-                _results = await this.executeInParallel(benchmarks, { ...options, parallel: true });
+                await this.executeInParallel(benchmarks, { ...options, parallel: true });
             } else {
                 if (isHeadedMode && parallelConfig.enabled) {
                     this.logger.info('Forcing sequential execution in headed mode for single window experience');
                 }
-                _results = await this.executeSequentially(benchmarks, { ...options, parallel: false });
+                await this.executeSequentially(benchmarks, { ...options, parallel: false });
             }
 
             // Finalize results with actual configuration values
@@ -166,6 +168,17 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                 } catch (error) {
                     console.warn('Failed to signal benchmark suite completion to frontend:', error.message);
                 }
+            }
+
+            // Show completion summary
+            const summary = this.resultsService.getSummary();
+            this.logger.section('Benchmark Execution Completed Successfully');
+            this.logger.success(`Total benchmarks: ${summary.totalTasks}`);
+            this.logger.success(`Successful: ${summary.successfulTasks}`);
+            this.logger.success(`Success rate: ${(summary.successRate * 100).toFixed(1)}%`);
+
+            if (summary.failedTasks > 0) {
+                this.logger.warn(`Failed: ${summary.failedTasks}`);
             }
 
             // Wait for user to exit if progress UI is enabled

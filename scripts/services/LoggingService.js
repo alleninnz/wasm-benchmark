@@ -207,6 +207,16 @@ export class LoggingService extends ILoggingService {
     section(message) {
         if (!this.shouldLog('info')) return;
 
+        // Route to progress UI if enabled
+        if (this.progressUI) {
+            this.progressUI.log('info', '');
+            this.progressUI.log('info', '======================================');
+            this.progressUI.log('info', ` ${message}`);
+            this.progressUI.log('info', '======================================');
+            this.progressUI.log('info', '');
+            return;
+        }
+
         console.log();
         const line = '======================================';
         const formattedLine = this.enableColors ? chalk.magenta(line) : line;
@@ -353,6 +363,9 @@ export class LoggingService extends ILoggingService {
             }
 
             this.warn(`Failed to initialize progress UI: ${error.message}`);
+            if (error.stack) {
+                this.debug(`Stack trace: ${error.stack}`);
+            }
             this.warn('Falling back to standard console output');
             this.progressUI = null;
             return false;
