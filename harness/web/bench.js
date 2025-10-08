@@ -79,7 +79,7 @@ export class BenchmarkRunner {
         this._applyConfig(config);
 
         window.logResult('Initializing benchmark runner', 'success');
-        window.logResult(`Config loaded: ${config.tasks.length} tasks, ${config.languages.length} languages`);
+        window.logResult(`Config loaded: ${config.taskNames?.length || 0} tasks, ${config.enabledLanguages?.length || 0} languages`);
 
         // Update global state
         window.benchmarkState.status = 'initialized';
@@ -131,10 +131,14 @@ export class BenchmarkRunner {
     _calculateTotalRuns(config) {
         let total = 0;
         const repetitions = config.repetitions || 1;
+        const tasks = config.taskNames || config.tasks || [];
+        const languages = config.enabledLanguages || config.languages || [];
+        const scales = config.scales || [];
+
         for (let rep = 0; rep < repetitions; rep++) {
-            for (const _task of config.tasks) {
-                for (const _lang of config.languages) {
-                    for (const _scale of config.scales) {
+            for (const _task of tasks) {
+                for (const _lang of languages) {
+                    for (const _scale of scales) {
                         total += config.warmupRuns + config.measureRuns;
                     }
                 }
@@ -210,8 +214,8 @@ export class BenchmarkRunner {
         }
 
         // Handle suite configuration (from runBenchmarkSuite)
-        const taskNames = config.tasks || [];
-        const languages = config.languages || [];
+        const taskNames = config.taskNames || config.tasks || [];
+        const languages = config.enabledLanguages || config.languages || [];
         const scales = config.scales || [];
 
         for (const taskName of taskNames) {
@@ -277,7 +281,32 @@ export class BenchmarkRunner {
         const moduleId = `${taskName}-${language}-${scale}-rep${repetition}`;
         // Convert camelCase taskName back to snake_case for file path
         const taskNameSnakeCase = taskName.replace(/([A-Z])/g, '_$1').toLowerCase();
-        const wasmPath = `/builds/${language}/${taskNameSnakeCase}-${language}-o3.wasm`;
+
+        // Get optimization suffix from language configuration
+        // Try both this.config and this.currentConfig, preferring this.currentConfig
+        // because it's set during initialization
+        const activeConfig = this.currentConfig || this.config;
+        const langConfig = activeConfig?.languages?.[language];
+        
+        // Validate that we have the required configuration
+        if (!activeConfig) {
+            throw new Error(`No configuration available for task ${taskName}`);
+        }
+        
+        if (!langConfig) {
+            throw new Error(`No language configuration found for ${language} in task ${taskName}`);
+        }
+        
+        if (!langConfig.optimizationLevels || langConfig.optimizationLevels.length === 0) {
+            throw new Error(`No optimization levels defined for ${language} in task ${taskName}`);
+        }
+        
+        const optSuffix = langConfig.optimizationLevels[0]?.suffix;
+        if (!optSuffix) {
+            throw new Error(`No optimization suffix defined for ${language} in task ${taskName}`);
+        }
+
+        const wasmPath = `/builds/${language}/${taskNameSnakeCase}-${optSuffix}.wasm`;
 
         window.benchmarkState.currentTask = taskName;
         window.benchmarkState.currentLang = language;
@@ -690,10 +719,14 @@ export class BenchmarkRunner {
         const taskResults = [];
 
         try {
-            // Create a compatible config structure for initialization
+            // Load the full configuration first to get language details
+            const fullConfig = await this.configLoader.loadConfig();
+            
+            // Create a compatible config structure for initialization, but preserve the languages object
             const benchConfig = {
                 tasks: [task],
-                languages: [language],
+                languages: fullConfig.languages,  // Use full languages object instead of array
+                enabledLanguages: [language],      // Add this for filtering/validation
                 scales: [scale],
                 taskConfigs: {
                     [task]: taskConfig || {}

@@ -136,14 +136,15 @@ export class ConfigLoader {
         config.timeout = config.environment.timeout || 90000;
 
         config.tasks = config.taskNames || [];
-        config.languages = config.enabledLanguages || [];
+        // Keep original languages object, add convenience array
+        config.enabledLanguagesList = config.enabledLanguages || [];
         config.scales = config.availableScales || ['small', 'medium', 'large'];
 
         // Validate critical arrays are populated
         if (config.tasks.length === 0) {
             throw new Error('Configuration has no tasks defined');
         }
-        if (config.languages.length === 0) {
+        if (config.enabledLanguagesList.length === 0) {
             throw new Error('Configuration has no languages enabled');
         }
 
