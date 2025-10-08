@@ -644,14 +644,14 @@ function updateUI() {
 | Language       | Target Platform               | Optimization Level     | File Location                |
 | -------------- | ----------------------------- | ---------------------- | --------------------------- |
 | **Rust**       | wasm32-unknown-unknown        | -O3, LTO=fat           | `/builds/rust/*.wasm`       |
-| **TinyGo**     | wasm                          | -opt=3                 | `/builds/tinygo/*.wasm`     |
+| **TinyGo**     | wasm                          | -opt=2                 | `/builds/tinygo/*.wasm`     |
 
 #### **Task Execution Flow**
 
 ```javascript
-// 1. Module loading
-async function loadWasmModule(language, taskName) {
-  const modulePath = `/builds/${language}/${taskName}-${language}-o3.wasm`;
+// 1. Module loading (optimization level suffix dynamically retrieved from config)
+async function loadWasmModule(language, taskName, optSuffix) {
+  const modulePath = `/builds/${language}/${taskName}-${language}-${optSuffix}.wasm`;
   const wasmModule = await WebAssembly.instantiateStreaming(fetch(modulePath));
   return wasmModule.instance;
 }

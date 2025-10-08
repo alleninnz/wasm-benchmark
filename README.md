@@ -16,7 +16,7 @@ This project provides a rigorous performance comparison between:
 | Language | Target | Runtime | Optimization |
 |----------|--------|---------|--------------|
 | **Rust 1.90** | `wasm32-unknown-unknown` | Zero-cost abstractions, no GC | `-O3`, fat LTO |
-| **TinyGo 0.39** | `wasm` | Garbage collected runtime | `-opt=3`, no scheduler |
+| **TinyGo 0.39** | `wasm` | Garbage collected runtime | `-opt=2`, no scheduler |
 
 **Test Environment:**
 
@@ -395,7 +395,7 @@ uint32_t run_task(uint32_t params_ptr); // Execute & return result hash
 | Language | Target | Flags | Post-processing |
 |----------|--------|-------|----------------|
 | **Rust** | `wasm32-unknown-unknown` | `-O3`, fat LTO, 1 codegen unit | `wasm-strip`, `wasm-opt -O3` |
-| **TinyGo** | `wasm` | `-opt=3`, panic trap, no debug | `wasm-strip`, `wasm-opt -Oz` |
+| **TinyGo** | `wasm` | `-opt=2`, panic trap, no debug | `wasm-strip`, `wasm-opt -Oz` |
 
 ### ✅ **Result Verification**
 

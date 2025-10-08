@@ -295,8 +295,8 @@ Compile:
 
 ```bash
 tinygo build -target=wasm \
-  -opt=3 -panic=trap -no-debug -scheduler=none \
-  -o out_tinygo_o3_minrt.wasm ./cmd/yourpkg
+  -opt=2 -panic=trap -no-debug -scheduler=none \
+  -o out_tinygo_o2_minrt.wasm ./cmd/yourpkg
 ```
 
 ## Task 1: Mandelbrot (CPU Intensive / Floating-point)
@@ -412,25 +412,25 @@ val = (x >>> 0) * (1.0 / 4294967296.0)
 
 `{task}-{lang}-{opt}.wasm`
 
-Examples:
+Examples (optimization level suffixes are determined by `configs/bench.yaml` configuration file):
 
-- `mandelbrot-rust-o3.wasm` (Rust bare interface + O3 optimization)
-- `mandelbrot-tinygo-oz.wasm` (TinyGo + Oz optimization)
+- `mandelbrot-rust-o3.wasm` (Rust bare interface + O3 optimization, suffix from config)
+- `mandelbrot-tinygo-o2.wasm` (TinyGo + O2 optimization, suffix from config)
 - `json_parse-rust-o3.wasm`
-- `json_parse-tinygo-oz.wasm`
+- `json_parse-tinygo-o2.wasm`
 
 **Build Directory Structure:**
 
 ```text
 builds/
 ├─ rust/
-│  ├─ mandelbrot-rust-o3.wasm
+│  ├─ mandelbrot-rust-o3.wasm  # Optimization level suffix (o3) read from config
 │  ├─ json_parse-rust-o3.wasm
 │  └─ matrix_mul-rust-o3.wasm
 └─ tinygo/
-   ├─ mandelbrot-tinygo-oz.wasm
-   ├─ json_parse-tinygo-oz.wasm
-   └─ matrix_mul-tinygo-oz.wasm
+   ├─ mandelbrot-tinygo-o2.wasm  # Optimization level suffix (o2) read from config
+   ├─ json_parse-tinygo-o2.wasm
+   └─ matrix_mul-tinygo-o2.wasm
 ```
 
 ## Fairness and Consistency Guidelines (Mandatory)

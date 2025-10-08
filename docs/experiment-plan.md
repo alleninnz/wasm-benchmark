@@ -295,8 +295,8 @@ strip = "debuginfo"     # 删除调试信息
 
 ```bash
 tinygo build -target=wasm \
-  -opt=3 -panic=trap -no-debug -scheduler=none \
-  -o out_tinygo_o3_minrt.wasm ./cmd/yourpkg
+  -opt=2 -panic=trap -no-debug -scheduler=none \
+  -o out_tinygo_o2_minrt.wasm ./cmd/yourpkg
 ```
 
 ## 任务一：Mandelbrot（CPU 密集 / 浮点）
@@ -412,25 +412,25 @@ val = (x >>> 0) * (1.0 / 4294967296.0)
 
 `{task}-{lang}-{opt}.wasm`
 
-例：
+例（优化级别后缀由 `configs/bench.yaml` 配置文件决定）：
 
-- `mandelbrot-rust-o3.wasm`（Rust 裸接口 + O3 优化）
-- `mandelbrot-tinygo-oz.wasm`（TinyGo + Oz 优化）
+- `mandelbrot-rust-o3.wasm`（Rust 裸接口 + O3 优化，后缀来自配置）
+- `mandelbrot-tinygo-o2.wasm`（TinyGo + O2 优化，后缀来自配置）
 - `json_parse-rust-o3.wasm`
-- `json_parse-tinygo-oz.wasm`
+- `json_parse-tinygo-o2.wasm`
 
 **构建目录结构：**
 
 ```text
 builds/
 ├─ rust/
-│  ├─ mandelbrot-rust-o3.wasm
+│  ├─ mandelbrot-rust-o3.wasm  # 优化级别后缀(o3)从配置文件读取
 │  ├─ json_parse-rust-o3.wasm
 │  └─ matrix_mul-rust-o3.wasm
 └─ tinygo/
-   ├─ mandelbrot-tinygo-oz.wasm
-   ├─ json_parse-tinygo-oz.wasm
-   └─ matrix_mul-tinygo-oz.wasm
+   ├─ mandelbrot-tinygo-o2.wasm  # 优化级别后缀(o2)从配置文件读取
+   ├─ json_parse-tinygo-o2.wasm
+   └─ matrix_mul-tinygo-o2.wasm
 ```
 
 ## 公平性与一致性守则（强制）

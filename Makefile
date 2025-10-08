@@ -282,7 +282,7 @@ help: ## Show complete list of all available targets
 	$(call log_info,  build                  📦 Build WebAssembly modules or config (add rust/tinygo/all/config/parallel/no-checksums))
 	@echo ""
 	$(call log_info,🚀 Execution Targets:)
-	$(call log_info,  run                    🏃 Run browser benchmark suite (add --quick headed for options))
+	$(call log_info,  run                    🏃 Run browser benchmark suite (add quick OR headed, not both))
 	$(call log_info,  qc                     🔍 Run quality control on benchmark data (add quick for quick mode))
 	$(call log_info,  analyze                📊 Run statistical analysis and generate plots (add quick for quick mode))
 	$(call log_info,  validate               🔬 Run benchmark validation analysis (add quick for quick mode))
@@ -329,7 +329,8 @@ help: ## Show complete list of all available targets
 	$(call log_info,  make build rust        🦀 Build only Rust modules)
 	$(call log_info,  make build parallel    ⚡ Build with FULL parallel (languages + tasks))
 	$(call log_info,  make build rust parallel 🦀⚡ Build Rust with parallel tasks)
-	$(call log_info,  make run quick headed  ⚡👁️ Quick benchmarks with visible browser)
+	$(call log_info,  make run quick         ⚡ Quick benchmarks (headless only))
+	$(call log_info,  make run headed        👁️ Full benchmarks with visible browser)
 	$(call log_info,  make lint python       🐍 Run Python linting only)
 	$(call log_info,  make format rust       🦀 Format Rust code only)
 	$(call log_info,  make test validate     ✅ Run WASM task validation)
@@ -338,7 +339,7 @@ help: ## Show complete list of all available targets
 	@echo ""
 	$(call log_info,🐳 Docker Examples:)
 	$(call log_info,  make docker full quick 🐳⚡ Quick pipeline in container)
-	$(call log_info,  make docker run quick headed 🐳👁️ Quick benchmarks with browser)
+	$(call log_info,  make docker run headed 🐳👁️ Full benchmarks with browser)
 	$(call log_info,  make docker build rust parallel 🐳🦀 Build Rust with parallelization)
 	$(call log_info,  make docker status     🐳📊 Show container health)
 	$(call log_info,  make docker clean      🐳🧹 Full container cleanup)
@@ -425,26 +426,25 @@ endif
 # Execution Targets
 # ============================================================================
 
-run: $(NODE_MODULES) ## Run browser benchmark suite (use quick headed for options)
+run: $(NODE_MODULES) ## Run browser benchmark suite (use quick OR headed, not both)
+ifeq ($(HEADED_MODE)$(QUICK_MODE),truetrue)
+	$(call log_error,Quick mode and headed mode cannot be used together)
+	$(call log_info,Usage: make run quick  OR  make run headed)
+	$(call log_info,Quick mode is optimized for fast feedback and runs in headless mode only)
+	exit 1
+else
 	@$(MAKE) build config
 	$(call check_wasm_builds)
 	$(call start_dev_server)
 	$(call check_script_exists,scripts/run_bench.js)
-ifeq ($(HEADED_MODE),true)
-ifeq ($(QUICK_MODE),true)
-	$(call log_step,Running quick benchmarks with headed browser...)
-	node scripts/run_bench.js --headed --quick
-	$(call log_success,👁️ Quick headed benchmarks completed)
-else
-	$(call log_step,Running benchmarks with headed browser...)
-	node scripts/run_bench.js --headed
-	$(call log_success,👁️ Headed benchmarks completed)
-endif
-else
 ifeq ($(QUICK_MODE),true)
 	$(call log_step,Running quick benchmark suite for development feedback...)
 	node scripts/run_bench.js --quick
 	$(call log_success,⚡ Quick benchmarks completed - results saved with timestamp)
+else ifeq ($(HEADED_MODE),true)
+	$(call log_step,Running benchmarks with headed browser...)
+	node scripts/run_bench.js --headed
+	$(call log_success,👁️ Headed benchmarks completed)
 else
 	$(call log_step,Running browser benchmarks...)
 	node scripts/run_bench.js

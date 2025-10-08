@@ -644,14 +644,14 @@ function updateUI() {
 | 语言       | 目标平台               | 优化级别     | 文件位置                |
 | ---------- | ---------------------- | ------------ | ----------------------- |
 | **Rust**   | wasm32-unknown-unknown | -O3, LTO=fat | `/builds/rust/*.wasm`   |
-| **TinyGo** | wasm                   | -opt=3       | `/builds/tinygo/*.wasm` |
+| **TinyGo** | wasm                   | -opt=2      | `/builds/tinygo/*.wasm` |
 
 #### **任务执行流程**
 
 ```javascript
-// 1. 模块加载
-async function loadWasmModule(language, taskName) {
-  const modulePath = `/builds/${language}/${taskName}-${language}-o3.wasm`;
+// 1. 模块加载（优化级别后缀从配置文件动态获取）
+async function loadWasmModule(language, taskName, optSuffix) {
+  const modulePath = `/builds/${language}/${taskName}-${language}-${optSuffix}.wasm`;
   const wasmModule = await WebAssembly.instantiateStreaming(fetch(modulePath));
   return wasmModule.instance;
 }
