@@ -706,7 +706,6 @@ DEFAULT_POOLED_STD = 1.0
 | Effect Size | 效应量 | Actual difference size | ✅ Practical significance assessment |
 | Alpha Level | 显著性水平 | False positive error rate | ✅ Hypothesis testing standard |
 | Degrees of Freedom | 自由度 | Number of independent parameters | ✅ Test accuracy |
-| IQR | 四分位距 | Middle 50% range | ✅ Core outlier detection method |
 | Statistical Power | 统计功效 | Ability to detect real effects | ❌ Not implemented - observation-based design |
 | Normality Test | 正态性检验 | Distribution shape verification | ❌ Not implemented - Welch's t-test robust enough |
 | Z-score | 标准分数 | Standardized position | ❌ Not used - IQR method adopted |
