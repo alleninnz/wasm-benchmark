@@ -26,7 +26,16 @@ const MAX_LOG_LINES = 100;
 // Async log writing function with rotation
 async function writeLog(message) {
     try {
-        const timestamp = new Date().toISOString();
+        const now = new Date();
+        const timestamp = now.toLocaleString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        }).replace(',', '');
         const logEntry = `[${timestamp}] ${message}\n`;
         
         // Check if log file exists and count lines
@@ -187,7 +196,7 @@ app.get('/configs/bench.json', (req, res) => {
         writeLog(`ERROR: bench.json not found at: ${configPath}`);
         res.status(404).json({
             error: 'Configuration not found',
-            message: 'bench.json not found. Run "make build-config" to generate it.',
+            message: 'bench.json not found. Run "make build config" to generate it.',
             path: '/configs/bench.json'
         });
     }
@@ -204,7 +213,7 @@ app.get('/configs/bench-quick.json', (req, res) => {
         writeLog(`ERROR: bench-quick.json not found at: ${configPath}`);
         res.status(404).json({
             error: 'Configuration not found',
-            message: 'bench-quick.json not found. Run "make build-config-quick" to generate it.',
+            message: 'bench-quick.json not found. Run "make build config-quick" to generate it.',
             path: '/configs/bench-quick.json'
         });
     }

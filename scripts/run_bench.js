@@ -162,11 +162,9 @@ Examples:
     const configService = new ConfigurationService();
     const browserService = new BrowserService();
     const resultsService = new ResultsService();
-    orchestrator = new BenchmarkOrchestrator(configService, browserService, resultsService);
+    orchestrator = new BenchmarkOrchestrator(configService, browserService, resultsService, logger);
 
     try {
-        logger.section('Initializing Pure Service Architecture');
-
         // Initialize orchestrator with appropriate config
         const configFilename = options.quick ? 'bench-quick.json' : 'bench.json';
         const configPath = path.join(__dirname, '..', 'configs', configFilename);
@@ -185,6 +183,8 @@ Examples:
         };
 
         await orchestrator.initialize(configPath, browserOptions);
+
+        logger.section('Initializing Pure Service Architecture');
 
         // Execute benchmarks
         const results = await orchestrator.executeBenchmarks(options);

@@ -191,7 +191,7 @@ export class TerminalProgressUI {
 
             if (newHeight < this.options.minTerminalHeight) {
                 this.progressBox.setContent(
-                    '{red-fg}⚠️  Terminal too small! Please resize to at least 10 lines{/}'
+                    '{red-fg}!  Terminal too small! Please resize to at least 10 lines{/}'
                 );
                 this.screen.render();
             } else {
@@ -295,14 +295,14 @@ export class TerminalProgressUI {
         const empty = '░'.repeat(barWidth - filledWidth);
 
         // Line 1: Progress bar with percentage and elapsed time
-        const line1 = `⏱️  {cyan-fg}[${filled}${empty}]{/} {yellow-fg}{bold}${percent}%{/} | ${elapsedMin}:${String(elapsedSec).padStart(2, '0')} elapsed`;
+        const line1 = `>  {cyan-fg}[${filled}${empty}]{/} {yellow-fg}{bold}${percent}%{/} | ${elapsedMin}:${String(elapsedSec).padStart(2, '0')} elapsed`;
 
         // Line 2: ETA and current task
         const taskDisplay = this.currentTask || 'Initializing...';
-        const line2 = `📊 ETA: {green-fg}${etaMin}:${String(etaSec).padStart(2, '0')}{/} | {blue-fg}${taskDisplay}{/}`;
+        const line2 = `#  ETA: {green-fg}${etaMin}:${String(etaSec).padStart(2, '0')}{/} | {blue-fg}${taskDisplay}{/}`;
 
         // Line 3: Task progress
-        const line3 = `🎯 {cyan-fg}${this.completedTasks}/${this.totalTasks}{/} benchmarks completed`;
+        const line3 = `*  {cyan-fg}${this.completedTasks}/${this.totalTasks}{/} benchmarks completed`;
 
         this.progressBox.setContent(`${line1}\n${line2}\n${line3}`);
     }
@@ -350,14 +350,14 @@ export class TerminalProgressUI {
 
         // Update progress to 100% and show completion message
         this.completedTasks = this.totalTasks;
-        this.currentTask = '✅ All benchmarks completed!';
+        this.currentTask = '✓ All benchmarks completed!';
         this.renderProgress();
 
         // Add completion message to logs
-        this.log('success', '\n========================================');
-        this.log('success', '🎉 All benchmarks completed successfully!');
         this.log('success', '========================================');
-        this.log('info', '\n💡 Press ESC or Ctrl+C to exit and view results\n');
+        this.log('success', '✓ All benchmarks completed successfully!');
+        this.log('success', '========================================');
+        this.log('info', '\n* Press ESC or Ctrl+C to exit and view results\n');
 
         this.screen.render();
 
