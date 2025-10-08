@@ -705,7 +705,7 @@ DEFAULT_POOLED_STD = 1.0
 | Confidence Interval | 置信区间 | 参数估计范围 | ✅ 不确定性量化 |
 | Effect Size | 效应量 | 实际差异大小 | ✅ 实用意义评估 |
 | Alpha Level | 显著性水平 | 假阳性错误率 | ✅ 假设检验标准 |
-| Degrees of Freedom | 自由度 | 独立参数数量 | ✅ 检验准确性 |f
+| Degrees of Freedom | 自由度 | 独立参数数量 | ✅ 检验准确性 |
 | Statistical Power | 统计功效 | 检测真实效应能力 | ❌ 未实现 - 基于观察设计 |
 | Normality Test | 正态性检验 | 分布形态验证 | ❌ 未实现 - Welch's t-test足够鲁棒 |
 | Z-score | 标准分数 | 标准化位置 | ❌ 未使用 - 采用IQR方法 |
