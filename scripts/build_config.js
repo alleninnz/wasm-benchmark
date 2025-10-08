@@ -96,6 +96,28 @@ function convertKeysToCamelCase(obj) {
 }
 
 /**
+ * Derive optimization suffix from language configuration
+ */
+function deriveOptimizationSuffix(languageName, optimizationLevel) {
+    if (languageName === 'rust') {
+        // Extract opt_level from cargo_config
+        const optLevel = optimizationLevel.cargoConfig?.optLevel ||
+                        optimizationLevel.cargo_config?.opt_level || 3;
+        return `o${optLevel}`;
+    } else if (languageName === 'tinygo') {
+        // Extract from build_flags like "-opt=2"
+        const buildFlags = optimizationLevel.buildFlags || optimizationLevel.build_flags || [];
+        const optFlag = buildFlags.find(flag => flag.startsWith('-opt='));
+        if (optFlag) {
+            const optLevel = optFlag.split('=')[1];
+            return `o${optLevel}`;
+        }
+        return 'o2'; // default fallback
+    }
+    return 'o2'; // default fallback for unknown languages
+}
+
+/**
  * Create optimized environment configuration with camelCase keys
  */
 function createOptimizedEnvironment(config) {
@@ -140,7 +162,7 @@ function optimizeConfig(config) {
         // Task configurations - convert nested structures to camelCase
         tasks: convertKeysToCamelCase(config.tasks),
 
-        // Language configurations
+        // Language configurations with derived suffixes
         languages: convertKeysToCamelCase(config.languages),
 
         // Quality control settings
@@ -159,6 +181,17 @@ function optimizeConfig(config) {
             version: config.experiment?.version || '1.0'
         }
     };
+
+    // Add derived suffix to each language's optimization levels
+    for (const [langName, langConfig] of Object.entries(optimized.languages)) {
+        if (langConfig.optimizationLevels && Array.isArray(langConfig.optimizationLevels)) {
+            langConfig.optimizationLevels.forEach(optLevel => {
+                if (!optLevel.suffix) {
+                    optLevel.suffix = deriveOptimizationSuffix(langName, optLevel);
+                }
+            });
+        }
+    }
 
     // Extract convenience arrays
     optimized.taskNames = Object.keys(optimized.tasks).filter(task =>
@@ -181,9 +214,13 @@ function optimizeConfig(config) {
     optimized.taskNames.forEach(taskName => {
         const task = optimized.tasks[taskName];
         const taskScales = task.scales ? Object.keys(task.scales) : ['small'];
-        
+        const taskNameSnakeCase = taskName.replace(/([A-Z])/g, '_$1').toLowerCase();
+
         taskScales.forEach(scale => {
             optimized.enabledLanguages.forEach(lang => {
+                // Get optimization suffix from language configuration
+                const langConfig = optimized.languages[lang];
+                const optSuffix = langConfig?.optimizationLevels?.[0]?.suffix || 'o2';
                 optimized.benchmarks.push({
                     name: `${taskName}_${scale}_${lang}`,
                     task: taskName,
@@ -191,7 +228,7 @@ function optimizeConfig(config) {
                     language: lang,
                     implementations: [{
                         name: `${taskName}_${lang}`,
-                        path: `/builds/${lang}/${taskName}-${lang}-o3.wasm`
+                        path: `/builds/${lang}/${taskNameSnakeCase}-${optSuffix}.wasm`
                     }]
                 });
             });

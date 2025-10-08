@@ -75,6 +75,9 @@ read_rust_config() {
         local panic=$(jq -r '.languages.rust.optimizationLevels[0].cargoConfig.panic // "abort"' "${CONFIG_FILE}" 2>/dev/null)
         local strip=$(jq -r '.languages.rust.optimizationLevels[0].cargoConfig.strip // "debuginfo"' "${CONFIG_FILE}" 2>/dev/null)
 
+        # Read optimization suffix
+        OPT_SUFFIX=$(jq -r '.languages.rust.optimizationLevels[0].suffix // "o3"' "${CONFIG_FILE}" 2>/dev/null)
+
         # Set CARGO environment variables to override profile settings
         export CARGO_PROFILE_RELEASE_OPT_LEVEL="$opt_level"
         export CARGO_PROFILE_RELEASE_LTO="$lto"
@@ -86,11 +89,12 @@ read_rust_config() {
         local target=$(jq -r '.languages.rust.target // "wasm32-unknown-unknown"' "${CONFIG_FILE}" 2>/dev/null)
         WASM_TARGET="$target"
 
-        log_success "Configuration loaded: opt-level=${opt_level}, lto=${lto}, codegen-units=${codegen_units}, panic=${panic}, strip=${strip}"
+        log_success "Configuration loaded: opt-level=${opt_level}, lto=${lto}, codegen-units=${codegen_units}, panic=${panic}, strip=${strip}, suffix=${OPT_SUFFIX}"
         log_info "Using target: ${WASM_TARGET}"
     else
         log_warning "Configuration file not found or jq not available, using defaults"
-        log_info "Default settings: opt-level=3, lto=fat, codegen-units=1, panic=abort, strip=debuginfo"
+        log_info "Default settings: opt-level=3, lto=fat, codegen-units=1, panic=abort, strip=debuginfo, suffix=o3"
+        OPT_SUFFIX="o3"
     fi
 }
 
@@ -98,7 +102,7 @@ read_rust_config() {
 build_rust_task() {
     local task_name="$1"
     local task_dir="${TASKS_DIR}/${task_name}/rust"
-    local output_name="${task_name}-rust-o3.wasm"
+    local output_name="${task_name}-${OPT_SUFFIX}.wasm"
     local output_path="${RUST_OUTPUT_DIR}/${output_name}"
     
     if [[ ! -d "${task_dir}" ]]; then
@@ -183,7 +187,7 @@ build_rust_task() {
 # Generate checksum for a built task
 generate_task_checksum() {
     local task_name="$1"
-    local output_name="${task_name}-rust-o3.wasm"
+    local output_name="${task_name}-${OPT_SUFFIX}.wasm"
     local output_path="${RUST_OUTPUT_DIR}/${output_name}"
     local gz_path="${output_path}.gz"
 
@@ -232,7 +236,7 @@ collect_build_metrics() {
     local build_end_time="$3"
     local success="$4"
 
-    local output_name="${task_name}-rust-o3.wasm"
+    local output_name="${task_name}-${OPT_SUFFIX}.wasm"
     local output_path="${RUST_OUTPUT_DIR}/${output_name}"
     local gz_path="${output_path}.gz"
 

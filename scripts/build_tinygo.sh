@@ -60,17 +60,18 @@ check_wasm_tools() {
 read_tinygo_config() {
     WASM_TARGET=$(jq -r '.languages.tinygo.target // "wasm"' "${CONFIG_FILE}" 2>/dev/null || echo "wasm")
     TINYGO_BUILD_FLAGS=($(jq -r '.languages.tinygo.optimizationLevels[0].buildFlags[]? // empty' "${CONFIG_FILE}" 2>/dev/null))
+    OPT_SUFFIX=$(jq -r '.languages.tinygo.optimizationLevels[0].suffix // "o2"' "${CONFIG_FILE}" 2>/dev/null || echo "o2")
 
     [[ ${#TINYGO_BUILD_FLAGS[@]} -eq 0 ]] && TINYGO_BUILD_FLAGS=("-opt=2" "-panic=trap" "-no-debug" "-scheduler=none" "-gc=conservative")
 
-    log_info "TinyGo: target=${WASM_TARGET}, flags=${TINYGO_BUILD_FLAGS[*]}"
+    log_info "TinyGo: target=${WASM_TARGET}, flags=${TINYGO_BUILD_FLAGS[*]}, suffix=${OPT_SUFFIX}"
 }
 
 # Build a single TinyGo task
 build_tinygo_task() {
     local task_name="$1"
     local task_dir="${TASKS_DIR}/${task_name}/tinygo"
-    local output_name="${task_name}-tinygo-o3.wasm"
+    local output_name="${task_name}-${OPT_SUFFIX}.wasm"
     local output_path="${TINYGO_BUILDS_DIR}/${output_name}"
     
     if [[ ! -d "${task_dir}" ]]; then
@@ -141,7 +142,7 @@ build_tinygo_task() {
 # Generate checksum for a built task
 generate_task_checksum() {
     local task_name="$1"
-    local output_name="${task_name}-tinygo-o3.wasm"
+    local output_name="${task_name}-${OPT_SUFFIX}.wasm"
     local output_path="${TINYGO_BUILDS_DIR}/${output_name}"
     local gz_path="${output_path}.gz"
 
@@ -190,7 +191,7 @@ collect_build_metrics() {
     local build_end_time="$3"
     local success="$4"
 
-    local output_name="${task_name}-tinygo-o3.wasm"
+    local output_name="${task_name}-${OPT_SUFFIX}.wasm"
     local output_path="${TINYGO_BUILDS_DIR}/${output_name}"
     local gz_path="${output_path}.gz"
 
