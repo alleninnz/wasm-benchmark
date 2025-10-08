@@ -339,39 +339,7 @@ export class BrowserService extends IBrowserService {
             this.page.setDefaultTimeout(timeout);
         }
     }
-
-    /**
-     * Clear browser cache and storage
-     * @returns {Promise<void>}
-     */
-    async clearCache() {
-        if (!this.page) {
-            throw new Error('Browser not initialized. Call initialize() first.');
-        }
-
-        try {
-            // Clear cache
-            await this.page.evaluate(() => {
-                if ('caches' in window) {
-                    caches.keys().then(names => {
-                        names.forEach(name => caches.delete(name));
-                    });
-                }
-            });
-
-            // Clear local storage
-            await this.page.evaluate(() => {
-                if (typeof Storage !== 'undefined') {
-                    localStorage.clear();
-                    sessionStorage.clear();
-                }
-            });
-
-        } catch (error) {
-            console.warn(chalk.yellow('Failed to clear cache:'), error.message);
-        }
-    }
-
+    
     /**
      * Reload current page
      * @param {Object} options - Reload options
