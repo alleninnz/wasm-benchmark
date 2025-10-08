@@ -200,9 +200,6 @@ Examples:
         const outputPath = path.join(__dirname, '..', 'results', filename);
         await orchestrator.saveResults(outputPath, 'json');
 
-        // Show final result location (after progressUI is closed)
-        logger.info(`Results saved to: ${outputPath}`);
-
         // In headed mode, don't exit immediately to keep browser open
         if (!options.headless) {
             logger.info('Browser kept open for inspection. Press Ctrl+C to exit.');
