@@ -63,7 +63,7 @@ export class IResultsService {
     /**
      * Filter results by criteria
      * @param {Function|Object} criteria - Filter function or criteria object
-     * @returns {Array} Filtered results
+     * @returns {Array<Object>} Filtered results array
      */
     filterResults(criteria) {
         throw new Error('filterResults method must be implemented');

@@ -7,7 +7,8 @@ export class IConfigurationService {
     /**
      * Load and validate configuration from file
      * @param {string} configPath - Path to config file
-     * @returns {Promise<Object>} Validated configuration
+     * @returns {Promise<Object>} Validated configuration object
+     * @throws {Error} If file not found or validation fails
      */
     async loadConfig(configPath) {
         throw new Error('loadConfig method must be implemented');

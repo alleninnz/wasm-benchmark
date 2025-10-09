@@ -7,7 +7,11 @@ export class IBrowserService {
     /**
      * Initialize browser with configuration
      * @param {Object} browserConfig - Browser configuration options
-     * @returns {Promise<void>}
+     * @param {boolean} [browserConfig.headless=true] - Run browser in headless mode
+     * @param {string[]} [browserConfig.args] - Additional browser arguments
+     * @param {number} [browserConfig.protocolTimeout] - Protocol timeout in milliseconds
+     * @returns {Promise<void>} Resolves when browser is initialized
+     * @throws {Error} If browser initialization fails
      */
     async initialize(browserConfig) {
         throw new Error('initialize method must be implemented');
@@ -16,8 +20,11 @@ export class IBrowserService {
     /**
      * Navigate to URL and wait for page load
      * @param {string} url - URL to navigate to
-     * @param {Object} options - Navigation options
-     * @returns {Promise<void>}
+     * @param {Object} [options] - Navigation options
+     * @param {string} [options.waitUntil='networkidle0'] - When to consider navigation succeeded
+     * @param {number} [options.timeout] - Navigation timeout in milliseconds
+     * @returns {Promise<void>} Resolves when navigation is complete
+     * @throws {Error} If navigation fails or times out
      */
     async navigateTo(url, options) {
         throw new Error('navigateTo method must be implemented');
@@ -28,6 +35,7 @@ export class IBrowserService {
      * @param {string|Function} script - JavaScript code or function to execute
      * @param {...any} args - Arguments to pass to the function
      * @returns {Promise<any>} Result of script execution
+     * @throws {Error} If script execution fails
      */
     async executeScript(script, ...args) {
         throw new Error('executeScript method must be implemented');
