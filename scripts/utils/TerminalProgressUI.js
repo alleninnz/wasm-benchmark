@@ -99,7 +99,9 @@ export class TerminalProgressUI {
 
         try {
             // Temporarily suppress stderr and set TERM to xterm
-            process.stderr.write = function() { return true; };
+            process.stderr.write = function () {
+                return true;
+            };
             if (process.env.TERM === 'xterm-256color') {
                 process.env.TERM = 'xterm';
             }
@@ -108,10 +110,10 @@ export class TerminalProgressUI {
             this.screen = blessed.screen({
                 smartCSR: true,
                 fastCSR: true,
-                fullUnicode: false,  // Keep disabled for compatibility
+                fullUnicode: false, // Keep disabled for compatibility
                 dockBorders: true,
                 title: 'WASM Benchmark Progress',
-                warnings: false  // Suppress terminal capability warnings
+                warnings: false // Suppress terminal capability warnings
             });
 
             // Restore stderr and TERM immediately
@@ -161,7 +163,7 @@ export class TerminalProgressUI {
             },
             keys: true,
             mouse: true,
-            vi: true,  // Enable vi-style navigation for better scrolling
+            vi: true, // Enable vi-style navigation for better scrolling
             style: {
                 border: { fg: 'green' }
             },
@@ -204,9 +206,7 @@ export class TerminalProgressUI {
             const newHeight = process.stdout.rows || 24;
 
             if (newHeight < this.options.minTerminalHeight) {
-                this.progressBox.setContent(
-                    '{red-fg}!  Terminal too small! Please resize to at least 10 lines{/}'
-                );
+                this.progressBox.setContent('{red-fg}!  Terminal too small! Please resize to at least 10 lines{/}');
                 this.screen.render();
             } else {
                 this.render();
@@ -376,7 +376,7 @@ export class TerminalProgressUI {
         this.screen.render();
 
         // Wait for user input
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
             this.screen.key(['escape', 'C-c'], () => {
                 resolve();
             });
