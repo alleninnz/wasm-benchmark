@@ -1,0 +1,79 @@
+# Dependencies
+node_modules/
+__pycache__/
+
+# Build artifacts
+builds/
+target/
+
+# Generated configuration (dynamic config)
+configs/*.json
+
+# Static configuration files (maintain original formatting)
+configs/*.yaml
+
+# Data files (maintain original formatting)
+data/
+
+# Documentation (maintain original formatting)
+docs/
+
+# Results and reports
+results/
+reports/
+
+# Runtime logs and temporary files
+*.log
+*.tmp
+dev-server.log
+test-results.json
+
+# Binary files
+*.wasm
+
+# Cache directories
+.cache/
+.npm/
+.ruff_cache/
+.pytest_cache/
+
+# Environment and AI assistant files
+.env
+.env.local
+.claude/
+.serena/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.bak
+
+# Lock files (auto-generated)
+versions.lock
+meta.json
+
+# Analysis
+analysis/
+
+# Task source code (different formatting standards)
+tasks/
+
+# Project configuration files (maintain original formatting)
+.prettierrc
+docker-compose.yml
+Dockerfile
+
+# Web assets (maintain original formatting)
+harness/web/*.html
+
+# Test configuration
+vitest.config.js
+
+# Documentation
+README.md
