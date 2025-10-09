@@ -3,7 +3,11 @@
 
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { BrowserTestHarness, TEST_CONFIGS } from '../utils/browser-test-harness.js';
-import { assertBenchmarkResult, assertCrossLanguageConsistency, assertPerformanceConsistency } from '../utils/test-assertions.js';
+import {
+    assertBenchmarkResult,
+    assertCrossLanguageConsistency,
+    assertPerformanceConsistency
+} from '../utils/test-assertions.js';
 import DeterministicTestDataGenerator from '../utils/test-data-generator.js';
 
 describe('Cross-Language Consistency', () => {
@@ -12,7 +16,7 @@ describe('Cross-Language Consistency', () => {
     let testDataGen;
 
     beforeEach(async () => {
-    // Initialize test data generator with fixed seed for consistency
+        // Initialize test data generator with fixed seed for consistency
         testDataGen = new DeterministicTestDataGenerator(12345);
 
         // Use shared browser harness with integration configuration
@@ -51,7 +55,7 @@ describe('Cross-Language Consistency', () => {
             const jsonData = testDataGen.generateScaledDataset('json_parse', 'micro');
 
             // Execute both implementations with same data
-            const results = await page.evaluate(async (testData) => {
+            const results = await page.evaluate(async testData => {
                 const rustResult = await window.runTask('json_parse', 'rust', testData);
                 const tinygoResult = await window.runTask('json_parse', 'tinygo', testData);
                 return { rust: rustResult, tinygo: tinygoResult };
@@ -72,7 +76,7 @@ describe('Cross-Language Consistency', () => {
         test('should produce identical hashes for Rust and TinyGo matrix multiplication implementations', async () => {
             const matrixData = testDataGen.generateScaledDataset('matrix_mul', 'micro');
 
-            const results = await page.evaluate(async (data) => {
+            const results = await page.evaluate(async data => {
                 const rustResult = await window.runTask('matrix_mul', 'rust', data);
                 const tinygoResult = await window.runTask('matrix_mul', 'tinygo', data);
                 return { rust: rustResult, tinygo: tinygoResult };
@@ -113,7 +117,7 @@ describe('Cross-Language Consistency', () => {
             for (let run = 0; run < testConfig.runs; run++) {
                 const mandelbrotData = testDataGen.generateScaledDataset('mandelbrot', 'micro');
 
-                const results = await page.evaluate(async (data) => {
+                const results = await page.evaluate(async data => {
                     const rustResult = await window.runTask('mandelbrot', 'rust', data);
                     const tinygoResult = await window.runTask('mandelbrot', 'tinygo', data);
 
@@ -145,7 +149,7 @@ describe('Cross-Language Consistency', () => {
             for (const scale of scales) {
                 const jsonData = testDataGen.generateScaledDataset('json_parse', scale);
 
-                const results = await page.evaluate(async (data) => {
+                const results = await page.evaluate(async data => {
                     const rustResult = await window.runTask('json_parse', 'rust', data);
                     const tinygoResult = await window.runTask('json_parse', 'tinygo', data);
                     return {
@@ -171,7 +175,7 @@ describe('Cross-Language Consistency', () => {
                 maxIter: -10
             };
 
-            const results = await page.evaluate(async (data) => {
+            const results = await page.evaluate(async data => {
                 try {
                     const rustResult = await window.runTask('mandelbrot', 'rust', data);
                     const tinygoResult = await window.runTask('mandelbrot', 'tinygo', data);
@@ -204,7 +208,7 @@ describe('Cross-Language Consistency', () => {
                 window.setTaskTimeout(1000); // 1 second timeout
             });
 
-            const results = await page.evaluate(async (data) => {
+            const results = await page.evaluate(async data => {
                 const rustResult = await window.runTask('mandelbrot', 'rust', data);
                 const tinygoResult = await window.runTask('mandelbrot', 'tinygo', data);
                 return { rust: rustResult, tinygo: tinygoResult };
@@ -233,7 +237,7 @@ describe('Cross-Language Consistency', () => {
             // Collect baseline measurements
             for (let i = 0; i < normalRuns; i++) {
                 const data = testDataGen.generateScaledDataset('mandelbrot', 'micro');
-                const result = await page.evaluate(async (testData) => {
+                const result = await page.evaluate(async testData => {
                     return await window.runTask('mandelbrot', 'rust', testData);
                 }, data);
 
@@ -257,7 +261,7 @@ describe('Cross-Language Consistency', () => {
             const testData = testDataGen.generateScaledDataset('json_parse', 'micro');
 
             // Get hash from current session
-            const firstHash = await page.evaluate(async (data) => {
+            const firstHash = await page.evaluate(async data => {
                 const result = await window.runTask('json_parse', 'rust', data);
                 return result.resultHash;
             }, testData);
@@ -268,7 +272,7 @@ describe('Cross-Language Consistency', () => {
             page = await harness.setup();
 
             // Get hash from new session
-            const secondHash = await page.evaluate(async (data) => {
+            const secondHash = await page.evaluate(async data => {
                 const result = await window.runTask('json_parse', 'rust', data);
                 return result.resultHash;
             }, testData);

@@ -63,7 +63,7 @@ describe('Experiment Pipeline Integration', () => {
             await fs.writeFile(configPath, JSON.stringify(testConfig, null, 2));
 
             // Load configuration in browser
-            const configLoaded = await page.evaluate(async (configData) => {
+            const configLoaded = await page.evaluate(async configData => {
                 try {
                     window.benchmarkConfig = configData;
                     return { success: true, config: window.benchmarkConfig };
@@ -87,7 +87,7 @@ describe('Experiment Pipeline Integration', () => {
                 enabledLanguages: []
             };
 
-            const result = await page.evaluate(async (config) => {
+            const result = await page.evaluate(async config => {
                 try {
                     const validation = window.validateConfig(config);
                     return { success: false, errors: validation.errors };
@@ -112,52 +112,63 @@ describe('Experiment Pipeline Integration', () => {
             };
 
             // Execute complete benchmark suite
-            const benchmarkResults = await page.evaluate(async (config) => {
-                const results = {
-                    mandelbrot: { rust: [], tinygo: [] },
-                    json_parse: { rust: [], tinygo: [] }
-                };
+            const benchmarkResults = await page.evaluate(
+                async config => {
+                    const results = {
+                        mandelbrot: { rust: [], tinygo: [] },
+                        json_parse: { rust: [], tinygo: [] }
+                    };
 
-                // Debug: Check if benchmark runner is available
-                if (!window.benchmarkRunner) {
-                    throw new Error('Benchmark runner not initialized');
-                }
-
-                // Run benchmark for configured number of iterations
-                for (let run = 0; run < config.runs; run++) {
-                    try {
-                        // Mandelbrot benchmark
-                        const mandelbrotRust = await window.runTask('mandelbrot', 'rust', config.testData.mandelbrot);
-                        const mandelbrotTinygo = await window.runTask('mandelbrot', 'tinygo', config.testData.mandelbrot);
-
-                        // Debug logging
-                        console.log('Mandelbrot Rust result:', JSON.stringify(mandelbrotRust));
-                        console.log('Mandelbrot TinyGo result:', JSON.stringify(mandelbrotTinygo));
-
-                        results.mandelbrot.rust.push(mandelbrotRust);
-                        results.mandelbrot.tinygo.push(mandelbrotTinygo);
-
-                        // JSON parsing benchmark
-                        const jsonRust = await window.runTask('json_parse', 'rust', config.testData.json_parse);
-                        const jsonTinygo = await window.runTask('json_parse', 'tinygo', config.testData.json_parse);
-
-                        // Debug logging
-                        console.log('JSON Rust result:', JSON.stringify(jsonRust));
-                        console.log('JSON TinyGo result:', JSON.stringify(jsonTinygo));
-
-                        results.json_parse.rust.push(jsonRust);
-                        results.json_parse.tinygo.push(jsonTinygo);
-
-                        // Brief pause between runs to prevent throttling
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                    } catch (error) {
-                        console.error(`Run ${run} failed:`, error.message);
-                        throw error;
+                    // Debug: Check if benchmark runner is available
+                    if (!window.benchmarkRunner) {
+                        throw new Error('Benchmark runner not initialized');
                     }
-                }
 
-                return results;
-            }, { ...smokeConfig, testData: testDataSets });
+                    // Run benchmark for configured number of iterations
+                    for (let run = 0; run < config.runs; run++) {
+                        try {
+                            // Mandelbrot benchmark
+                            const mandelbrotRust = await window.runTask(
+                                'mandelbrot',
+                                'rust',
+                                config.testData.mandelbrot
+                            );
+                            const mandelbrotTinygo = await window.runTask(
+                                'mandelbrot',
+                                'tinygo',
+                                config.testData.mandelbrot
+                            );
+
+                            // Debug logging
+                            console.log('Mandelbrot Rust result:', JSON.stringify(mandelbrotRust));
+                            console.log('Mandelbrot TinyGo result:', JSON.stringify(mandelbrotTinygo));
+
+                            results.mandelbrot.rust.push(mandelbrotRust);
+                            results.mandelbrot.tinygo.push(mandelbrotTinygo);
+
+                            // JSON parsing benchmark
+                            const jsonRust = await window.runTask('json_parse', 'rust', config.testData.json_parse);
+                            const jsonTinygo = await window.runTask('json_parse', 'tinygo', config.testData.json_parse);
+
+                            // Debug logging
+                            console.log('JSON Rust result:', JSON.stringify(jsonRust));
+                            console.log('JSON TinyGo result:', JSON.stringify(jsonTinygo));
+
+                            results.json_parse.rust.push(jsonRust);
+                            results.json_parse.tinygo.push(jsonTinygo);
+
+                            // Brief pause between runs to prevent throttling
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                        } catch (error) {
+                            console.error(`Run ${run} failed:`, error.message);
+                            throw error;
+                        }
+                    }
+
+                    return results;
+                },
+                { ...smokeConfig, testData: testDataSets }
+            );
 
             // Validate all executions succeeded
             Object.keys(benchmarkResults).forEach(task => {
@@ -175,10 +186,12 @@ describe('Experiment Pipeline Integration', () => {
 
             // Validate cross-language consistency
             for (let run = 0; run < smokeConfig.runs; run++) {
-                expect(benchmarkResults.mandelbrot.rust[run].resultHash)
-                    .toBe(benchmarkResults.mandelbrot.tinygo[run].resultHash);
-                expect(benchmarkResults.json_parse.rust[run].resultHash)
-                    .toBe(benchmarkResults.json_parse.tinygo[run].resultHash);
+                expect(benchmarkResults.mandelbrot.rust[run].resultHash).toBe(
+                    benchmarkResults.mandelbrot.tinygo[run].resultHash
+                );
+                expect(benchmarkResults.json_parse.rust[run].resultHash).toBe(
+                    benchmarkResults.json_parse.tinygo[run].resultHash
+                );
             }
         });
 
@@ -196,30 +209,33 @@ describe('Experiment Pipeline Integration', () => {
 
             const startTime = Date.now();
 
-            const results = await page.evaluate(async (config) => {
-                const results = [];
+            const results = await page.evaluate(
+                async config => {
+                    const results = [];
 
-                // Debug: Check if benchmark runner is available
-                if (!window.benchmarkRunner) {
-                    throw new Error('Benchmark runner not initialized');
-                }
+                    // Debug: Check if benchmark runner is available
+                    if (!window.benchmarkRunner) {
+                        throw new Error('Benchmark runner not initialized');
+                    }
 
-                // Execute all task-language combinations sequentially
-                for (const task of config.tasks) {
-                    for (const language of config.languages) {
-                        try {
-                            const result = await window.runTask(task, language, config.testData[task]);
-                            console.log(`Sequential result for ${task}-${language}:`, JSON.stringify(result));
-                            results.push({ task, language, ...result });
-                        } catch (error) {
-                            console.error(`Sequential task ${task}-${language} failed:`, error.message);
-                            results.push({ task, language, success: false, error: error.message });
+                    // Execute all task-language combinations sequentially
+                    for (const task of config.tasks) {
+                        for (const language of config.languages) {
+                            try {
+                                const result = await window.runTask(task, language, config.testData[task]);
+                                console.log(`Sequential result for ${task}-${language}:`, JSON.stringify(result));
+                                results.push({ task, language, ...result });
+                            } catch (error) {
+                                console.error(`Sequential task ${task}-${language} failed:`, error.message);
+                                results.push({ task, language, success: false, error: error.message });
+                            }
                         }
                     }
-                }
 
-                return results;
-            }, { ...multiTaskConfig, testData });
+                    return results;
+                },
+                { ...multiTaskConfig, testData }
+            );
 
             const executionTime = Date.now() - startTime;
 
@@ -242,7 +258,7 @@ describe('Experiment Pipeline Integration', () => {
             const testData = testDataGen.generateScaledDataset('mandelbrot', 'micro');
             const outputPath = path.join(global.testTempDir, 'test-results.json');
 
-            const result = await page.evaluate(async (data) => {
+            const result = await page.evaluate(async data => {
                 const benchmarkResult = await window.runTask('mandelbrot', 'rust', data);
 
                 const fullResult = {
@@ -269,5 +285,4 @@ describe('Experiment Pipeline Integration', () => {
             expect(savedData.timestamp).toBeDefined();
         });
     });
-
 });
