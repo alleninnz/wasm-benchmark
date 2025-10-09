@@ -1,49 +1,52 @@
 {
-  "name": "wasm-benchmark",
-  "version": "1.0.0",
-  "description": "WebAssembly Performance Benchmark: Rust vs TinyGo Comparison",
-  "main": "harness/web/bench.js",
-  "type": "module",
-  "scripts": {
-    "dev": "node scripts/dev-server.js",
-    "test": "WASM_BENCH_TEST_LEVEL=full vitest run tests --reporter=verbose --testTimeout=300000 && node tests/utils/prettify-test-results.js",
-    "test:smoke": "WASM_BENCH_TEST_LEVEL=smoke vitest run tests/unit tests/integration/cross-language.test.js --testTimeout=10000 && node tests/utils/prettify-test-results.js",
-    "test:unit": "WASM_BENCH_TEST_LEVEL=unit vitest run tests/unit --reporter=verbose --testTimeout=5000 && node tests/utils/prettify-test-results.js",
-    "test:integration": "WASM_BENCH_TEST_LEVEL=integration vitest run tests/integration --reporter=verbose --testTimeout=60000 && node tests/utils/prettify-test-results.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/alleninnz/wasm-benchmark.git"
-  },
-  "keywords": [
-    "webassembly",
-    "wasm",
-    "rust",
-    "go",
-    "tinygo",
-    "benchmark",
-    "performance",
-    "comparison"
-  ],
-  "author": "Xingxing Wang",
-  "license": "MIT",
-  "dependencies": {
-    "blessed": "^0.1.81",
-    "chalk": "5.6.2",
-    "express": "^5.1.0",
-    "puppeteer": "24.22.3",
-    "yaml": "^2.8.1"
-  },
-  "devDependencies": {
-    "@eslint/js": "9.36.0",
-    "@types/node": "24.5.2",
-    "cors": "^2.8.5",
-    "eslint": "9.36.0",
-    "vitest": "^3.2.4"
-  },
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
-  },
-  "homepage": "https://github.com/alleninnz/wasm-benchmark#readme"
+    "name": "wasm-benchmark",
+    "version": "1.0.0",
+    "description": "WebAssembly Performance Benchmark: Rust vs TinyGo Comparison",
+    "main": "harness/web/bench.js",
+    "type": "module",
+    "scripts": {
+        "dev": "node scripts/dev-server.js",
+        "test": "WASM_BENCH_TEST_LEVEL=full vitest run tests --reporter=verbose --testTimeout=300000 && node tests/utils/prettify-test-results.js",
+        "test:smoke": "WASM_BENCH_TEST_LEVEL=smoke vitest run tests/unit tests/integration/cross-language.test.js --testTimeout=10000 && node tests/utils/prettify-test-results.js",
+        "test:unit": "WASM_BENCH_TEST_LEVEL=unit vitest run tests/unit --reporter=verbose --testTimeout=5000 && node tests/utils/prettify-test-results.js",
+        "test:integration": "WASM_BENCH_TEST_LEVEL=integration vitest run tests/integration --reporter=verbose --testTimeout=60000 && node tests/utils/prettify-test-results.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/alleninnz/wasm-benchmark.git"
+    },
+    "keywords": [
+        "webassembly",
+        "wasm",
+        "rust",
+        "go",
+        "tinygo",
+        "benchmark",
+        "performance",
+        "comparison"
+    ],
+    "author": "Xingxing Wang",
+    "license": "MIT",
+    "dependencies": {
+        "blessed": "^0.1.81",
+        "chalk": "5.6.2",
+        "express": "^5.1.0",
+        "puppeteer": "24.23.0",
+        "yaml": "^2.8.1"
+    },
+    "devDependencies": {
+        "@eslint/js": "9.37.0",
+        "@types/node": "24.7.0",
+        "cors": "^2.8.5",
+        "eslint": "9.37.0",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-prettier": "^5.2.1",
+        "prettier": "^3.4.2",
+        "vitest": "^3.2.4"
+    },
+    "engines": {
+        "node": ">=18.0.0",
+        "npm": ">=8.0.0"
+    },
+    "homepage": "https://github.com/alleninnz/wasm-benchmark#readme"
 }
