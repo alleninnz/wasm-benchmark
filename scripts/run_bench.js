@@ -85,7 +85,7 @@ function parseOptions(args) {
 let logger = null;
 let orchestrator = null;
 
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', error => {
     if (logger && logger.progressUI) {
         logger.progressUI.destroy();
     }
@@ -93,7 +93,7 @@ process.on('uncaughtException', (error) => {
     process.exit(1);
 });
 
-process.on('unhandledRejection', (reason) => {
+process.on('unhandledRejection', reason => {
     if (logger && logger.progressUI) {
         logger.progressUI.destroy();
     }
@@ -189,13 +189,12 @@ Examples:
 
         // Save results with local timezone
         const now = new Date();
-        const timestamp = `${now.getFullYear()}-${
-            String(now.getMonth() + 1).padStart(2, '0')}-${
-            String(now.getDate()).padStart(2, '0')}T${
-            String(now.getHours()).padStart(2, '0')}-${
-            String(now.getMinutes()).padStart(2, '0')}-${
-            String(now.getSeconds()).padStart(2, '0')}-${
-            String(now.getMilliseconds()).padStart(3, '0')}Z`;
+        const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+            now.getDate()
+        ).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(
+            2,
+            '0'
+        )}-${String(now.getSeconds()).padStart(2, '0')}-${String(now.getMilliseconds()).padStart(3, '0')}Z`;
         const filename = options.quick ? `${timestamp}-quick.json` : `${timestamp}.json`;
         const outputPath = path.join(__dirname, '..', 'results', filename);
         await orchestrator.saveResults(outputPath, 'json');
@@ -208,7 +207,6 @@ Examples:
         }
 
         process.exit(0);
-
     } catch (error) {
         logger.error(`Process failed: ${error.message}`);
         if (options.verbose) {
@@ -245,7 +243,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 // Export services for external use
-export {
-    BenchmarkOrchestrator, BrowserService, ConfigurationService, LoggingService, ResultsService
-};
-
+export { BenchmarkOrchestrator, BrowserService, ConfigurationService, LoggingService, ResultsService };

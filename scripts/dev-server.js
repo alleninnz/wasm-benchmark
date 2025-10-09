@@ -27,28 +27,30 @@ const MAX_LOG_LINES = 100;
 async function writeLog(message) {
     try {
         const now = new Date();
-        const timestamp = now.toLocaleString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-        }).replace(',', '');
+        const timestamp = now
+            .toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            })
+            .replace(',', '');
         const logEntry = `[${timestamp}] ${message}\n`;
-        
+
         // Check if log file exists and count lines
         let shouldRotate = false;
         if (fs.existsSync(LOG_FILE)) {
             const currentContent = await fsPromises.readFile(LOG_FILE, 'utf8');
             const lines = currentContent.split('\n').filter(line => line.trim() !== '');
-            
+
             if (lines.length >= MAX_LOG_LINES) {
                 shouldRotate = true;
             }
         }
-        
+
         if (shouldRotate) {
             // Overwrite the entire file when max lines reached
             await fsPromises.writeFile(LOG_FILE, logEntry);
@@ -62,11 +64,13 @@ async function writeLog(message) {
 }
 
 // Enable CORS for all routes
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(
+    cors({
+        origin: '*',
+        methods: ['GET', 'POST', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization']
+    })
+);
 
 // Security headers
 app.use((req, res, next) => {
@@ -88,7 +92,7 @@ app.use((req, res, next) => {
     let responseSize = 0;
 
     // Override end method to capture timing
-    res.end = function(chunk, encoding) {
+    res.end = function (chunk, encoding) {
         if (chunk) {
             responseSize += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk, encoding);
         }
@@ -104,7 +108,7 @@ app.use((req, res, next) => {
     };
 
     // Override send method to capture response size
-    res.send = function(body) {
+    res.send = function (body) {
         if (body) {
             responseSize += Buffer.isBuffer(body) ? body.length : Buffer.byteLength(body.toString());
         }
@@ -152,7 +156,7 @@ webJSFiles.forEach(fileName => {
     app.get(`/${fileName}`, (req, res) => {
         const filePath = path.join(__dirname, '../harness/web', fileName);
         res.setHeader('Content-Type', 'application/javascript');
-        res.sendFile(filePath, (err) => {
+        res.sendFile(filePath, err => {
             if (err) {
                 writeLog(`ERROR: Failed to serve ${fileName}: ${err.message}`);
                 res.status(404).send(`File not found: ${fileName}`);
@@ -162,28 +166,34 @@ webJSFiles.forEach(fileName => {
 });
 
 // Serve harness directory (web assets, scripts, etc.)
-app.use('/harness', express.static(path.join(__dirname, '../harness'), {
-    maxAge: 0, // No caching in development
-    setHeaders: (res, filePath) => {
-    // Set MIME types for JS modules
-        if (filePath.endsWith('.js')) {
-            res.setHeader('Content-Type', 'application/javascript');
+app.use(
+    '/harness',
+    express.static(path.join(__dirname, '../harness'), {
+        maxAge: 0, // No caching in development
+        setHeaders: (res, filePath) => {
+            // Set MIME types for JS modules
+            if (filePath.endsWith('.js')) {
+                res.setHeader('Content-Type', 'application/javascript');
+            }
         }
-    }
-}));
+    })
+);
 
 // Serve builds directory (WASM modules)
-app.use('/builds', express.static(path.join(__dirname, '../builds'), {
-    maxAge: 0, // No caching in development
-    setHeaders: (res, filePath) => {
-    // Set correct MIME type for WASM files
-        if (filePath.endsWith('.wasm')) {
-            res.setHeader('Content-Type', 'application/wasm');
+app.use(
+    '/builds',
+    express.static(path.join(__dirname, '../builds'), {
+        maxAge: 0, // No caching in development
+        setHeaders: (res, filePath) => {
+            // Set correct MIME type for WASM files
+            if (filePath.endsWith('.wasm')) {
+                res.setHeader('Content-Type', 'application/wasm');
+            }
+            // Enable streaming for large WASM files
+            res.setHeader('Accept-Ranges', 'bytes');
         }
-        // Enable streaming for large WASM files
-        res.setHeader('Accept-Ranges', 'bytes');
-    }
-}));
+    })
+);
 
 // Serve essential config files only (bench.json needed for tests)
 app.get('/configs/bench.json', (req, res) => {
@@ -293,9 +303,11 @@ app.use((error, req, res, _next) => {
 
 // Test-environment-aware shutdown handling
 function isTestEnvironment() {
-    return process.env.NODE_ENV === 'test' ||
-         process.env.npm_lifecycle_event?.includes('test') ||
-         process.argv.some(arg => arg.includes('vitest') || arg.includes('test'));
+    return (
+        process.env.NODE_ENV === 'test' ||
+        process.env.npm_lifecycle_event?.includes('test') ||
+        process.argv.some(arg => arg.includes('vitest') || arg.includes('test'))
+    );
 }
 
 // Graceful shutdown handling - be less aggressive in test environments

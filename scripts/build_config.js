@@ -17,9 +17,7 @@ const DEFAULT_TIMEOUT_MS = 300000;
 const DEFAULT_REPETITIONS = 3;
 
 // Environment detection
-const EXCLUDED_ENV_KEYS = [
-    'warmup_runs', 'measure_runs', 'repetitions', 'timeout'
-];
+const EXCLUDED_ENV_KEYS = ['warmup_runs', 'measure_runs', 'repetitions', 'timeout'];
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -53,7 +51,6 @@ async function loadYamlConfig() {
 
         console.log(chalk.green('✅ YAML parsed successfully:'), config.experiment?.name || 'Unknown');
         return config;
-
     } catch (error) {
         console.error(chalk.red('❌ Failed to load YAML config:'), error.message);
         throw error;
@@ -101,8 +98,7 @@ function convertKeysToCamelCase(obj) {
 function deriveOptimizationSuffix(languageName, optimizationLevel) {
     if (languageName === 'rust') {
         // Extract opt_level from cargo_config
-        const optLevel = optimizationLevel.cargoConfig?.optLevel ||
-                        optimizationLevel.cargo_config?.opt_level || 3;
+        const optLevel = optimizationLevel.cargoConfig?.optLevel || optimizationLevel.cargo_config?.opt_level || 3;
         return `o${optLevel}`;
     } else if (languageName === 'tinygo') {
         // Extract from build_flags like "-opt=2"
@@ -194,11 +190,9 @@ function optimizeConfig(config) {
     }
 
     // Extract convenience arrays
-    optimized.taskNames = Object.keys(optimized.tasks).filter(task =>
-        optimized.tasks[task].enabled !== false
-    );
-    optimized.enabledLanguages = Object.keys(optimized.languages).filter(lang =>
-        optimized.languages[lang].enabled !== false
+    optimized.taskNames = Object.keys(optimized.tasks).filter(task => optimized.tasks[task].enabled !== false);
+    optimized.enabledLanguages = Object.keys(optimized.languages).filter(
+        lang => optimized.languages[lang].enabled !== false
     );
     // Extract actual scales from tasks instead of hardcoding
     const actualScales = new Set();
@@ -226,10 +220,12 @@ function optimizeConfig(config) {
                     task: taskName,
                     scale: scale,
                     language: lang,
-                    implementations: [{
-                        name: `${taskName}_${lang}`,
-                        path: `/builds/${lang}/${taskNameSnakeCase}-${optSuffix}.wasm`
-                    }]
+                    implementations: [
+                        {
+                            name: `${taskName}_${lang}`,
+                            path: `/builds/${lang}/${taskNameSnakeCase}-${optSuffix}.wasm`
+                        }
+                    ]
                 });
             });
         });
@@ -278,7 +274,6 @@ async function writeJsonConfig(config) {
 
         const stats = await fs.stat(currentConfig.output);
         console.log(chalk.green('✅ JSON config written:'), `${(stats.size / 1024).toFixed(1)}KB`);
-
     } catch (error) {
         console.error(chalk.red('❌ Failed to write JSON config:'), error.message);
         throw error;
@@ -364,7 +359,6 @@ async function buildConfig() {
         console.log(`📁 Output: ${currentConfig.output}`);
 
         return optimizedConfig;
-
     } catch (error) {
         console.error(`💥 Configuration build failed: ${error.message}`);
         process.exit(1);
