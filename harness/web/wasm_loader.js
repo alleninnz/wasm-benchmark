@@ -97,16 +97,30 @@ export class WasmLoader {
                 },
                 // WASI imports for TinyGo compatibility
                 wasi_snapshot_preview1: {
-                    proc_exit: (code) => {
+                    proc_exit: code => {
                         console.log(`WASI proc_exit: ${code}`);
                     },
-                    environ_get: () => { return 0; },
-                    environ_sizes_get: () => { return 0; },
-                    fd_close: () => { return 0; },
-                    fd_read: () => { return 0; },
-                    fd_seek: () => { return 0; },
-                    fd_write: () => { return 0; },
-                    path_open: () => { return 0; },
+                    environ_get: () => {
+                        return 0;
+                    },
+                    environ_sizes_get: () => {
+                        return 0;
+                    },
+                    fd_close: () => {
+                        return 0;
+                    },
+                    fd_read: () => {
+                        return 0;
+                    },
+                    fd_seek: () => {
+                        return 0;
+                    },
+                    fd_write: () => {
+                        return 0;
+                    },
+                    path_open: () => {
+                        return 0;
+                    },
                     random_get: (ptr, len) => {
                         // Simple random implementation for testing - will be updated after instantiation
                         console.log(`WASI random_get called: ptr=${ptr}, len=${len}`);
@@ -121,27 +135,57 @@ export class WasmLoader {
                 // Go JS runtime imports for TinyGo with JS interop
                 gojs: {
                     // Runtime functions
-                    'runtime.ticks': () => { return performance.now(); },
-                    'runtime.sleepTicks': (ms) => { console.log(`sleep ${ms}ms`); },
-                    'runtime.getRandomData': (_ptr, _len) => { return 0; },
+                    'runtime.ticks': () => {
+                        return performance.now();
+                    },
+                    'runtime.sleepTicks': ms => {
+                        console.log(`sleep ${ms}ms`);
+                    },
+                    'runtime.getRandomData': (_ptr, _len) => {
+                        return 0;
+                    },
                     // Syscall/js functions - comprehensive set for TinyGo
-                    'syscall/js.valueGet': () => { return 0; },
-                    'syscall/js.valueSet': () => { },
-                    'syscall/js.valueNew': () => { return 0; },
-                    'syscall/js.valueLength': () => { return 0; },
-                    'syscall/js.valuePrepareString': () => { return 0; },
-                    'syscall/js.valueLoadString': () => { return 0; },
-                    'syscall/js.valueCall': () => { return 0; },
-                    'syscall/js.finalizeRef': () => { },
-                    'syscall/js.stringVal': () => { return 0; },
-                    'syscall/js.valueIndex': () => { return 0; },
-                    'syscall/js.valueSetIndex': () => { },
-                    'syscall/js.valueDelete': () => { },
-                    'syscall/js.valueInvoke': () => { return 0; },
-                    'syscall/js.valueInstanceOf': () => { return 0; },
-                    'syscall/js.copyBytesToGo': () => { return 0; },
-                    'syscall/js.copyBytesToJS': () => { return 0; },
-                    'debug': () => { }
+                    'syscall/js.valueGet': () => {
+                        return 0;
+                    },
+                    'syscall/js.valueSet': () => {},
+                    'syscall/js.valueNew': () => {
+                        return 0;
+                    },
+                    'syscall/js.valueLength': () => {
+                        return 0;
+                    },
+                    'syscall/js.valuePrepareString': () => {
+                        return 0;
+                    },
+                    'syscall/js.valueLoadString': () => {
+                        return 0;
+                    },
+                    'syscall/js.valueCall': () => {
+                        return 0;
+                    },
+                    'syscall/js.finalizeRef': () => {},
+                    'syscall/js.stringVal': () => {
+                        return 0;
+                    },
+                    'syscall/js.valueIndex': () => {
+                        return 0;
+                    },
+                    'syscall/js.valueSetIndex': () => {},
+                    'syscall/js.valueDelete': () => {},
+                    'syscall/js.valueInvoke': () => {
+                        return 0;
+                    },
+                    'syscall/js.valueInstanceOf': () => {
+                        return 0;
+                    },
+                    'syscall/js.copyBytesToGo': () => {
+                        return 0;
+                    },
+                    'syscall/js.copyBytesToJS': () => {
+                        return 0;
+                    },
+                    debug: () => {}
                 }
             };
 
@@ -152,7 +196,6 @@ export class WasmLoader {
 
             window.logResult(`Successfully loaded ${moduleId}`, 'success');
             return instance;
-
         } catch (error) {
             window.logResult(`Failed to load ${moduleId}: ${error.message}`, 'error');
             throw error;
@@ -176,8 +219,8 @@ export class WasmLoader {
         if (missingExports.length > 0) {
             throw new Error(
                 `Module ${moduleId} missing required exports: [${missingExports.join(', ')}]. ` +
-                `Available exports: [${Object.keys(exports).join(', ')}]. ` +
-                `Ensure the WASM module was compiled with the correct interface.`
+                    `Available exports: [${Object.keys(exports).join(', ')}]. ` +
+                    `Ensure the WASM module was compiled with the correct interface.`
             );
         }
 
@@ -288,7 +331,9 @@ export class WasmLoader {
 
             const memView = new Uint8Array(instance.exports.memory.buffer);
             if (ptr + data.length > memView.length) {
-                throw new Error(`writeDataToMemory: allocated memory ${ptr}+${data.length} exceeds buffer size ${memView.length}`);
+                throw new Error(
+                    `writeDataToMemory: allocated memory ${ptr}+${data.length} exceeds buffer size ${memView.length}`
+                );
             }
 
             memView.set(data, ptr);

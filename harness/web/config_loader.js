@@ -90,13 +90,11 @@ export class ConfigLoader {
             window.logResult(`Generated: ${this.config.generated.timestamp}`, 'info');
 
             return this.config;
-
         } catch (error) {
             window.logResult(`Failed to load configuration: ${error.message}`, 'error');
             throw error;
         }
     }
-
 
     /**
      * Create detailed HTTP fetch error message
@@ -110,7 +108,8 @@ export class ConfigLoader {
         let errorMsg = `Failed to fetch configuration from ${path}: ${status} ${statusText}`;
 
         if (status === HTTP_STATUS.NOT_FOUND) {
-            errorMsg += '. Configuration file not found. Run "npm run build:config" to generate the required config file.';
+            errorMsg +=
+                '. Configuration file not found. Run "npm run build:config" to generate the required config file.';
         } else if (status === HTTP_STATUS.FORBIDDEN) {
             errorMsg += '. Access denied to configuration file. Check server permissions and CORS settings.';
         } else if (status >= HTTP_STATUS.SERVER_ERROR) {

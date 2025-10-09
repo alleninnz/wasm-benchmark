@@ -10,7 +10,7 @@ import { WasmLoader } from './wasm_loader.js';
 const BENCHMARK_LIMITS = {
     MAX_RUNS: 1000,
     MAX_REPETITIONS: 10,
-    MAX_TIMEOUT_MS: 60 * 60 * 1000,  // 60 minutes for WASM tasks
+    MAX_TIMEOUT_MS: 60 * 60 * 1000, // 60 minutes for WASM tasks
     MAX_JSON_RECORDS: 1000000,
     MAX_MATRIX_DIMENSION: 2000,
     MEMORY_THRESHOLD_MB: 500
@@ -37,8 +37,8 @@ const MANDELBROT_CONSTANTS = {
 };
 
 const PARAM_BUFFER_SIZES = {
-    JSON: 8,      // 2 * u32
-    MATRIX: 8,    // 2 * u32
+    JSON: 8, // 2 * u32
+    MATRIX: 8, // 2 * u32
     MANDELBROT: 40
 };
 
@@ -62,7 +62,7 @@ export class BenchmarkRunner {
      */
     _xorshift32(seed) {
         let state = seed;
-        return function() {
+        return function () {
             state ^= state << 13;
             state ^= state >>> 17;
             state ^= state << 5;
@@ -91,7 +91,10 @@ export class BenchmarkRunner {
                     this.currentConfig = await this.configLoader.loadConfig();
                 } catch (error) {
                     // If config loading fails (e.g., in test environment), create minimal config
-                    window.logResult(`Configuration loading failed: ${error.message}. Creating minimal config for tests.`, 'warning');
+                    window.logResult(
+                        `Configuration loading failed: ${error.message}. Creating minimal config for tests.`,
+                        'warning'
+                    );
                     this.currentConfig = this._createMinimalConfig();
                 }
             }
@@ -104,7 +107,9 @@ export class BenchmarkRunner {
         this._applyConfig(config);
 
         window.logResult('Initializing benchmark runner', 'success');
-        window.logResult(`Config loaded: ${config.taskNames?.length || 0} tasks, ${config.enabledLanguages?.length || 0} languages`);
+        window.logResult(
+            `Config loaded: ${config.taskNames?.length || 0} tasks, ${config.enabledLanguages?.length || 0} languages`
+        );
 
         // Update global state
         window.benchmarkState.status = 'initialized';
@@ -194,7 +199,10 @@ export class BenchmarkRunner {
 
             window.benchmarkState.status = 'running';
             const repetitions = activeConfig.repetitions || 1;
-            window.logResult(`Starting benchmark suite execution (${repetitions} repetition${repetitions > 1 ? 's' : ''})`, 'success');
+            window.logResult(
+                `Starting benchmark suite execution (${repetitions} repetition${repetitions > 1 ? 's' : ''})`,
+                'success'
+            );
 
             // Use unified execution engine
             const taskList = this._generateTaskList(activeConfig);
@@ -205,9 +213,10 @@ export class BenchmarkRunner {
             if (!this.cancelled) {
                 window.benchmarkState.progress = 100;
             }
-            window.logResult(`Benchmark suite ${this.cancelled ? 'cancelled' : 'completed'}`,
-                this.cancelled ? 'warning' : 'success');
-
+            window.logResult(
+                `Benchmark suite ${this.cancelled ? 'cancelled' : 'completed'}`,
+                this.cancelled ? 'warning' : 'success'
+            );
         } catch (error) {
             window.benchmarkState.status = 'error';
             window.logResult(`Benchmark suite failed: ${error.message}`, 'error');
@@ -312,20 +321,20 @@ export class BenchmarkRunner {
         // because it's set during initialization
         const activeConfig = this.currentConfig || this.config;
         const langConfig = activeConfig?.languages?.[language];
-        
+
         // Validate that we have the required configuration
         if (!activeConfig) {
             throw new Error(`No configuration available for task ${taskName}`);
         }
-        
+
         if (!langConfig) {
             throw new Error(`No language configuration found for ${language} in task ${taskName}`);
         }
-        
+
         if (!langConfig.optimizationLevels || langConfig.optimizationLevels.length === 0) {
             throw new Error(`No optimization levels defined for ${language} in task ${taskName}`);
         }
-        
+
         const optSuffix = langConfig.optimizationLevels[0]?.suffix;
         if (!optSuffix) {
             throw new Error(`No optimization suffix defined for ${language} in task ${taskName}`);
@@ -337,9 +346,10 @@ export class BenchmarkRunner {
         window.benchmarkState.currentLang = language;
 
         const repetitions = config.repetitions || 1;
-        const logMsg = repetitions > 1
-            ? `Running ${taskName} (${language}, ${scale}) - Repetition ${repetition}`
-            : `Running ${taskName} (${language}, ${scale})`;
+        const logMsg =
+            repetitions > 1
+                ? `Running ${taskName} (${language}, ${scale}) - Repetition ${repetition}`
+                : `Running ${taskName} (${language}, ${scale})`;
         window.logResult(logMsg);
 
         try {
@@ -394,12 +404,12 @@ export class BenchmarkRunner {
                 const totalCompleted = window.benchmarkState.successfulRuns + window.benchmarkState.failedRuns;
                 window.benchmarkState.progress = (totalCompleted / window.benchmarkState.totalRuns) * 100;
             }
-
         } catch (error) {
             window.benchmarkState.failedRuns++;
-            const errorLogMsg = repetitions > 1
-                ? `Failed ${taskName} (${language}, ${scale}) - Repetition ${repetition}: ${error.message}`
-                : `Failed ${taskName} (${language}, ${scale}): ${error.message}`;
+            const errorLogMsg =
+                repetitions > 1
+                    ? `Failed ${taskName} (${language}, ${scale}) - Repetition ${repetition}: ${error.message}`
+                    : `Failed ${taskName} (${language}, ${scale}): ${error.message}`;
             window.logResult(errorLogMsg, 'error');
 
             // Continue with next task rather than failing completely
@@ -432,11 +442,13 @@ export class BenchmarkRunner {
         await new Promise(resolve => setTimeout(resolve, MEASUREMENT_CONSTANTS.STABILIZATION_DELAY_MS));
 
         // Capture initial memory state
-        const memBefore = performance.memory ? {
-            used: performance.memory.usedJSHeapSize,
-            total: performance.memory.totalJSHeapSize,
-            limit: performance.memory.jsHeapSizeLimit
-        } : null;
+        const memBefore = performance.memory
+            ? {
+                  used: performance.memory.usedJSHeapSize,
+                  total: performance.memory.totalJSHeapSize,
+                  limit: performance.memory.jsHeapSizeLimit
+              }
+            : null;
 
         // Measure execution time
         const timeBefore = performance.now();
@@ -444,15 +456,19 @@ export class BenchmarkRunner {
         const timeAfter = performance.now();
 
         // Capture final memory state
-        const memAfter = performance.memory ? {
-            used: performance.memory.usedJSHeapSize,
-            total: performance.memory.totalJSHeapSize,
-            limit: performance.memory.jsHeapSizeLimit
-        } : null;
+        const memAfter = performance.memory
+            ? {
+                  used: performance.memory.usedJSHeapSize,
+                  total: performance.memory.totalJSHeapSize,
+                  limit: performance.memory.jsHeapSizeLimit
+              }
+            : null;
 
         const executionTime = timeAfter - timeBefore;
-        const memoryDeltaBytes = memAfter && memBefore ?
-            Math.max(MEASUREMENT_CONSTANTS.MIN_MEMORY_BYTES, memAfter.used - memBefore.used) : MEASUREMENT_CONSTANTS.MIN_MEMORY_BYTES;
+        const memoryDeltaBytes =
+            memAfter && memBefore
+                ? Math.max(MEASUREMENT_CONSTANTS.MIN_MEMORY_BYTES, memAfter.used - memBefore.used)
+                : MEASUREMENT_CONSTANTS.MIN_MEMORY_BYTES;
         const memoryDelta = memoryDeltaBytes / (1024 * 1024);
 
         // Get WASM memory statistics
@@ -590,17 +606,16 @@ export class BenchmarkRunner {
         const view = new DataView(params);
 
         // MandelbrotParams struct layout matching Rust: Width, Height, MaxIter, CenterReal, CenterImag, ScaleFactor
-        view.setUint32(0, scaleConfig.width, true);      // Width: uint32
-        view.setUint32(4, scaleConfig.height, true);     // Height: uint32
-        view.setUint32(8, maxIter, true);                // MaxIter: uint32
-        view.setUint32(12, 0, true);                     // Padding for 8-byte alignment
-        view.setFloat64(16, MANDELBROT_CONSTANTS.CENTER_REAL, true);  // CenterReal: float64
-        view.setFloat64(24, MANDELBROT_CONSTANTS.CENTER_IMAG, true);  // CenterImag: float64
+        view.setUint32(0, scaleConfig.width, true); // Width: uint32
+        view.setUint32(4, scaleConfig.height, true); // Height: uint32
+        view.setUint32(8, maxIter, true); // MaxIter: uint32
+        view.setUint32(12, 0, true); // Padding for 8-byte alignment
+        view.setFloat64(16, MANDELBROT_CONSTANTS.CENTER_REAL, true); // CenterReal: float64
+        view.setFloat64(24, MANDELBROT_CONSTANTS.CENTER_IMAG, true); // CenterImag: float64
         view.setFloat64(32, MANDELBROT_CONSTANTS.SCALE_FACTOR, true); // ScaleFactor: float64
 
         return new Uint8Array(params);
     }
-
 
     /**
      * Extract record count from scale config
@@ -724,8 +739,15 @@ export class BenchmarkRunner {
 
         // Extract and validate task parameters from config
         const {
-            task, language, scale, taskConfig, scaleConfig: _scaleConfig,
-            warmupRuns, measureRuns, repetitions, timeout
+            task,
+            language,
+            scale,
+            taskConfig,
+            scaleConfig: _scaleConfig,
+            warmupRuns,
+            measureRuns,
+            repetitions,
+            timeout
         } = config;
 
         if (!task || typeof task !== 'string') {
@@ -737,13 +759,22 @@ export class BenchmarkRunner {
         if (!scale || typeof scale !== 'string') {
             throw new Error('runTaskBenchmark: scale must be a non-empty string');
         }
-        if (warmupRuns && (typeof warmupRuns !== 'number' || warmupRuns < 0 || warmupRuns > BENCHMARK_LIMITS.MAX_RUNS)) {
+        if (
+            warmupRuns &&
+            (typeof warmupRuns !== 'number' || warmupRuns < 0 || warmupRuns > BENCHMARK_LIMITS.MAX_RUNS)
+        ) {
             throw new Error(`runTaskBenchmark: warmupRuns must be between 0 and ${BENCHMARK_LIMITS.MAX_RUNS}`);
         }
-        if (measureRuns && (typeof measureRuns !== 'number' || measureRuns <= 0 || measureRuns > BENCHMARK_LIMITS.MAX_RUNS)) {
+        if (
+            measureRuns &&
+            (typeof measureRuns !== 'number' || measureRuns <= 0 || measureRuns > BENCHMARK_LIMITS.MAX_RUNS)
+        ) {
             throw new Error(`runTaskBenchmark: measureRuns must be between 1 and ${BENCHMARK_LIMITS.MAX_RUNS}`);
         }
-        if (repetitions && (typeof repetitions !== 'number' || repetitions <= 0 || repetitions > BENCHMARK_LIMITS.MAX_REPETITIONS)) {
+        if (
+            repetitions &&
+            (typeof repetitions !== 'number' || repetitions <= 0 || repetitions > BENCHMARK_LIMITS.MAX_REPETITIONS)
+        ) {
             throw new Error(`runTaskBenchmark: repetitions must be between 1 and ${BENCHMARK_LIMITS.MAX_REPETITIONS}`);
         }
         if (timeout && (typeof timeout !== 'number' || timeout <= 0 || timeout > BENCHMARK_LIMITS.MAX_TIMEOUT_MS)) {
@@ -757,12 +788,12 @@ export class BenchmarkRunner {
         try {
             // Load the full configuration first to get language details
             const fullConfig = await this.configLoader.loadConfig();
-            
+
             // Create a compatible config structure for initialization, but preserve the languages object
             const benchConfig = {
                 tasks: [task],
-                languages: fullConfig.languages,  // Use full languages object instead of array
-                enabledLanguages: [language],      // Add this for filtering/validation
+                languages: fullConfig.languages, // Use full languages object instead of array
+                enabledLanguages: [language], // Add this for filtering/validation
                 scales: [scale],
                 taskConfigs: {
                     [task]: taskConfig || {}
@@ -803,9 +834,10 @@ export class BenchmarkRunner {
             if (!this.cancelled) {
                 window.benchmarkState.progress = 100;
             }
-            window.logResult(`Single task benchmark ${this.cancelled ? 'cancelled' : 'completed'}`,
-                this.cancelled ? 'warning' : 'success');
-
+            window.logResult(
+                `Single task benchmark ${this.cancelled ? 'cancelled' : 'completed'}`,
+                this.cancelled ? 'warning' : 'success'
+            );
         } catch (error) {
             window.benchmarkState.status = 'error';
             window.logResult(`Single task benchmark failed: ${error.message}`, 'error');
@@ -842,7 +874,7 @@ export class BenchmarkRunner {
 
         // Create structured result object that analysis code expects
         const firstResult = successfulResults[0];
-        
+
         // Build the detailed results array with individual run data
         const detailedResults = successfulResults.map(r => ({
             task: r.task,
@@ -873,10 +905,9 @@ export class BenchmarkRunner {
             success: true,
             results: detailedResults, // Array of individual run results
             timestamp: Date.now(),
-            averageExecutionTime: successfulResults.reduce((sum, r) => sum + r.executionTime, 0) 
-                / successfulResults.length,
-            averageMemoryUsage: successfulResults.reduce((sum, r) => sum + r.memoryUsed, 0) 
-                / successfulResults.length,
+            averageExecutionTime:
+                successfulResults.reduce((sum, r) => sum + r.executionTime, 0) / successfulResults.length,
+            averageMemoryUsage: successfulResults.reduce((sum, r) => sum + r.memoryUsed, 0) / successfulResults.length,
             totalRuns: taskResults.length,
             successfulRuns: successfulResults.length
         };
