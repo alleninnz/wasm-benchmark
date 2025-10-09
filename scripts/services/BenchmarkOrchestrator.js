@@ -64,9 +64,8 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             const parallelConfig = this.configService.getParallelConfig();
 
             // Enable progress UI in headless mode
-            const shouldEnableUI = this.browserService.isHeadless
-                && !options.disableProgressUI
-                && benchmarks.length > 0;
+            const shouldEnableUI =
+                this.browserService.isHeadless && !options.disableProgressUI && benchmarks.length > 0;
 
             if (shouldEnableUI) {
                 const uiEnabled = await this.logger.enableProgressUI(benchmarks.length, {
@@ -107,7 +106,7 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                         return `${taskName} ${scale} (${language})`;
                     });
 
-                    await this.browserService.page.evaluate((tasks) => {
+                    await this.browserService.page.evaluate(tasks => {
                         if (window.initializeBenchmarkSuite) {
                             window.initializeBenchmarkSuite(tasks);
                             console.log('Frontend initialized with', tasks.length, 'tasks');
@@ -191,7 +190,6 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                 results: this.resultsService.getResults(),
                 statistics: this.resultsService.getStatistics()
             };
-
         } catch (error) {
             this.logger.error('Benchmark execution failed:', error.message);
             throw error;
@@ -380,7 +378,7 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             };
 
             this.resultsService.addResult(benchmarkResult);
-            
+
             // Extract scale and language from benchmark name (format: taskName_scale_language)
             const nameParts = benchmark.name.split('_');
             const language = nameParts.length >= 3 ? nameParts[nameParts.length - 1] : 'unknown';
@@ -389,7 +387,6 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             this.logger.success(`✅ Completed: ${taskName} ${scale} (${language}) - ${duration}ms`);
 
             return benchmarkResult;
-
         } catch (error) {
             const duration = Date.now() - startTime;
             const errorResult = {
@@ -417,9 +414,7 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
         // In headed mode, use main page for single window experience
         // In headless mode with parallel execution, use dedicated pages to avoid race conditions
         const shouldUseDedicatedPage = options.parallel && this.browserService.isHeadless !== false;
-        const page = shouldUseDedicatedPage 
-            ? await this.browserService.createNewPage()
-            : this.browserService.page;
+        const page = shouldUseDedicatedPage ? await this.browserService.createNewPage() : this.browserService.page;
 
         try {
             // Navigate to benchmark page
@@ -479,32 +474,43 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                     // Notify frontend about task start (in headed mode)
                     if (!this.browserService.isHeadless) {
                         try {
-                            await page.evaluate((task, lang) => {
-                                if (window.startTask) {
-                                    window.startTask(task, lang);
-                                }
-                            }, taskName, language);
+                            await page.evaluate(
+                                (task, lang) => {
+                                    if (window.startTask) {
+                                        window.startTask(task, lang);
+                                    }
+                                },
+                                taskName,
+                                language
+                            );
                         } catch {
                             // Don't fail the task if UI update fails
                         }
                     }
 
                     // Add progress monitoring for long-running WASM tasks
-                    this.logger.info(`⚡ Starting WASM benchmark: ${taskName} ${scale} (${language}) - this may take several minutes...`);
+                    this.logger.info(
+                        `⚡ Starting WASM benchmark: ${taskName} ${scale} (${language}) - this may take several minutes...`
+                    );
                     const taskStartTime = Date.now();
 
                     // Set up progress heartbeat for long tasks
                     progressInterval = setInterval(() => {
                         const elapsed = Math.floor((Date.now() - taskStartTime) / 1000);
-                        this.logger.info(`⏳ Still running ${taskName} ${scale} (${language}) - ${elapsed}s elapsed...`);
+                        this.logger.info(
+                            `⏳ Still running ${taskName} ${scale} (${language}) - ${elapsed}s elapsed...`
+                        );
                     }, 30000); // Log every 30 seconds
 
                     // Execute benchmark script on appropriate page with enhanced error handling
                     let result;
                     try {
-                        result = await page.evaluate(async (config) => {
-                        // This will be executed in browser context
-                            if (window.benchmarkRunner && typeof window.benchmarkRunner.runTaskBenchmark === 'function') {
+                        result = await page.evaluate(async config => {
+                            // This will be executed in browser context
+                            if (
+                                window.benchmarkRunner &&
+                                typeof window.benchmarkRunner.runTaskBenchmark === 'function'
+                            ) {
                                 return await window.benchmarkRunner.runTaskBenchmark(config);
                             } else {
                                 throw new Error('benchmarkRunner.runTaskBenchmark function not found in page');
@@ -514,9 +520,11 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                         // Enhanced error handling for Puppeteer/CDP timeouts
                         const errorMsg = puppeteerError.message || 'Unknown Puppeteer error';
 
-                        if (errorMsg.includes('Runtime.callFunctionOn timed out') ||
+                        if (
+                            errorMsg.includes('Runtime.callFunctionOn timed out') ||
                             errorMsg.includes('Navigation timeout') ||
-                            errorMsg.includes('waiting for function failed: timeout')) {
+                            errorMsg.includes('waiting for function failed: timeout')
+                        ) {
                             throw new Error(`Browser timeout during benchmark execution: ${errorMsg}`);
                         } else if (errorMsg.includes('Protocol error') || errorMsg.includes('Target closed')) {
                             throw new Error(`Browser protocol error: ${errorMsg}`);
@@ -533,16 +541,21 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                     // Notify frontend about task completion (in headed mode)
                     if (!this.browserService.isHeadless) {
                         try {
-                            await page.evaluate((task, lang, success, res) => {
-                                if (window.completeTask) {
-                                    window.completeTask(task, lang, success, res);
-                                }
-                            }, taskName, language, true, result);
+                            await page.evaluate(
+                                (task, lang, success, res) => {
+                                    if (window.completeTask) {
+                                        window.completeTask(task, lang, success, res);
+                                    }
+                                },
+                                taskName,
+                                language,
+                                true,
+                                result
+                            );
                         } catch {
                             // Don't fail the task if UI update fails
                         }
                     }
-
                 } catch (error) {
                     // Clear progress interval on error
                     if (progressInterval) {
@@ -560,11 +573,17 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                     // Notify frontend about task failure (in headed mode)
                     if (!this.browserService.isHeadless) {
                         try {
-                            await page.evaluate((task, lang, success, err) => {
-                                if (window.completeTask) {
-                                    window.completeTask(task, lang, success, { error: err });
-                                }
-                            }, taskName, language, false, error.message);
+                            await page.evaluate(
+                                (task, lang, success, err) => {
+                                    if (window.completeTask) {
+                                        window.completeTask(task, lang, success, { error: err });
+                                    }
+                                },
+                                taskName,
+                                language,
+                                false,
+                                error.message
+                            );
                         } catch {
                             // Don't fail the task if UI update fails
                         }
@@ -577,7 +596,7 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             // Return combined results with accurate success determination
             const successfulResults = results.filter(r => r.success !== false);
             const totalResults = results.length;
-            const successRate = totalResults > 0 ? (successfulResults.length / totalResults) : 0;
+            const successRate = totalResults > 0 ? successfulResults.length / totalResults : 0;
 
             return {
                 benchmark: benchmark.name,
@@ -588,7 +607,6 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
                 results: results,
                 timestamp: new Date().toISOString()
             };
-
         } finally {
             // Close dedicated page if we created one, but keep main page open
             if (shouldUseDedicatedPage && page !== this.browserService.page) {
@@ -673,12 +691,11 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
             this.abortController = null;
 
             this.logger.success('Orchestrator cleanup completed');
-            return { 
-                success: true, 
-                operations: cleanupOperations, 
-                keptOpen: browserCleanupResult.keptOpen 
+            return {
+                success: true,
+                operations: cleanupOperations,
+                keptOpen: browserCleanupResult.keptOpen
             };
-
         } catch (error) {
             const errorMsg = `[BenchmarkOrchestrator] Cleanup failed at ${cleanupOperations[cleanupOperations.length - 1]}: ${error.message}`;
             this.logger.error(errorMsg);
@@ -691,7 +708,6 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
      * @returns {Promise<void>}
      */
     async emergencyCleanup() {
-
         this.logger.warn('[BenchmarkOrchestrator] Performing emergency cleanup...');
         const emergencyOperations = [];
 
@@ -715,7 +731,6 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
 
             this.logger.warn(`[BenchmarkOrchestrator] Emergency cleanup completed: ${emergencyOperations.join(', ')}`);
             return { success: true, emergencyOperations };
-
         } catch (error) {
             const errorMsg = `[BenchmarkOrchestrator] Emergency cleanup failed: ${error.message}`;
             this.logger.error(errorMsg);
@@ -862,5 +877,4 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
 
         return true;
     }
-
 }

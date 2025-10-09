@@ -9,9 +9,9 @@ import { LoggingService } from './LoggingService.js';
 
 // Constants
 const BROWSER_TIMEOUTS = {
-    PROTOCOL: 60 * 60 * 1000,    // 60 minutes - maximum allowed
-    NAVIGATION: 60 * 60 * 1000,  // 60 minutes - maximum allowed
-    ELEMENT_WAIT: 10000         // 10 seconds - basic element wait
+    PROTOCOL: 60 * 60 * 1000, // 60 minutes - maximum allowed
+    NAVIGATION: 60 * 60 * 1000, // 60 minutes - maximum allowed
+    ELEMENT_WAIT: 10000 // 10 seconds - basic element wait
 };
 
 export class BrowserService extends IBrowserService {
@@ -70,9 +70,7 @@ export class BrowserService extends IBrowserService {
 
         const config = {
             headless: true, // default
-            args: isHeaded
-                ? [...baseArgs, ...headedArgs]
-                : [...baseArgs, ...headlessArgs],
+            args: isHeaded ? [...baseArgs, ...headedArgs] : [...baseArgs, ...headlessArgs],
             protocolTimeout: browserTimeout, // Set protocol timeout for intensive tasks
             ...browserConfig
         };
@@ -126,7 +124,6 @@ export class BrowserService extends IBrowserService {
             this.page.on('pageerror', error => {
                 console.error(chalk.red('Page error:'), error.message);
             });
-
         } catch (error) {
             throw new Error(`Failed to initialize browser: ${error.message}`);
         }
@@ -146,8 +143,10 @@ export class BrowserService extends IBrowserService {
             page.setDefaultTimeout(BROWSER_TIMEOUTS.PROTOCOL);
 
             // Check if browser is in headed mode by checking the first page
-            const isHeaded = this.page && (await this.page.browser().isConnected()) &&
-                            (await this.page.browser()).process() !== null;
+            const isHeaded =
+                this.page &&
+                (await this.page.browser().isConnected()) &&
+                (await this.page.browser()).process() !== null;
 
             // Configure console logging for new page (same logic as main page)
             page.on('console', msg => {
@@ -209,7 +208,6 @@ export class BrowserService extends IBrowserService {
 
             // Wait for basic page elements
             await this.page.waitForSelector('body', { timeout: BROWSER_TIMEOUTS.ELEMENT_WAIT });
-
         } catch (error) {
             throw new Error(`Failed to navigate to ${url}: ${error.message}`);
         }
@@ -353,7 +351,7 @@ export class BrowserService extends IBrowserService {
             this.page.setDefaultTimeout(timeout);
         }
     }
-    
+
     /**
      * Reload current page
      * @param {Object} options - Reload options
@@ -402,11 +400,11 @@ export class BrowserService extends IBrowserService {
             if (!this.isHeadless) {
                 console.log(chalk.green('🌐 HEADED MODE: Browser window left open for inspection'));
                 console.log(chalk.yellow('💡 You can manually close the browser window when done'));
-                
+
                 // Don't clear references in headed mode to prevent accidental closure
                 return { keptOpen: true };
             }
-            
+
             // In headless mode, close everything normally
             if (this.page) {
                 await this.page.close();
@@ -417,7 +415,7 @@ export class BrowserService extends IBrowserService {
                 await this.browser.close();
                 this.browser = null;
             }
-            
+
             return { keptOpen: false };
         } catch (error) {
             console.warn(chalk.yellow('Browser cleanup warning:'), error.message);
@@ -430,7 +428,7 @@ export class BrowserService extends IBrowserService {
                     console.warn(chalk.yellow('Failed to force kill browser process:'), killError.message);
                 }
             }
-            
+
             return { keptOpen: !this.isHeadless };
         } finally {
             // In headless mode, reset everything
@@ -454,7 +452,6 @@ export class BrowserService extends IBrowserService {
             if (this.browser && this.browser.isConnected && this.browser.isConnected()) {
                 await this.browser.close();
             }
-
         } catch (error) {
             console.warn(chalk.yellow('Emergency cleanup error:'), error.message);
         }

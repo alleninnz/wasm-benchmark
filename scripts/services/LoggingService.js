@@ -85,9 +85,7 @@ export class LoggingService extends ILoggingService {
             return;
         }
 
-        const formattedMessage = this.enableColors
-            ? this._getColoredLevel(level)
-            : `[${level.toUpperCase()}]`;
+        const formattedMessage = this.enableColors ? this._getColoredLevel(level) : `[${level.toUpperCase()}]`;
 
         outputFn(`${this.getTimestamp()}${this.getPrefix()}${formattedMessage} ${message}`, ...args);
     }
@@ -194,17 +192,11 @@ export class LoggingService extends ILoggingService {
         const percentage = total > 0 ? ((current / total) * 100).toFixed(1) : '0.0';
         const progressBar = this.createProgressBar(current, total);
 
-        const formattedMessage = this.enableColors
-            ? chalk.cyan('[PROGRESS]')
-            : '[PROGRESS]';
+        const formattedMessage = this.enableColors ? chalk.cyan('[PROGRESS]') : '[PROGRESS]';
 
         console.log(
-            `${this.getTimestamp() +
-            this.getPrefix() +
-            formattedMessage} ${
-                message} ${
-                progressBar} ` +
-            `${percentage}% (${current}/${total})`
+            `${this.getTimestamp() + this.getPrefix() + formattedMessage} ${message} ${progressBar} ` +
+                `${percentage}% (${current}/${total})`
         );
     }
 
@@ -289,7 +281,9 @@ export class LoggingService extends ILoggingService {
         try {
             // Suppress stderr during blessed module loading
             // blessed outputs JS code when parsing xterm-256color's Setulc
-            process.stderr.write = function() { return true; };
+            process.stderr.write = function () {
+                return true;
+            };
 
             // Set TERM to xterm to avoid triggering the problematic Setulc parsing
             if (process.env.TERM === 'xterm-256color') {

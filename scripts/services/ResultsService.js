@@ -83,9 +83,8 @@ export class ResultsService extends IResultsService {
         }
 
         // Update success rate
-        this.summary.successRate = this.summary.totalTasks > 0
-            ? (this.summary.successfulTasks / this.summary.totalTasks)
-            : 0;
+        this.summary.successRate =
+            this.summary.totalTasks > 0 ? this.summary.successfulTasks / this.summary.totalTasks : 0;
     }
 
     /**
@@ -96,9 +95,8 @@ export class ResultsService extends IResultsService {
         this.endTime = Date.now();
         this.summary.endTime = new Date(this.endTime).toISOString();
         this.summary.totalExecutionTime = this.endTime - this.startTime;
-        this.summary.averageTaskDuration = this.summary.totalTasks > 0
-            ? this.summary.totalDuration / this.summary.totalTasks
-            : 0;
+        this.summary.averageTaskDuration =
+            this.summary.totalTasks > 0 ? this.summary.totalDuration / this.summary.totalTasks : 0;
 
         // Add any additional metadata
         Object.assign(this.summary, additionalMetadata);
@@ -283,14 +281,16 @@ export class ResultsService extends IResultsService {
 
         const csvHeaders = Array.from(headers).join(',');
         const csvRows = results.map(result => {
-            return Array.from(headers).map(header => {
-                const value = result[header];
-                // Escape quotes and wrap in quotes if contains comma
-                if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-                    return `"${value.replace(/"/g, '""')}"`;
-                }
-                return value || '';
-            }).join(',');
+            return Array.from(headers)
+                .map(header => {
+                    const value = result[header];
+                    // Escape quotes and wrap in quotes if contains comma
+                    if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+                        return `"${value.replace(/"/g, '""')}"`;
+                    }
+                    return value || '';
+                })
+                .join(',');
         });
 
         return [csvHeaders, ...csvRows].join('\n');
@@ -323,7 +323,6 @@ export class ResultsService extends IResultsService {
 
             // Write to file
             await fs.writeFile(filepath, content, 'utf8');
-
         } catch (error) {
             throw new Error(`Failed to save results to ${filepath}: ${error.message}`);
         }
@@ -375,8 +374,9 @@ export class ResultsService extends IResultsService {
         }
 
         // Must have either 'name' or 'benchmark' field as identifier
-        const hasIdentifier = Object.prototype.hasOwnProperty.call(result, 'name') ||
-                             Object.prototype.hasOwnProperty.call(result, 'benchmark');
+        const hasIdentifier =
+            Object.prototype.hasOwnProperty.call(result, 'name') ||
+            Object.prototype.hasOwnProperty.call(result, 'benchmark');
 
         return hasIdentifier;
     }
@@ -390,9 +390,7 @@ export class ResultsService extends IResultsService {
             return { count: 0 };
         }
 
-        const durations = this.results
-            .filter(r => r.duration)
-            .map(r => r.duration);
+        const durations = this.results.filter(r => r.duration).map(r => r.duration);
 
         const stats = {
             count: this.results.length,
@@ -421,8 +419,6 @@ export class ResultsService extends IResultsService {
     calculateMedian(arr) {
         const sorted = [...arr].sort((a, b) => a - b);
         const mid = Math.floor(sorted.length / 2);
-        return sorted.length % 2 === 0
-            ? (sorted[mid - 1] + sorted[mid]) / 2
-            : sorted[mid];
+        return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
     }
 }

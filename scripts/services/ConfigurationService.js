@@ -273,11 +273,13 @@ export class ConfigurationService extends IConfigurationService {
      * @returns {Object} Server configuration
      */
     getServerConfig() {
-        return this.config?.server || {
-            host: 'localhost',
-            port: process.env.PORT || 2025,
-            benchmarkPath: '/bench.html'
-        };
+        return (
+            this.config?.server || {
+                host: 'localhost',
+                port: process.env.PORT || 2025,
+                benchmarkPath: '/bench.html'
+            }
+        );
     }
 
     /**
