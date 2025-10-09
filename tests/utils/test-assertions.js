@@ -32,7 +32,7 @@ export function assertBenchmarkResult(result, expectedHash = null, options = {})
         throw new Error('assertBenchmarkResult: result must be a valid object');
     }
 
-    if (expectedHash !== null && (typeof expectedHash !== 'string' && typeof expectedHash !== 'number')) {
+    if (expectedHash !== null && typeof expectedHash !== 'string' && typeof expectedHash !== 'number') {
         throw new Error('assertBenchmarkResult: expectedHash must be null, string, or number');
     }
 
@@ -63,52 +63,54 @@ export function assertBenchmarkResult(result, expectedHash = null, options = {})
     }
 
     // Structure validation
-    expect(result, `Benchmark result should have required structure for ${task}:${language}`)
-        .toMatchObject({
-            success: expect.any(Boolean),
-            executionTime: expect.any(Number),
-            memoryUsed: expect.any(Number)
-        });
+    expect(result, `Benchmark result should have required structure for ${task}:${language}`).toMatchObject({
+        success: expect.any(Boolean),
+        executionTime: expect.any(Number),
+        memoryUsed: expect.any(Number)
+    });
 
     if (expectSuccess) {
-        expect(result.success,
+        expect(
+            result.success,
             `Benchmark execution should succeed for ${task}:${language}. Error: ${result.error || 'unknown'}`
         ).toBe(true);
 
         // Performance bounds validation
-        expect(result.executionTime,
+        expect(
+            result.executionTime,
             `Execution time ${result.executionTime}ms should be within bounds [${minExecutionTime}, ${maxExecutionTime}] for ${task}:${language}`
         ).toBeGreaterThan(minExecutionTime);
 
-        expect(result.executionTime,
+        expect(
+            result.executionTime,
             `Execution time ${result.executionTime}ms exceeds maximum ${maxExecutionTime}ms for ${task}:${language}`
         ).toBeLessThan(maxExecutionTime);
 
         // Memory usage validation (allow zero for valid executions with minimal memory footprint)
-        expect(result.memoryUsed,
+        expect(
+            result.memoryUsed,
             `Memory usage ${result.memoryUsed} bytes should be non-negative for ${task}:${language}`
         ).toBeGreaterThanOrEqual(0);
 
-        expect(result.memoryUsed,
+        expect(
+            result.memoryUsed,
             `Memory usage ${result.memoryUsed} bytes exceeds limit ${maxMemoryUsage} bytes for ${task}:${language}`
         ).toBeLessThan(maxMemoryUsage);
 
         // Hash consistency validation
         if (expectedHash !== null) {
-            expect(result.resultHash,
-                `Result hash should be defined for ${task}:${language}`
-            ).toBeDefined();
+            expect(result.resultHash, `Result hash should be defined for ${task}:${language}`).toBeDefined();
 
-            expect(result.resultHash,
+            expect(
+                result.resultHash,
                 `Hash mismatch for ${task}:${language}. Expected: ${expectedHash}, Got: ${result.resultHash}`
             ).toBe(expectedHash);
         }
     } else {
-        expect(result.success,
-            `Benchmark should fail as expected for ${task}:${language}`
-        ).toBe(false);
+        expect(result.success, `Benchmark should fail as expected for ${task}:${language}`).toBe(false);
 
-        expect(result.error || result.errorType,
+        expect(
+            result.error || result.errorType,
             `Failed benchmark should provide error information for ${task}:${language}`
         ).toBeDefined();
     }
@@ -134,13 +136,15 @@ export function assertCrossLanguageConsistency(rustResult, tinygoResult, task) {
         throw new Error('assertCrossLanguageConsistency: task must be a non-empty string');
     }
     // Both should have same success status
-    expect(rustResult.success,
+    expect(
+        rustResult.success,
         `Cross-language success consistency failed for ${task}. Rust: ${rustResult.success}, TinyGo: ${tinygoResult.success}`
     ).toBe(tinygoResult.success);
 
     if (rustResult.success && tinygoResult.success) {
-    // Hash consistency is critical for algorithm correctness
-        expect(rustResult.resultHash,
+        // Hash consistency is critical for algorithm correctness
+        expect(
+            rustResult.resultHash,
             `Cross-language hash consistency failed for ${task}. Rust: ${rustResult.resultHash}, TinyGo: ${tinygoResult.resultHash}`
         ).toBe(tinygoResult.resultHash);
 
@@ -152,16 +156,11 @@ export function assertCrossLanguageConsistency(rustResult, tinygoResult, task) {
         expect(rustResult.memoryUsed).toBeGreaterThan(0);
         expect(tinygoResult.memoryUsed).toBeGreaterThan(0);
     } else if (!rustResult.success && !tinygoResult.success) {
-    // Both failed - should have consistent error handling
+        // Both failed - should have consistent error handling
         expect(rustResult.error || rustResult.errorType).toBeDefined();
         expect(tinygoResult.error || tinygoResult.errorType).toBeDefined();
     }
 }
-
-
-
-
-
 
 export default {
     assertBenchmarkResult,

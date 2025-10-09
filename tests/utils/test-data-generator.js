@@ -24,8 +24,8 @@ class XorShift32 {
 
 export class DeterministicTestDataGenerator {
     constructor(seed = 12345) {
-    // Input validation
-        if (typeof seed !== 'number' || seed < 0 || seed > 0xFFFFFFFF || !Number.isInteger(seed)) {
+        // Input validation
+        if (typeof seed !== 'number' || seed < 0 || seed > 0xffffffff || !Number.isInteger(seed)) {
             throw new Error('DeterministicTestDataGenerator: seed must be a positive integer within 32-bit range');
         }
 
@@ -41,8 +41,8 @@ export class DeterministicTestDataGenerator {
 
         this.rng = new XorShift32(seed);
         this.scaleConfigs = {
-            micro: { records: 10, size: 64, iterations: 100 },   // Minimal scale for unit tests
-            small: { records: 100, size: 64, iterations: 200 },  // Small scale for quick tests
+            micro: { records: 10, size: 64, iterations: 100 }, // Minimal scale for unit tests
+            small: { records: 100, size: 64, iterations: 200 }, // Small scale for quick tests
             medium: { records: 1000, size: 256, iterations: 500 },
             large: { records: 50000, size: 1024, iterations: 2000 }
         };
@@ -52,43 +52,51 @@ export class DeterministicTestDataGenerator {
     }
 
     /**
-   * Validate scale configurations for safety
-   * @private
-   */
+     * Validate scale configurations for safety
+     * @private
+     */
     _validateScaleConfigs() {
         for (const [scale, config] of Object.entries(this.scaleConfigs)) {
             if (!this.VALID_SCALES.includes(scale)) {
                 throw new Error(`Invalid scale: ${scale}`);
             }
 
-            if (typeof config.records !== 'number' ||
-          config.records < this.MIN_RECORDS ||
-          config.records > this.MAX_RECORDS) {
+            if (
+                typeof config.records !== 'number' ||
+                config.records < this.MIN_RECORDS ||
+                config.records > this.MAX_RECORDS
+            ) {
                 throw new Error(`Scale ${scale}: records must be between ${this.MIN_RECORDS} and ${this.MAX_RECORDS}`);
             }
 
-            if (typeof config.size !== 'number' ||
-          config.size < this.MIN_SIZE ||
-          config.size > this.MAX_SIZE) {
+            if (typeof config.size !== 'number' || config.size < this.MIN_SIZE || config.size > this.MAX_SIZE) {
                 throw new Error(`Scale ${scale}: size must be between ${this.MIN_SIZE} and ${this.MAX_SIZE}`);
             }
 
-            if (typeof config.iterations !== 'number' ||
-          config.iterations < this.MIN_ITERATIONS ||
-          config.iterations > this.MAX_ITERATIONS) {
-                throw new Error(`Scale ${scale}: iterations must be between ${this.MIN_ITERATIONS} and ${this.MAX_ITERATIONS}`);
+            if (
+                typeof config.iterations !== 'number' ||
+                config.iterations < this.MIN_ITERATIONS ||
+                config.iterations > this.MAX_ITERATIONS
+            ) {
+                throw new Error(
+                    `Scale ${scale}: iterations must be between ${this.MIN_ITERATIONS} and ${this.MAX_ITERATIONS}`
+                );
             }
         }
     }
 
     generateScaledDataset(task, scale, options = {}) {
-    // Input validation
+        // Input validation
         if (typeof task !== 'string' || !this.VALID_TASKS.includes(task)) {
-            throw new Error(`generateScaledDataset: invalid task "${task}". Valid tasks: ${this.VALID_TASKS.join(', ')}`);
+            throw new Error(
+                `generateScaledDataset: invalid task "${task}". Valid tasks: ${this.VALID_TASKS.join(', ')}`
+            );
         }
 
         if (typeof scale !== 'string' || !this.VALID_SCALES.includes(scale)) {
-            throw new Error(`generateScaledDataset: invalid scale "${scale}". Valid scales: ${this.VALID_SCALES.join(', ')}`);
+            throw new Error(
+                `generateScaledDataset: invalid scale "${scale}". Valid scales: ${this.VALID_SCALES.join(', ')}`
+            );
         }
 
         if (options && typeof options !== 'object') {
@@ -103,38 +111,42 @@ export class DeterministicTestDataGenerator {
 
             return this.generators[task](config);
         } catch (error) {
-            throw new Error(`generateScaledDataset: failed to generate ${task} data for ${scale} scale - ${error.message}`);
+            throw new Error(
+                `generateScaledDataset: failed to generate ${task} data for ${scale} scale - ${error.message}`
+            );
         }
     }
 
     /**
-   * Validate generator configuration
-   * @private
-   */
+     * Validate generator configuration
+     * @private
+     */
     _validateGeneratorConfig(config) {
-        if (typeof config.records !== 'number' ||
-        config.records < this.MIN_RECORDS ||
-        config.records > this.MAX_RECORDS) {
+        if (
+            typeof config.records !== 'number' ||
+            config.records < this.MIN_RECORDS ||
+            config.records > this.MAX_RECORDS
+        ) {
             throw new Error(`records must be between ${this.MIN_RECORDS} and ${this.MAX_RECORDS}`);
         }
 
-        if (typeof config.size !== 'number' ||
-        config.size < this.MIN_SIZE ||
-        config.size > this.MAX_SIZE) {
+        if (typeof config.size !== 'number' || config.size < this.MIN_SIZE || config.size > this.MAX_SIZE) {
             throw new Error(`size must be between ${this.MIN_SIZE} and ${this.MAX_SIZE}`);
         }
 
-        if (typeof config.iterations !== 'number' ||
-        config.iterations < this.MIN_ITERATIONS ||
-        config.iterations > this.MAX_ITERATIONS) {
+        if (
+            typeof config.iterations !== 'number' ||
+            config.iterations < this.MIN_ITERATIONS ||
+            config.iterations > this.MAX_ITERATIONS
+        ) {
             throw new Error(`iterations must be between ${this.MIN_ITERATIONS} and ${this.MAX_ITERATIONS}`);
         }
     }
 
     generators = {
-        mandelbrot: (config) => this.generateMandelbrotParams(config),
-        json_parse: (config) => this.generateJsonData(config),
-        matrix_mul: (config) => this.generateMatrixData(config)
+        mandelbrot: config => this.generateMandelbrotParams(config),
+        json_parse: config => this.generateJsonData(config),
+        matrix_mul: config => this.generateMatrixData(config)
     };
 
     generateMandelbrotParams(config) {
@@ -237,8 +249,8 @@ export class DeterministicTestDataGenerator {
 
     // Cross-language hash validation helper
     generateValidationHash(data) {
-    // Simple hash function for cross-language validation
-    // Using string representation to ensure consistency
+        // Simple hash function for cross-language validation
+        // Using string representation to ensure consistency
         const str = JSON.stringify(data, (key, val) => {
             // Round numbers to avoid floating point precision issues
             return typeof val === 'number' ? Math.round(val * 1000) / 1000 : val;
@@ -247,7 +259,7 @@ export class DeterministicTestDataGenerator {
         let hash = 0;
         for (let i = 0; i < str.length; i++) {
             const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
+            hash = (hash << 5) - hash + char;
             hash = hash & hash; // Convert to 32-bit integer
         }
         return hash;

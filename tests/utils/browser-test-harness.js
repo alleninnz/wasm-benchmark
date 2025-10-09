@@ -8,7 +8,7 @@ import puppeteer from 'puppeteer';
 
 export class BrowserTestHarness {
     constructor(config = {}) {
-    // Input validation
+        // Input validation
         if (config !== null && typeof config !== 'object') {
             throw new Error('BrowserTestHarness: config must be an object or null');
         }
@@ -24,11 +24,10 @@ export class BrowserTestHarness {
         this.teardownInProgress = false;
     }
 
-
     /**
-   * Initialize browser and page with standardized setup
-   * @returns {Promise<Object>} Page object ready for testing
-   */
+     * Initialize browser and page with standardized setup
+     * @returns {Promise<Object>} Page object ready for testing
+     */
     async setup() {
         if (this.setupComplete) {
             throw new Error('BrowserTestHarness: setup() called multiple times. Call teardown() first.');
@@ -76,39 +75,40 @@ export class BrowserTestHarness {
 
             this.setupComplete = true;
             return this.page;
-
         } catch (error) {
             await this.teardown(true); // Force cleanup on failure
-            throw new Error(`Browser setup failed: ${error.message}. Check that dev server is running on localhost:2025`);
+            throw new Error(
+                `Browser setup failed: ${error.message}. Check that dev server is running on localhost:2025`
+            );
         }
     }
 
-
     /**
-   * Wait for WebAssembly modules to load
-   * @param {number} timeout - Timeout in milliseconds
-   */
+     * Wait for WebAssembly modules to load
+     * @param {number} timeout - Timeout in milliseconds
+     */
     async waitForWasmModules(timeout = 30000) {
         try {
-            await this.page.waitForFunction(() => {
-                return window.wasmModulesLoaded &&
-               window.wasmModulesLoaded.rust &&
-               window.wasmModulesLoaded.tinygo;
-            }, { timeout });
+            await this.page.waitForFunction(
+                () => {
+                    return window.wasmModulesLoaded && window.wasmModulesLoaded.rust && window.wasmModulesLoaded.tinygo;
+                },
+                { timeout }
+            );
         } catch (error) {
             throw new Error(`WebAssembly modules failed to load within ${timeout}ms: ${error.message}`);
         }
     }
 
     /**
-   * Execute a benchmark task with error handling
-   * @param {string} task - Task name (mandelbrot, json_parse, matrix_mul)
-   * @param {string} language - Language (rust, tinygo)
-   * @param {Object} data - Task input data
-   * @returns {Promise<Object>} Task execution result
-   */
+     * Execute a benchmark task with error handling
+     * @param {string} task - Task name (mandelbrot, json_parse, matrix_mul)
+     * @param {string} language - Language (rust, tinygo)
+     * @param {Object} data - Task input data
+     * @returns {Promise<Object>} Task execution result
+     */
     async executeTask(task, language, data) {
-    // Input validation
+        // Input validation
         if (typeof task !== 'string' || !task.trim()) {
             throw new Error('executeTask: task must be a non-empty string');
         }
@@ -132,16 +132,23 @@ export class BrowserTestHarness {
             throw new Error(`executeTask: invalid task "${task}". Valid tasks: ${VALID_TASKS.join(', ')}`);
         }
         if (!VALID_LANGUAGES.includes(language)) {
-            throw new Error(`executeTask: invalid language "${language}". Valid languages: ${VALID_LANGUAGES.join(', ')}`);
+            throw new Error(
+                `executeTask: invalid language "${language}". Valid languages: ${VALID_LANGUAGES.join(', ')}`
+            );
         }
 
         try {
-            const result = await this.page.evaluate(async (t, l, d) => {
-                if (!window.runTask) {
-                    throw new Error('runTask function not available - check that benchmark harness is loaded');
-                }
-                return await window.runTask(t, l, d);
-            }, task, language, data);
+            const result = await this.page.evaluate(
+                async (t, l, d) => {
+                    if (!window.runTask) {
+                        throw new Error('runTask function not available - check that benchmark harness is loaded');
+                    }
+                    return await window.runTask(t, l, d);
+                },
+                task,
+                language,
+                data
+            );
 
             // Validate result structure
             if (!result || typeof result !== 'object') {
@@ -149,7 +156,6 @@ export class BrowserTestHarness {
             }
 
             return result;
-
         } catch (error) {
             const errorResult = {
                 success: false,
@@ -167,11 +173,10 @@ export class BrowserTestHarness {
         }
     }
 
-
     /**
-   * Clean up browser resources
-   * @param {boolean} force - Force cleanup even if errors occur
-   */
+     * Clean up browser resources
+     * @param {boolean} force - Force cleanup even if errors occur
+     */
     async teardown(force = false) {
         if (this.teardownInProgress) {
             console.warn('BrowserTestHarness: teardown already in progress');
@@ -228,19 +233,18 @@ export class BrowserTestHarness {
         this.setupComplete = false;
         this.teardownInProgress = false;
     }
-
 }
 
 /**
  * Test timeout constants for consistent timeout management
  */
 export const TEST_TIMEOUTS = {
-    unit: 5000,           // Unit tests: 5 seconds
-    integration: 30000,   // Integration tests: 30 seconds
-    e2e: 120000,         // E2E tests: 2 minutes
-    statistical: 300000,  // Statistical analysis: 5 minutes
-    concurrent: 60000,    // Concurrent execution: 1 minute
-    stress: 600000       // Stress tests: 10 minutes
+    unit: 5000, // Unit tests: 5 seconds
+    integration: 30000, // Integration tests: 30 seconds
+    e2e: 120000, // E2E tests: 2 minutes
+    statistical: 300000, // Statistical analysis: 5 minutes
+    concurrent: 60000, // Concurrent execution: 1 minute
+    stress: 600000 // Stress tests: 10 minutes
 };
 
 /**
