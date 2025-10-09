@@ -295,7 +295,7 @@ help: ## Show complete list of all available targets
 	@echo ""
 	$(call log_info,🛠️  Development Targets:)
 	$(call log_info,  lint                   ✨ Run code quality checks (add python/rust/go/js for specific language))
-	$(call log_info,  format                 💄 Format code (add python/rust/go for specific language))
+	$(call log_info,  format                 💄 Format code (add python/rust/go/js for specific language))
 	$(call log_info,  test                   🧪 Run tests (JavaScript and Python))
 	$(call log_info,  test validate          ✅ Run WASM task validation suite)
 	@echo ""
@@ -333,6 +333,7 @@ help: ## Show complete list of all available targets
 	$(call log_info,  make run headed        👁️ Full benchmarks with visible browser)
 	$(call log_info,  make lint python       🐍 Run Python linting only)
 	$(call log_info,  make format rust       🦀 Format Rust code only)
+	$(call log_info,  make format js         📜 Format JavaScript code only)
 	$(call log_info,  make test validate     ✅ Run WASM task validation)
 	$(call log_info,  make clean             💥 Clean everything)
 	$(call log_info,  make check deps        🔍 Check all dependencies)
@@ -691,9 +692,9 @@ else ifeq ($(JS_MODE),true)
 	js_count=$$(echo "$$js_files" | grep -c . 2>/dev/null || echo "0"); \
 	if [ "$$js_count" -gt 0 ]; then \
 		$(call log_info,Found $$js_count JavaScript files to lint,shell); \
-		if [ -x "$(NODE_MODULES)/.bin/eslint" ]; then \
-			$(call log_info,Using local ESLint installation,shell); \
-			if $(NODE_MODULES)/.bin/eslint \
+		if command -v npx >/dev/null 2>&1; then \
+			$(call log_info,Linting with ESLint (auto-fix enabled)...,shell); \
+			if npx eslint --fix \
 				$(SCRIPTS_DIR)/ $(HARNESS_DIR)/ $(TESTS_DIR)/ \
 				--ignore-pattern "$(NODE_MODULES)/**" \
 				--ignore-pattern "__pycache__/**" \
@@ -704,13 +705,12 @@ else ifeq ($(JS_MODE),true)
 				--no-error-on-unmatched-pattern; then \
 				$(call log_success,📜 JavaScript linting completed successfully,shell); \
 			else \
-				$(call log_warning,ESLint found issues in JavaScript code,shell); \
-				$(call log_info,Fix with: $(NODE_MODULES)/.bin/eslint --fix $(SCRIPTS_DIR)/ $(HARNESS_DIR)/ $(TESTS_DIR)/,shell); \
+				$(call log_warning,ESLint found issues that require manual fixing,shell); \
 			fi; \
 		else \
-			$(call log_warning,Local ESLint not found,shell); \
-			$(call log_info,Install with: npm install --save-dev eslint,shell); \
-			$(call log_info,Then run: make lint js,shell); \
+			$(call log_warning,npx not found,shell); \
+			$(call log_info,Install Node.js 8.2+ or npm 5.2+ for npx support,shell); \
+			$(call log_info,Alternative: npm install,shell); \
 		fi; \
 	else \
 		$(call log_warning,No JavaScript files found to lint,shell); \
@@ -726,7 +726,7 @@ else
 	$(call log_success,✨ All linting completed successfully! ✨)
 endif
 
-format: ## Format code (use: make format [python/rust/go])
+format: ## Format code (use: make format [python/rust/go/js])
 ifeq ($(PYTHON_MODE),true)
 	$(call log_step,Formatting Python code with black...)
 	@python_files="$(call find_python_files)"; \
@@ -765,12 +765,35 @@ else ifeq ($(GO_MODE),true)
 	else \
 		$(call log_warning,No Go files found, skipping Go format,shell); \
 	fi
+else ifeq ($(JS_MODE),true)
+	$(call log_step,Formatting JavaScript code with Prettier...)
+	@js_files="$(call find_js_files)"; \
+	js_count=$$(echo "$$js_files" | grep -c . 2>/dev/null || echo "0"); \
+	if [ "$$js_count" -gt 0 ]; then \
+		$(call log_info,Found $$js_count JavaScript files to format,shell); \
+		if command -v npx >/dev/null 2>&1; then \
+			$(call log_info,Formatting with Prettier...,shell); \
+			npx prettier --write \
+				"$(SCRIPTS_DIR)/**/*.js" "$(HARNESS_DIR)/**/*.js" "$(TESTS_DIR)/**/*.js" \
+				--ignore-path .gitignore \
+				--log-level warn; \
+			$(call log_success,📜 JavaScript code formatted with Prettier,shell); \
+		else \
+			$(call log_warning,npx not found,shell); \
+			$(call log_info,Install Node.js 8.2+ or npm 5.2+ for npx support,shell); \
+			$(call log_info,Alternative: npm install,shell); \
+		fi; \
+	else \
+		$(call log_warning,No JavaScript files found to format,shell); \
+		$(call log_info,Searched in: $(SCRIPTS_DIR)/, $(HARNESS_DIR)/, $(TESTS_DIR)/,shell); \
+	fi
 else
 	# Default: format all languages
 	$(call log_step,Formatting all code...)
 	$(MAKE) format python
 	$(MAKE) format rust
 	$(MAKE) format go
+	$(MAKE) format js
 	$(call log_success,✨ All code formatting completed successfully! ✨)
 endif
 
