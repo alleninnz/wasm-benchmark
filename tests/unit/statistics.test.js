@@ -82,5 +82,4 @@ describe('Statistical Functions', () => {
             expect(configs.smoke.mandelbrot).toBeDefined();
         });
     });
-
 });

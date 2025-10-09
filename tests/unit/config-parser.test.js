@@ -151,5 +151,4 @@ describe('Configuration Parser', () => {
             expect(result.environment.measureRuns).toBe(1);
         });
     });
-
 });
