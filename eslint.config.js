@@ -1,8 +1,14 @@
 import js from '@eslint/js';
+import prettierConfig from 'eslint-config-prettier';
+import prettier from 'eslint-plugin-prettier';
 
 export default [
     js.configs.recommended,
+    prettierConfig,
     {
+        plugins: {
+            prettier
+        },
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: 'module',
@@ -48,11 +54,17 @@ export default [
             }
         },
         rules: {
+            // Prettier integration - let Prettier handle formatting
+            'prettier/prettier': 'warn',
+
             // Possible problems
-            'no-unused-vars': ['warn', {
-                argsIgnorePattern: '^_',
-                varsIgnorePattern: '^_'
-            }],
+            'no-unused-vars': [
+                'warn',
+                {
+                    argsIgnorePattern: '^_',
+                    varsIgnorePattern: '^_'
+                }
+            ],
             'no-undef': 'error',
             'no-unreachable': 'warn',
             'no-duplicate-imports': 'error',
@@ -62,32 +74,16 @@ export default [
             'no-var': 'error',
             'prefer-arrow-callback': 'warn',
             'prefer-template': 'warn',
-            'prefer-destructuring': ['warn', {
-                array: false,
-                object: true
-            }],
-
-            // Layout & Formatting
-            'indent': ['warn', 4, { SwitchCase: 1 }],
-            'quotes': ['warn', 'single', { allowTemplateLiterals: true }],
-            'semi': ['warn', 'always'],
-            'comma-dangle': ['warn', 'never'],
-            'object-curly-spacing': ['warn', 'always'],
-            'array-bracket-spacing': ['warn', 'never'],
-            'space-before-blocks': 'warn',
-            'keyword-spacing': 'warn',
-            'space-infix-ops': 'warn',
-            'eol-last': 'warn',
-            'no-trailing-spaces': 'off',
-            'max-len': ['warn', {
-                code: 120,
-                ignoreUrls: true,
-                ignoreStrings: true,
-                ignoreTemplateLiterals: true
-            }],
+            'prefer-destructuring': [
+                'warn',
+                {
+                    array: false,
+                    object: true
+                }
+            ],
 
             // Best practices
-            'eqeqeq': ['error', 'always'],
+            eqeqeq: ['error', 'always'],
             'no-eval': 'error',
             'no-implied-eval': 'error',
             'no-new-func': 'error',
@@ -97,11 +93,9 @@ export default [
             'no-unmodified-loop-condition': 'error',
             'no-loop-func': 'error',
 
-            // ES6+ specific
-            'arrow-spacing': 'warn',
+            // ES6+ specific (non-formatting)
             'no-confusing-arrow': 'warn',
-            'prefer-spread': 'warn',
-            'template-curly-spacing': 'warn'
+            'prefer-spread': 'warn'
         }
     },
     {
