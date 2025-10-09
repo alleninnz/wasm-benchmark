@@ -16,15 +16,24 @@ export class ConfigurationService extends IConfigurationService {
     /**
      * Load and validate configuration from file
      * @param {string} configPath - Path to config file
-     * @returns {Promise<Object>} Validated configuration
+     * @returns {Promise<Object>} Validated configuration object
+     * @throws {Error} If file not found or validation fails
      */
     async loadConfig(configPath) {
+        if (!configPath || typeof configPath !== 'string') {
+            throw new Error('[ConfigurationService] Config path must be a non-empty string');
+        }
+
         try {
             if (!fs.existsSync(configPath)) {
                 throw new Error(`Config file not found: ${configPath}`);
             }
 
             const configContent = fs.readFileSync(configPath, 'utf8');
+            if (!configContent.trim()) {
+                throw new Error('Config file is empty');
+            }
+
             const config = JSON.parse(configContent);
 
             // Store config path for mode detection
@@ -293,19 +302,36 @@ export class ConfigurationService extends IConfigurationService {
      * @throws {Error} If validation fails
      */
     validateRuntimeConfig(options = {}) {
-        if (options.timeout && (typeof options.timeout !== 'number' || options.timeout <= 0)) {
-            throw new Error('[ConfigurationService] Invalid timeout: must be a positive number');
-        }
+        this._validatePositiveNumber(options.timeout, 'timeout');
+        this._validatePositiveNumber(options.maxParallel, 'maxParallel');
+        this._validateRange(options.failureThreshold, 'failureThreshold', 0, 1);
+    }
 
-        if (options.maxParallel && (typeof options.maxParallel !== 'number' || options.maxParallel <= 0)) {
-            throw new Error('[ConfigurationService] Invalid maxParallel: must be a positive number');
+    /**
+     * Validate a positive number parameter
+     * @param {*} value - Value to validate
+     * @param {string} name - Parameter name
+     * @throws {Error} If validation fails
+     * @private
+     */
+    _validatePositiveNumber(value, name) {
+        if (value !== undefined && (typeof value !== 'number' || value <= 0)) {
+            throw new Error(`[ConfigurationService] Invalid ${name}: must be a positive number`);
         }
+    }
 
-        if (options.failureThreshold &&
-            (typeof options.failureThreshold !== 'number' ||
-             options.failureThreshold < 0 ||
-             options.failureThreshold > 1)) {
-            throw new Error('[ConfigurationService] Invalid failureThreshold: must be a number between 0 and 1');
+    /**
+     * Validate a number is within a range
+     * @param {*} value - Value to validate
+     * @param {string} name - Parameter name
+     * @param {number} min - Minimum value (inclusive)
+     * @param {number} max - Maximum value (inclusive)
+     * @throws {Error} If validation fails
+     * @private
+     */
+    _validateRange(value, name, min, max) {
+        if (value !== undefined && (typeof value !== 'number' || value < min || value > max)) {
+            throw new Error(`[ConfigurationService] Invalid ${name}: must be a number between ${min} and ${max}`);
         }
     }
 

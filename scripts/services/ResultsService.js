@@ -36,8 +36,17 @@ export class ResultsService extends IResultsService {
     /**
      * Add benchmark result
      * @param {Object} result - Benchmark result data
+     * @throws {Error} If result data is invalid
      */
     addResult(result) {
+        if (!result || typeof result !== 'object') {
+            throw new Error('[ResultsService] Result must be a non-null object');
+        }
+
+        if (!this.validateResult(result)) {
+            throw new Error('[ResultsService] Result missing required fields: (name or benchmark) and success');
+        }
+
         const processedResult = {
             ...result,
             timestamp: new Date().toISOString(),
@@ -292,8 +301,18 @@ export class ResultsService extends IResultsService {
      * @param {string} filepath - Path to save file
      * @param {string} format - File format
      * @returns {Promise<void>}
+     * @throws {Error} If save operation fails
      */
     async saveToFile(filepath, format = 'json') {
+        if (!filepath || typeof filepath !== 'string') {
+            throw new Error('[ResultsService] Filepath must be a non-empty string');
+        }
+
+        const validFormats = ['json', 'text', 'csv'];
+        if (!validFormats.includes(format.toLowerCase())) {
+            throw new Error(`[ResultsService] Invalid format: ${format}. Must be one of: ${validFormats.join(', ')}`);
+        }
+
         try {
             // Ensure directory exists
             const dir = path.dirname(filepath);
@@ -304,8 +323,6 @@ export class ResultsService extends IResultsService {
 
             // Write to file
             await fs.writeFile(filepath, content, 'utf8');
-
-
 
         } catch (error) {
             throw new Error(`Failed to save results to ${filepath}: ${error.message}`);
@@ -346,13 +363,22 @@ export class ResultsService extends IResultsService {
     }
 
     /**
-     * Validate result data structure
-     * @param {Object} result - Result to validate
+     * Validate result has required fields
+     * @param {Object} result - Result object to validate
      * @returns {boolean} True if valid
+     * @private
      */
     validateResult(result) {
-        const required = ['name', 'success'];
-        return required.every(field => Object.prototype.hasOwnProperty.call(result, field));
+        // Must have 'success' field
+        if (!Object.prototype.hasOwnProperty.call(result, 'success')) {
+            return false;
+        }
+
+        // Must have either 'name' or 'benchmark' field as identifier
+        const hasIdentifier = Object.prototype.hasOwnProperty.call(result, 'name') ||
+                             Object.prototype.hasOwnProperty.call(result, 'benchmark');
+
+        return hasIdentifier;
     }
 
     /**
