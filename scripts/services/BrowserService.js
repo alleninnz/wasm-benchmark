@@ -7,6 +7,13 @@ import chalk from 'chalk';
 import { IBrowserService } from '../interfaces/IBrowserService.js';
 import { LoggingService } from './LoggingService.js';
 
+// Constants
+const BROWSER_TIMEOUTS = {
+    PROTOCOL: 60 * 60 * 1000,    // 60 minutes - maximum allowed
+    NAVIGATION: 60 * 60 * 1000,  // 60 minutes - maximum allowed
+    ELEMENT_WAIT: 10000         // 10 seconds - basic element wait
+};
+
 export class BrowserService extends IBrowserService {
     constructor(loggingService = null) {
         super();
@@ -59,7 +66,7 @@ export class BrowserService extends IBrowserService {
         this.isHeadless = !isHeaded; // Store the headless state
 
         // Get browser protocol timeout - hardcoded to maximum allowed value
-        const browserTimeout = 60 * 60 * 1000; // 3,600,000ms (60 minutes)
+        const browserTimeout = BROWSER_TIMEOUTS.PROTOCOL;
 
         const config = {
             headless: true, // default
@@ -136,8 +143,7 @@ export class BrowserService extends IBrowserService {
 
         try {
             const page = await this.browser.newPage();
-            const browserTimeout = 60 * 60 * 1000; // 3,600,000ms (60 minutes) - hardcoded maximum
-            page.setDefaultTimeout(browserTimeout);
+            page.setDefaultTimeout(BROWSER_TIMEOUTS.PROTOCOL);
 
             // Check if browser is in headed mode by checking the first page
             const isHeaded = this.page && (await this.page.browser().isConnected()) &&
@@ -181,16 +187,20 @@ export class BrowserService extends IBrowserService {
      * @param {string} url - URL to navigate to
      * @param {Object} options - Navigation options
      * @returns {Promise<void>}
+     * @throws {Error} If navigation fails or browser not initialized
      */
     async navigateTo(url, options = {}) {
         if (!this.page) {
             throw new Error('Browser not initialized. Call initialize() first.');
         }
 
-        const defaultTimeout = 60 * 60 * 1000; // 3,600,000ms (60 minutes) - hardcoded maximum
+        if (!url || typeof url !== 'string') {
+            throw new Error('URL must be a non-empty string');
+        }
+
         const navigationOptions = {
             waitUntil: 'networkidle0',
-            timeout: defaultTimeout,
+            timeout: BROWSER_TIMEOUTS.NAVIGATION,
             ...options
         };
 
@@ -198,7 +208,7 @@ export class BrowserService extends IBrowserService {
             await this.page.goto(url, navigationOptions);
 
             // Wait for basic page elements
-            await this.page.waitForSelector('body', { timeout: 10000 });
+            await this.page.waitForSelector('body', { timeout: BROWSER_TIMEOUTS.ELEMENT_WAIT });
 
         } catch (error) {
             throw new Error(`Failed to navigate to ${url}: ${error.message}`);
@@ -228,15 +238,19 @@ export class BrowserService extends IBrowserService {
      * @param {string} selector - CSS selector to wait for
      * @param {Object} options - Wait options
      * @returns {Promise<void>}
+     * @throws {Error} If element not found or browser not initialized
      */
     async waitForElement(selector, options = {}) {
         if (!this.page) {
             throw new Error('Browser not initialized. Call initialize() first.');
         }
 
-        const defaultTimeout = 60 * 60 * 1000; // 3,600,000ms (60 minutes) - hardcoded maximum
+        if (!selector || typeof selector !== 'string') {
+            throw new Error('Selector must be a non-empty string');
+        }
+
         const waitOptions = {
-            timeout: defaultTimeout,
+            timeout: BROWSER_TIMEOUTS.ELEMENT_WAIT,
             ...options
         };
 

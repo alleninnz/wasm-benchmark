@@ -8,15 +8,28 @@
 
 import blessed from 'blessed';
 
+// UI Configuration Constants
+const DEFAULT_UI_CONFIG = {
+    MIN_TERMINAL_HEIGHT: 10,
+    MAX_LOG_BUFFER: 1000,
+    PROGRESS_HEIGHT: 3,
+    BORDER_STYLE: 'line',
+    RENDER_DEBOUNCE_MS: 100,
+    MIN_WIDTH: 40,
+    DEFAULT_TERMINAL_HEIGHT: 24,
+    DEFAULT_TERMINAL_WIDTH: 80,
+    MAX_TASK_TIMES_BUFFER: 10
+};
+
 export class TerminalProgressUI {
     constructor(options = {}) {
         // Configuration
         this.options = {
-            minTerminalHeight: 10,
-            maxLogBuffer: 1000,
-            progressHeight: 3,
-            borderStyle: 'line',
-            renderDebounceMs: 100,
+            minTerminalHeight: DEFAULT_UI_CONFIG.MIN_TERMINAL_HEIGHT,
+            maxLogBuffer: DEFAULT_UI_CONFIG.MAX_LOG_BUFFER,
+            progressHeight: DEFAULT_UI_CONFIG.PROGRESS_HEIGHT,
+            borderStyle: DEFAULT_UI_CONFIG.BORDER_STYLE,
+            renderDebounceMs: DEFAULT_UI_CONFIG.RENDER_DEBOUNCE_MS,
             ...options
         };
 
@@ -49,10 +62,10 @@ export class TerminalProgressUI {
         }
 
         // Check terminal dimensions
-        const height = process.stdout.rows || 24;
-        const width = process.stdout.columns || 80;
+        const height = process.stdout.rows || DEFAULT_UI_CONFIG.DEFAULT_TERMINAL_HEIGHT;
+        const width = process.stdout.columns || DEFAULT_UI_CONFIG.DEFAULT_TERMINAL_WIDTH;
 
-        if (height < this.options.minTerminalHeight || width < 40) {
+        if (height < this.options.minTerminalHeight || width < DEFAULT_UI_CONFIG.MIN_WIDTH) {
             return false;
         }
 
@@ -215,8 +228,8 @@ export class TerminalProgressUI {
             this.taskTimes.push(taskDuration);
             this.lastTaskTime = now;
 
-            // Keep only recent task times (last 10)
-            if (this.taskTimes.length > 10) {
+            // Keep only recent task times for accurate ETA
+            if (this.taskTimes.length > DEFAULT_UI_CONFIG.MAX_TASK_TIMES_BUFFER) {
                 this.taskTimes.shift();
             }
         }

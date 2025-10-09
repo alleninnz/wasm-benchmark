@@ -3,10 +3,43 @@
  * Handles loading and parsing of YAML configuration files with Node.js service integration
  */
 
+// HTTP Status Codes
+const HTTP_STATUS = {
+    NOT_FOUND: 404,
+    FORBIDDEN: 403,
+    SERVER_ERROR: 500
+};
+
 export class ConfigLoader {
     constructor() {
         this.config = null;
         this.configPath = '../../configs/bench.yaml';
+    }
+
+    /**
+     * Validate string parameter is non-empty
+     * @param {*} value - Value to validate
+     * @param {string} paramName - Parameter name for error messages
+     * @throws {Error} If validation fails
+     * @private
+     */
+    _validateNonEmptyString(value, paramName) {
+        if (!value || typeof value !== 'string' || !value.trim()) {
+            throw new Error(`${paramName} must be a non-empty string`);
+        }
+    }
+
+    /**
+     * Validate array is non-empty
+     * @param {*} value - Value to validate
+     * @param {string} paramName - Parameter name for error messages
+     * @throws {Error} If validation fails
+     * @private
+     */
+    _validateNonEmptyArray(value, paramName) {
+        if (!Array.isArray(value) || value.length === 0) {
+            throw new Error(`${paramName} must be a non-empty array`);
+        }
     }
 
     /**
@@ -41,19 +74,7 @@ export class ConfigLoader {
             // Fetch the pre-generated JSON file
             const response = await fetch(jsonPath);
             if (!response.ok) {
-                let errorMsg = `Failed to fetch configuration from ${jsonPath}: ${response.status} ${response.statusText}`;
-
-                if (response.status === 404) {
-                    errorMsg += '. Configuration file not found. Run "npm run build:config" to generate the required config file.';
-                } else if (response.status === 403) {
-                    errorMsg += '. Access denied to configuration file. Check server permissions and CORS settings.';
-                } else if (response.status >= 500) {
-                    errorMsg += '. Server error occurred. Check server logs and try again.';
-                } else {
-                    errorMsg += '. Check network connectivity and server status.';
-                }
-
-                throw new Error(errorMsg);
+                throw new Error(this._createFetchErrorMessage(jsonPath, response.status, response.statusText));
             }
 
             // Parse JSON content directly - no YAML service needed!
@@ -78,6 +99,30 @@ export class ConfigLoader {
 
 
     /**
+     * Create detailed HTTP fetch error message
+     * @param {string} path - File path that failed
+     * @param {number} status - HTTP status code
+     * @param {string} statusText - HTTP status text
+     * @returns {string} Detailed error message
+     * @private
+     */
+    _createFetchErrorMessage(path, status, statusText) {
+        let errorMsg = `Failed to fetch configuration from ${path}: ${status} ${statusText}`;
+
+        if (status === HTTP_STATUS.NOT_FOUND) {
+            errorMsg += '. Configuration file not found. Run "npm run build:config" to generate the required config file.';
+        } else if (status === HTTP_STATUS.FORBIDDEN) {
+            errorMsg += '. Access denied to configuration file. Check server permissions and CORS settings.';
+        } else if (status >= HTTP_STATUS.SERVER_ERROR) {
+            errorMsg += '. Server error occurred. Check server logs and try again.';
+        } else {
+            errorMsg += '. Check network connectivity and server status.';
+        }
+
+        return errorMsg;
+    }
+
+    /**
      * Validate configuration structure
      * @private
      */
@@ -86,7 +131,7 @@ export class ConfigLoader {
             throw new Error('Configuration is null or undefined');
         }
 
-        // Check required sections (simplified validation for pre-processed config)
+        // Check required sections
         const requiredSections = ['experiment', 'environment', 'tasks', 'languages'];
         for (const section of requiredSections) {
             if (!this.config[section]) {
@@ -94,22 +139,13 @@ export class ConfigLoader {
             }
         }
 
-        // Validate experiment section
-        if (!this.config.experiment.name) {
-            throw new Error('Missing experiment name in configuration');
-        }
-
-        // Validate pre-processed convenience arrays
-        if (!this.config.taskNames || this.config.taskNames.length === 0) {
-            throw new Error('No tasks defined in configuration');
-        }
-
-        if (!this.config.enabledLanguages || this.config.enabledLanguages.length === 0) {
-            throw new Error('No languages enabled in configuration');
-        }
+        // Validate using helper methods
+        this._validateNonEmptyString(this.config.experiment?.name, 'experiment.name');
+        this._validateNonEmptyArray(this.config.taskNames, 'taskNames');
+        this._validateNonEmptyArray(this.config.enabledLanguages, 'enabledLanguages');
 
         // Check generation metadata
-        if (!this.config.generated || !this.config.generated.timestamp) {
+        if (!this.config.generated?.timestamp) {
             throw new Error('Configuration missing generation metadata - please run build process');
         }
 
@@ -164,20 +200,24 @@ export class ConfigLoader {
      * @param {string} taskName - Task name
      * @param {string} scale - Scale name (small, medium, large)
      * @returns {Object} Task-specific configuration
+     * @throws {Error} If configuration not loaded or task/scale not found
      */
     getTaskConfig(taskName, scale) {
         if (!this.config || !this.config.taskConfigs) {
-            throw new Error('Configuration not loaded');
+            throw new Error('[ConfigLoader] Configuration not loaded');
         }
+
+        this._validateNonEmptyString(taskName, 'taskName');
+        this._validateNonEmptyString(scale, 'scale');
 
         const taskConfig = this.config.taskConfigs[taskName];
         if (!taskConfig) {
-            throw new Error(`Task configuration not found: ${taskName}`);
+            throw new Error(`[ConfigLoader] Task configuration not found: ${taskName}`);
         }
 
-        const scaleConfig = taskConfig.scales[scale];
+        const scaleConfig = taskConfig.scales?.[scale];
         if (!scaleConfig) {
-            throw new Error(`Scale configuration not found: ${taskName}.${scale}`);
+            throw new Error(`[ConfigLoader] Scale configuration not found: ${taskName}.${scale}`);
         }
 
         return {

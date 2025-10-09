@@ -6,6 +6,42 @@
 import { ConfigLoader } from './config_loader.js';
 import { WasmLoader } from './wasm_loader.js';
 
+// Benchmark Configuration Constants
+const BENCHMARK_LIMITS = {
+    MAX_RUNS: 1000,
+    MAX_REPETITIONS: 10,
+    MAX_TIMEOUT_MS: 60 * 60 * 1000,  // 60 minutes for WASM tasks
+    MAX_JSON_RECORDS: 1000000,
+    MAX_MATRIX_DIMENSION: 2000,
+    MEMORY_THRESHOLD_MB: 500
+};
+
+const MEASUREMENT_CONSTANTS = {
+    DEFAULT_RANDOM_SEED: 12345,
+    GC_INTERVAL_MS: 100,
+    STABILIZATION_DELAY_MS: 10,
+    MIN_MEMORY_BYTES: 1024
+};
+
+const FNV_HASH_CONSTANTS = {
+    OFFSET_BASIS: 2166136261,
+    PRIME: 16777619
+};
+
+const MANDELBROT_CONSTANTS = {
+    BUFFER_SIZE: 40,
+    CENTER_REAL: -0.743643887037,
+    CENTER_IMAG: 0.131825904205,
+    SCALE_FACTOR: 3.0,
+    DEFAULT_MAX_ITER: 100
+};
+
+const PARAM_BUFFER_SIZES = {
+    JSON: 8,      // 2 * u32
+    MATRIX: 8,    // 2 * u32
+    MANDELBROT: 40
+};
+
 export class BenchmarkRunner {
     constructor(config = null) {
         this.loader = new WasmLoader();
@@ -15,19 +51,8 @@ export class BenchmarkRunner {
         this.isRunning = false;
         this.cancelled = false;
 
-        // Constants
-        this.DEFAULT_RANDOM_SEED = 12345;
-        this.MAX_CONFIG_TIMEOUT = 60 * 60 * 1000; // 60 minutes for WASM tasks
-
-        // FNV-1a constants for input data hashing
-        this.FNV_OFFSET_BASIS = 2166136261;
-        this.FNV_PRIME = 16777619;
-        this.MAX_RUNS = 1000;
-        this.MEMORY_THRESHOLD_MB = 500;
-        this.GC_INTERVAL_MS = 100;
-
         // Initialize random number generator (will be configured from config)
-        this.randomSeed = this.DEFAULT_RANDOM_SEED;
+        this.randomSeed = MEASUREMENT_CONSTANTS.DEFAULT_RANDOM_SEED;
         this.random = this._xorshift32(this.randomSeed);
     }
 
@@ -404,7 +429,7 @@ export class BenchmarkRunner {
         }
 
         // Short delay to stabilize
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise(resolve => setTimeout(resolve, MEASUREMENT_CONSTANTS.STABILIZATION_DELAY_MS));
 
         // Capture initial memory state
         const memBefore = performance.memory ? {
@@ -427,7 +452,7 @@ export class BenchmarkRunner {
 
         const executionTime = timeAfter - timeBefore;
         const memoryDeltaBytes = memAfter && memBefore ?
-            Math.max(1024, memAfter.used - memBefore.used) : 1024; // Minimum 1KB for test compatibility
+            Math.max(MEASUREMENT_CONSTANTS.MIN_MEMORY_BYTES, memAfter.used - memBefore.used) : MEASUREMENT_CONSTANTS.MIN_MEMORY_BYTES;
         const memoryDelta = memoryDeltaBytes / (1024 * 1024);
 
         // Get WASM memory statistics
@@ -461,14 +486,29 @@ export class BenchmarkRunner {
      * @returns {number} 32-bit FNV-1a hash
      */
     _computeInputDataHash(inputData) {
-        let hash = this.FNV_OFFSET_BASIS;
+        let hash = FNV_HASH_CONSTANTS.OFFSET_BASIS;
 
         for (let i = 0; i < inputData.length; i++) {
             hash ^= inputData[i];
-            hash = (hash * this.FNV_PRIME) >>> 0; // Ensure 32-bit unsigned
+            hash = (hash * FNV_HASH_CONSTANTS.PRIME) >>> 0; // Ensure 32-bit unsigned
         }
 
         return hash;
+    }
+
+    /**
+     * Extract uint32 value from binary data
+     * @param {Uint8Array} data - Binary data
+     * @param {number} offset - Byte offset
+     * @returns {number|null} Extracted value or null if invalid
+     * @private
+     */
+    _extractUint32(data, offset = 0) {
+        if (!data || data.length < offset + 4) {
+            return null;
+        }
+        const view = new DataView(data.buffer);
+        return view.getUint32(offset, true);
     }
 
     /**
@@ -480,26 +520,17 @@ export class BenchmarkRunner {
         const taskNameSnakeCase = taskName.replace(/([A-Z])/g, '_$1').toLowerCase();
 
         switch (taskNameSnakeCase) {
-            case 'json_parse':
-                // Extract record count from binary parameter data
-                if (inputData && inputData.length >= 4) {
-                    const view = new DataView(inputData.buffer);
-                    const recordCount = view.getUint32(0, true);
-                    return { recordsProcessed: recordCount };
-                }
-                return {};
+            case 'json_parse': {
+                const recordCount = this._extractUint32(inputData);
+                return recordCount !== null ? { recordsProcessed: recordCount } : {};
+            }
 
-            case 'matrix_mul':
-                // Extract matrix dimensions from binary parameter data
-                if (inputData && inputData.length >= 4) {
-                    const view = new DataView(inputData.buffer);
-                    const dimension = view.getUint32(0, true);
-                    return { resultDimensions: [dimension, dimension] };
-                }
-                return {};
+            case 'matrix_mul': {
+                const dimension = this._extractUint32(inputData);
+                return dimension !== null ? { resultDimensions: [dimension, dimension] } : {};
+            }
 
             case 'mandelbrot':
-                // Mandelbrot doesn't need additional fields for current tests
                 return {};
 
             default:
@@ -550,19 +581,12 @@ export class BenchmarkRunner {
             throw new Error('Mandelbrot width and height must be positive integers');
         }
 
-        const maxIter = scaleConfig.maxIter || scaleConfig.maxIter || 100;
+        const maxIter = scaleConfig.maxIter || MANDELBROT_CONSTANTS.DEFAULT_MAX_ITER;
         if (maxIter <= 0) {
             throw new Error('Mandelbrot maxIter must be a positive integer');
         }
 
-        // Constants for Mandelbrot calculation
-        // Width(4) + Height(4) + MaxIter(4) + Padding(4) + CenterReal(8) + CenterImag(8) + ScaleFactor(8)
-        const MANDELBROT_BUFFER_SIZE = 40;
-        const MANDELBROT_CENTER_REAL = -0.743643887037;
-        const MANDELBROT_CENTER_IMAG = 0.131825904205;
-        const MANDELBROT_SCALE_FACTOR = 3.0; // Zoom level for the Mandelbrot set view
-
-        const params = new ArrayBuffer(MANDELBROT_BUFFER_SIZE);
+        const params = new ArrayBuffer(MANDELBROT_CONSTANTS.BUFFER_SIZE);
         const view = new DataView(params);
 
         // MandelbrotParams struct layout matching Rust: Width, Height, MaxIter, CenterReal, CenterImag, ScaleFactor
@@ -570,50 +594,55 @@ export class BenchmarkRunner {
         view.setUint32(4, scaleConfig.height, true);     // Height: uint32
         view.setUint32(8, maxIter, true);                // MaxIter: uint32
         view.setUint32(12, 0, true);                     // Padding for 8-byte alignment
-        view.setFloat64(16, MANDELBROT_CENTER_REAL, true);  // CenterReal: float64
-        view.setFloat64(24, MANDELBROT_CENTER_IMAG, true);  // CenterImag: float64
-        view.setFloat64(32, MANDELBROT_SCALE_FACTOR, true); // ScaleFactor: float64
+        view.setFloat64(16, MANDELBROT_CONSTANTS.CENTER_REAL, true);  // CenterReal: float64
+        view.setFloat64(24, MANDELBROT_CONSTANTS.CENTER_IMAG, true);  // CenterImag: float64
+        view.setFloat64(32, MANDELBROT_CONSTANTS.SCALE_FACTOR, true); // ScaleFactor: float64
 
         return new Uint8Array(params);
     }
 
 
     /**
+     * Extract record count from scale config
+     * @param {Object} scaleConfig - Scale configuration
+     * @returns {number} Record count
+     * @throws {Error} If record count not found
+     * @private
+     */
+    _extractRecordCount(scaleConfig) {
+        // Test data generator format
+        if (scaleConfig.expectedProperties?.recordCount) {
+            return scaleConfig.expectedProperties.recordCount;
+        }
+        // Simple config format
+        if (scaleConfig.recordCount) {
+            return scaleConfig.recordCount;
+        }
+        throw new Error('JSON test data requires recordCount or pre-generated data structure');
+    }
+
+    /**
      * Generate JSON test data
      * @private
      */
     _generateJsonData(scaleConfig) {
-        // Handle both test data generator format and simple config format
-        let recordCount;
-
-        if (scaleConfig.data && scaleConfig.expectedProperties) {
-            // Test data generator format - extract record count
-            const { recordCount: expectedRecordCount } = scaleConfig.expectedProperties;
-            recordCount = expectedRecordCount;
-        } else if (scaleConfig.recordCount) {
-            // Simple config format - camelCase
-            const { recordCount: configRecordCount } = scaleConfig;
-            recordCount = configRecordCount;
-        } else {
-            throw new Error('JSON test data requires recordCount or pre-generated data structure');
-        }
+        const recordCount = this._extractRecordCount(scaleConfig);
 
         if (recordCount <= 0) {
             throw new Error('JSON test data requires positive recordCount parameter');
         }
-        if (recordCount > 1000000) {
-            throw new Error('JSON test data recordCount cannot exceed 1,000,000 for safety');
+        if (recordCount > BENCHMARK_LIMITS.MAX_JSON_RECORDS) {
+            throw new Error(`JSON test data recordCount cannot exceed ${BENCHMARK_LIMITS.MAX_JSON_RECORDS} for safety`);
         }
 
         try {
             // Create binary parameter structure for WASM module
             // The JSON task expects: [recordCount: u32, seed: u32]
-            const JSON_PARAMS_SIZE = 8; // 2 * 4 bytes
-            const params = new ArrayBuffer(JSON_PARAMS_SIZE);
+            const params = new ArrayBuffer(PARAM_BUFFER_SIZES.JSON);
             const view = new DataView(params);
 
             view.setUint32(0, recordCount, true); // recordCount
-            view.setUint32(4, this.randomSeed || 12345, true); // seed
+            view.setUint32(4, this.randomSeed || MEASUREMENT_CONSTANTS.DEFAULT_RANDOM_SEED, true); // seed
 
             return new Uint8Array(params);
         } catch (error) {
@@ -622,42 +651,49 @@ export class BenchmarkRunner {
     }
 
     /**
+     * Extract matrix dimension from scale config
+     * @param {Object} scaleConfig - Scale configuration
+     * @returns {number} Matrix dimension
+     * @throws {Error} If dimension not found
+     * @private
+     */
+    _extractMatrixDimension(scaleConfig) {
+        // Test data generator format
+        if (scaleConfig.expectedProperties?.dimensions?.[0]) {
+            return scaleConfig.expectedProperties.dimensions[0];
+        }
+        // Simple config format
+        if (scaleConfig.dimension) {
+            return scaleConfig.dimension;
+        }
+        // Alternative naming
+        if (scaleConfig.size) {
+            return scaleConfig.size;
+        }
+        throw new Error('Matrix test data requires dimension parameter');
+    }
+
+    /**
      * Generate matrix multiplication data
      * @private
      */
     _generateMatrixData(scaleConfig) {
-        // Handle both test data generator format and simple config format
-        let dimension;
-
-        if (scaleConfig.expectedProperties && scaleConfig.expectedProperties.dimensions) {
-            // Test data generator format - extract dimension from expected properties
-            dimension = scaleConfig.expectedProperties.dimensions[0]; // Square matrix
-        } else if (scaleConfig.dimension) {
-            // Simple config format
-            const { dimension: configDimension } = scaleConfig;
-            dimension = configDimension;
-        } else if (scaleConfig.size) {
-            // Alternative naming convention
-            dimension = scaleConfig.size;
-        } else {
-            throw new Error('Matrix test data requires dimension parameter');
-        }
+        const dimension = this._extractMatrixDimension(scaleConfig);
 
         if (dimension <= 0) {
             throw new Error('Matrix dimension must be positive');
         }
-        if (dimension > 2000) {
-            throw new Error('Matrix dimension cannot exceed 2000 for safety');
+        if (dimension > BENCHMARK_LIMITS.MAX_MATRIX_DIMENSION) {
+            throw new Error(`Matrix dimension cannot exceed ${BENCHMARK_LIMITS.MAX_MATRIX_DIMENSION} for safety`);
         }
 
         // Create binary parameter structure for WASM module
         // The matrix task expects: MatrixMulParams { dimension: u32, seed: u32 }
-        const MATRIX_PARAMS_SIZE = 8; // 2 * 4 bytes
-        const params = new ArrayBuffer(MATRIX_PARAMS_SIZE);
+        const params = new ArrayBuffer(PARAM_BUFFER_SIZES.MATRIX);
         const view = new DataView(params);
 
         view.setUint32(0, dimension, true); // dimension: u32
-        view.setUint32(4, this.randomSeed || 12345, true); // seed: u32
+        view.setUint32(4, this.randomSeed || MEASUREMENT_CONSTANTS.DEFAULT_RANDOM_SEED, true); // seed: u32
 
         return new Uint8Array(params);
     }
@@ -701,17 +737,17 @@ export class BenchmarkRunner {
         if (!scale || typeof scale !== 'string') {
             throw new Error('runTaskBenchmark: scale must be a non-empty string');
         }
-        if (warmupRuns && (typeof warmupRuns !== 'number' || warmupRuns < 0 || warmupRuns > this.MAX_RUNS)) {
-            throw new Error(`runTaskBenchmark: warmupRuns must be between 0 and ${this.MAX_RUNS}`);
+        if (warmupRuns && (typeof warmupRuns !== 'number' || warmupRuns < 0 || warmupRuns > BENCHMARK_LIMITS.MAX_RUNS)) {
+            throw new Error(`runTaskBenchmark: warmupRuns must be between 0 and ${BENCHMARK_LIMITS.MAX_RUNS}`);
         }
-        if (measureRuns && (typeof measureRuns !== 'number' || measureRuns <= 0 || measureRuns > this.MAX_RUNS)) {
-            throw new Error(`runTaskBenchmark: measureRuns must be between 1 and ${this.MAX_RUNS}`);
+        if (measureRuns && (typeof measureRuns !== 'number' || measureRuns <= 0 || measureRuns > BENCHMARK_LIMITS.MAX_RUNS)) {
+            throw new Error(`runTaskBenchmark: measureRuns must be between 1 and ${BENCHMARK_LIMITS.MAX_RUNS}`);
         }
-        if (repetitions && (typeof repetitions !== 'number' || repetitions <= 0 || repetitions > 10)) {
-            throw new Error('runTaskBenchmark: repetitions must be between 1 and 10');
+        if (repetitions && (typeof repetitions !== 'number' || repetitions <= 0 || repetitions > BENCHMARK_LIMITS.MAX_REPETITIONS)) {
+            throw new Error(`runTaskBenchmark: repetitions must be between 1 and ${BENCHMARK_LIMITS.MAX_REPETITIONS}`);
         }
-        if (timeout && (typeof timeout !== 'number' || timeout <= 0 || timeout > this.MAX_CONFIG_TIMEOUT)) {
-            throw new Error(`runTaskBenchmark: timeout must be between 1 and ${this.MAX_CONFIG_TIMEOUT}ms`);
+        if (timeout && (typeof timeout !== 'number' || timeout <= 0 || timeout > BENCHMARK_LIMITS.MAX_TIMEOUT_MS)) {
+            throw new Error(`runTaskBenchmark: timeout must be between 1 and ${BENCHMARK_LIMITS.MAX_TIMEOUT_MS}ms`);
         }
 
         this.isRunning = true;

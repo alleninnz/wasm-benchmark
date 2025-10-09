@@ -5,8 +5,14 @@
 
 import chalk from 'chalk';
 import { ILoggingService } from '../interfaces/ILoggingService.js';
-// Temporarily comment out to debug hang issue
-// import { TerminalProgressUI } from '../utils/TerminalProgressUI.js';
+
+// Log level priorities
+const LOG_LEVELS = {
+    ERROR: 0,
+    WARN: 1,
+    INFO: 2,
+    DEBUG: 3
+};
 
 export class LoggingService extends ILoggingService {
     constructor(options = {}) {
@@ -16,13 +22,8 @@ export class LoggingService extends ILoggingService {
         this.enableTimestamp = options.enableTimestamp === true;
         this.prefix = options.prefix || '';
 
-        // Log levels hierarchy: error < warn < info < debug
-        this.levels = {
-            error: 0,
-            warn: 1,
-            info: 2,
-            debug: 3
-        };
+        // Use shared log level constants
+        this.levels = LOG_LEVELS;
 
         // Progress UI integration
         this.progressUI = null;
@@ -34,7 +35,9 @@ export class LoggingService extends ILoggingService {
      * @returns {boolean}
      */
     shouldLog(level) {
-        return this.levels[level] <= this.levels[this.logLevel];
+        const levelValue = this.levels[level.toUpperCase()] ?? this.levels.INFO;
+        const currentLevelValue = this.levels[this.logLevel.toUpperCase()] ?? this.levels.INFO;
+        return levelValue <= currentLevelValue;
     }
 
     /**
@@ -66,30 +69,53 @@ export class LoggingService extends ILoggingService {
     }
 
     /**
+     * Generic log method with level-specific handling
+     * @param {string} level - Log level
+     * @param {string} message - Message to log
+     * @param {Array} args - Additional arguments
+     * @param {Function} outputFn - Console output function
+     * @private
+     */
+    _log(level, message, args, outputFn = console.log) {
+        if (!this.shouldLog(level)) return;
+
+        // Route to progress UI if enabled
+        if (this.progressUI) {
+            this.progressUI.log(level, this._formatMessage(message, args));
+            return;
+        }
+
+        const formattedMessage = this.enableColors
+            ? this._getColoredLevel(level)
+            : `[${level.toUpperCase()}]`;
+
+        outputFn(`${this.getTimestamp()}${this.getPrefix()}${formattedMessage} ${message}`, ...args);
+    }
+
+    /**
+     * Get colored level label
+     * @param {string} level - Log level
+     * @returns {string} Colored level label
+     * @private
+     */
+    _getColoredLevel(level) {
+        const colorMap = {
+            info: chalk.blue('[INFO]'),
+            success: chalk.green('[SUCCESS]'),
+            warn: chalk.yellow('[WARNING]'),
+            error: chalk.red('[ERROR]'),
+            debug: chalk.gray('[DEBUG]')
+        };
+        return colorMap[level] || chalk.white(`[${level.toUpperCase()}]`);
+    }
+
+    /**
      * Log info message
      * @param {string} message - Message to log
      * @param {...any} args - Additional arguments
      */
     info(message, ...args) {
-        if (!this.shouldLog('info')) return;
-
-        // Route to progress UI if enabled
-        if (this.progressUI) {
-            this.progressUI.log('info', this._formatMessage(message, args));
-            return;
-        }
-
-        const formattedMessage = this.enableColors
-            ? chalk.blue('[INFO]')
-            : '[INFO]';
-
-        console.log(
-            `${this.getTimestamp() +
-            this.getPrefix() +
-            formattedMessage} ${
-                message}`,
-            ...args
-        );
+        this._log('info', message, args, console.log);
     }
 
     /**
@@ -98,25 +124,7 @@ export class LoggingService extends ILoggingService {
      * @param {...any} args - Additional arguments
      */
     success(message, ...args) {
-        if (!this.shouldLog('info')) return;
-
-        // Route to progress UI if enabled
-        if (this.progressUI) {
-            this.progressUI.log('success', this._formatMessage(message, args));
-            return;
-        }
-
-        const formattedMessage = this.enableColors
-            ? chalk.green('[SUCCESS]')
-            : '[SUCCESS]';
-
-        console.log(
-            `${this.getTimestamp() +
-            this.getPrefix() +
-            formattedMessage} ${
-                message}`,
-            ...args
-        );
+        this._log('success', message, args, console.log);
     }
 
     /**
@@ -125,25 +133,7 @@ export class LoggingService extends ILoggingService {
      * @param {...any} args - Additional arguments
      */
     warn(message, ...args) {
-        if (!this.shouldLog('warn')) return;
-
-        // Route to progress UI if enabled
-        if (this.progressUI) {
-            this.progressUI.log('warn', this._formatMessage(message, args));
-            return;
-        }
-
-        const formattedMessage = this.enableColors
-            ? chalk.yellow('[WARNING]')
-            : '[WARNING]';
-
-        console.warn(
-            `${this.getTimestamp() +
-            this.getPrefix() +
-            formattedMessage} ${
-                message}`,
-            ...args
-        );
+        this._log('warn', message, args, console.warn);
     }
 
     /**
@@ -152,25 +142,7 @@ export class LoggingService extends ILoggingService {
      * @param {...any} args - Additional arguments
      */
     error(message, ...args) {
-        if (!this.shouldLog('error')) return;
-
-        // Route to progress UI if enabled
-        if (this.progressUI) {
-            this.progressUI.log('error', this._formatMessage(message, args));
-            return;
-        }
-
-        const formattedMessage = this.enableColors
-            ? chalk.red('[ERROR]')
-            : '[ERROR]';
-
-        console.error(
-            `${this.getTimestamp() +
-            this.getPrefix() +
-            formattedMessage} ${
-                message}`,
-            ...args
-        );
+        this._log('error', message, args, console.error);
     }
 
     /**
@@ -179,25 +151,7 @@ export class LoggingService extends ILoggingService {
      * @param {...any} args - Additional arguments
      */
     debug(message, ...args) {
-        if (!this.shouldLog('debug')) return;
-
-        // Route to progress UI if enabled
-        if (this.progressUI) {
-            this.progressUI.log('debug', this._formatMessage(message, args));
-            return;
-        }
-
-        const formattedMessage = this.enableColors
-            ? chalk.gray('[DEBUG]')
-            : '[DEBUG]';
-
-        console.log(
-            `${this.getTimestamp() +
-            this.getPrefix() +
-            formattedMessage} ${
-                message}`,
-            ...args
-        );
+        this._log('debug', message, args, console.log);
     }
 
     /**
