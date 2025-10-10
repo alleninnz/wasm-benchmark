@@ -732,7 +732,7 @@ ifeq ($(PYTHON_MODE),true)
 	@python_files="$(call find_python_files)"; \
 	if [ -n "$$python_files" ]; then \
 		$(call log_info,Using black for Python formatting...,shell); \
-		python3 -m black . --exclude="$(NODE_MODULES)|__pycache__"; \
+		python3 -m black . --exclude="$(NODE_MODULES)|__pycache__|.venv"; \
 		$(call log_success,🐍 Python code formatted with black,shell); \
 	else \
 		$(call log_warning,No Python files found, skipping Python format,shell); \
