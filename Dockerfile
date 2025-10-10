@@ -15,13 +15,14 @@ ARG TZ=Pacific/Auckland
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=${TZ} \
-    # Browser configuration for headless mode with real Chromium
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    LANGUAGE=C.UTF-8 \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/local/bin/chromium \
     CHROME_BIN=/usr/local/bin/chromium \
     CHROMIUM_BIN=/usr/local/bin/chromium \
     DISPLAY=:99 \
-    # Path configuration
     RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:/usr/local/go/bin:/usr/local/bin:/usr/bin:$PATH
@@ -103,8 +104,15 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*; \
     echo "Timezone configured: $(date)"
 
-# Install Poetry (no cache) - Ubuntu 24.04 requires --break-system-packages
-RUN python3 -m pip install --no-cache-dir --break-system-packages poetry
+# Install uv (standalone binary for fast Python package management)
+RUN set -eux; \
+    curl -LsSf https://astral.sh/uv/install.sh | sh; \
+    # Add uv to PATH for current session
+    . "$HOME/.local/bin/env"; \
+    # Symlink to system location for persistence
+    ln -sf "$HOME/.local/bin/uv" /usr/local/bin/uv; \
+    # Verify installation
+    uv --version
 
 # Install Go
 RUN set -eux; \
@@ -224,17 +232,13 @@ RUN if [ -f package-lock.json ]; then \
     fi
 
 # Copy Python packaging files separately so Python deps can cache independently
-COPY pyproject.toml poetry.lock* /app/
+COPY pyproject.toml uv.lock /app/
 
-# Configure Poetry to install into the system environment (inside the container)
-ENV POETRY_VIRTUALENVS_CREATE=false \
-    POETRY_CACHE_DIR=/root/.cache/pypoetry
-
-# Install Python dependencies with Poetry
+# Install Python dependencies with uv
 RUN if [ -f pyproject.toml ]; then \
-    poetry install --only main --no-interaction --no-ansi --no-root; \
+    uv sync --frozen --no-dev; \
     else \
-    echo "no pyproject.toml found, skipping poetry step"; \
+    echo "no pyproject.toml found, skipping uv step"; \
     fi
 
 # Copy source code

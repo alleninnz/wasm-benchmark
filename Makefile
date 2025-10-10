@@ -358,7 +358,7 @@ endif
 	$(MAKE) versions.lock
 	$(MAKE) check deps
 	$(call require_file,pyproject.toml,Python project configuration missing - check repository integrity)
-	$(call safe_execute,poetry install,Installing Python dependencies,🐍 Python dependencies installed)
+	$(call safe_execute,uv sync,Installing Python dependencies,🐍 Python dependencies installed)
 	$(call log_success,🎉 Environment initialized successfully)
 	$(call log_info,Ready to run: make build)
 
@@ -441,7 +441,7 @@ else
 ifeq ($(QUICK_MODE),true)
 	$(call log_step,Running quick benchmark suite for development feedback...)
 	node scripts/run_bench.js --quick
-	$(call log_success,⚡ Quick benchmarks completed - results saved with timestamp)
+	$(call log_success,⚡ Quick benchmarks completed)
 else ifeq ($(HEADED_MODE),true)
 	$(call log_step,Running benchmarks with headed browser...)
 	node scripts/run_bench.js --headed
@@ -588,7 +588,7 @@ clean: ## Clean everything including dependencies, results, and caches
 		rm -f $(CONFIGS_DIR)/bench.json $(CONFIGS_DIR)/bench-quick.json 2>/dev/null || true; \
 		rm -f versions.lock 2>/dev/null || true; \
 		rm -f package-lock.json 2>/dev/null || true; \
-		rm -f poetry.lock 2>/dev/null || true; \
+		rm -f uv.lock 2>/dev/null || true; \
 		rm -f meta.json 2>/dev/null || true; \
 		rm -f *.log 2>/dev/null || true; \
 		rm -f test-results.json 2>/dev/null || true; \

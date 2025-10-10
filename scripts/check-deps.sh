@@ -130,7 +130,7 @@ main() {
         all_deps_ok=false
     fi
 
-    check_dependency "poetry"  "📦" "0.0.0"   "poetry --version"   '[0-9]+\.[0-9]+\.[0-9]+' || all_deps_ok=false
+    check_dependency "uv"      "📦" "0.0.0"   "uv --version"       '[0-9]+\.[0-9]+\.[0-9]+' || all_deps_ok=false
 
     echo ""
     log_info "🔧 Optional WebAssembly Tools:"
