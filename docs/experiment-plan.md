@@ -9,9 +9,9 @@
 
 ### 实验环境
 
-**硬件：** MacBook Pro M4 10-Core CPU, 16GB RAM
-**操作系统：** macOS 15.6+ (Darwin/arm64)
-**浏览器：** Headless Chromium v140+ (Puppeteer 24.22.0)
+- **硬件：** AWS EC2 c7g.2xlarge (4 CPU, 16GB RAM)
+- **操作系统：** Ubuntu 22.04 (Linux/x86_64)
+- **浏览器：** Headless Chromium v140+ (Puppeteer 24.22.0)
 
 **语言工具链：**
 

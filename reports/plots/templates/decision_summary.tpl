@@ -952,8 +952,8 @@
                 <div class="technical-grid">
                     <div class="technical-details">
                         <h4>🖥️ Experimental Environment</h4>
-                        <p><strong>Hardware:</strong> MacBook Pro M4 10Core CPU 16GB RAM</p>
-                        <p><strong>Operating System:</strong> macOS 15.6+</p>
+                        <p><strong>Hardware:</strong> AWS EC2 c7g.2xlarge (4 CPU, 16GB RAM)</p>
+                        <p><strong>Operating System:</strong> Ubuntu 22.04 (Linux/x86_64)</p>
                         <p><strong>Browser:</strong> Headless Chromium 140+ (Puppeteer 24+)</p>
                         <p><strong>Language Toolchains:</strong></p>
                         <ul>

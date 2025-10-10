@@ -9,9 +9,9 @@
 
 ### Experimental Environment
 
-**Hardware:** MacBook Pro M4 10-Core CPU, 16GB RAM
-**Operating System:** macOS 15.6+ (Darwin/arm64)
-**Browser:** Headless Chromium v140+ (Puppeteer 24.22.0)
+- **Hardware:** AWS EC2 c7g.2xlarge (4 CPU, 16GB RAM)
+- **OS:** Ubuntu 22.04 (Linux/x86_64)
+- **Browser:** Headless Chromium v140+ (Puppeteer 24.22.0)
 
 **Language Toolchains:**
 
