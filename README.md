@@ -188,20 +188,6 @@ make docker help               # Display help information
 - **Reports**: Analysis outputs available in `reports/` directory
 - **Environment**: Toolchain versions locked in container
 
-### 🔧 Advanced Configuration
-
-```bash
-# Build flags (combine as needed)
-make docker build rust parallel no-checksums
-
-# Run flags
-make docker run quick          # Development mode
-# Custom timeout and concurrency available via configuration
-
-# Test flags
-make docker test validate      # Run WASM validation tests
-```
-
 ### ⚡ Benefits
 
 - **Zero configuration**: All dependencies pre-installed and configured
