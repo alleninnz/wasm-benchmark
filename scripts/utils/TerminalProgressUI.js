@@ -356,16 +356,14 @@ export class TerminalProgressUI {
     }
 
     /**
-     * Show completion message and wait for user to exit
-     * @returns {Promise<void>}
+     * Display completion message and wait for user input
+     * @returns {Promise<void>} Resolves when user presses ESC or Ctrl+C
      */
-    async waitForExit() {
-        if (!this.screen) return;
-
-        // Update progress to 100% and show completion message
-        this.completedTasks = this.totalTasks;
-        this.currentTask = '✓ All benchmarks completed!';
-        this.renderProgress();
+    async waitForCompletion() {
+        // Remove the default Ctrl+C handler that exits immediately
+        // This allows the new handler below to work correctly
+        this.screen.unkey(['C-c']);
+        this.screen.unkey(['q']);
 
         // Add completion message to logs
         this.log('success', '========================================');
@@ -375,9 +373,9 @@ export class TerminalProgressUI {
 
         this.screen.render();
 
-        // Wait for user input
+        // Wait for user input with new handlers that allow graceful exit
         return new Promise(resolve => {
-            this.screen.key(['escape', 'C-c'], () => {
+            this.screen.key(['escape', 'C-c', 'q'], () => {
                 resolve();
             });
         });

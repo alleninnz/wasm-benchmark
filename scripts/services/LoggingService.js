@@ -326,7 +326,7 @@ export class LoggingService extends ILoggingService {
      */
     async waitForProgressUIExit() {
         if (this.progressUI) {
-            await this.progressUI.waitForExit();
+            await this.progressUI.waitForCompletion();
         }
     }
 
