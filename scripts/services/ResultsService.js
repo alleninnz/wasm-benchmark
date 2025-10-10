@@ -314,6 +314,11 @@ export class ResultsService extends IResultsService {
         }
 
         try {
+            // Validate results exist before saving
+            if (!this.results || this.results.length === 0) {
+                console.warn('[ResultsService] Warning: No results to save. Results array is empty.');
+            }
+
             // Ensure directory exists
             const dir = path.dirname(filepath);
             await fs.mkdir(dir, { recursive: true });
@@ -323,7 +328,10 @@ export class ResultsService extends IResultsService {
 
             // Write to file
             await fs.writeFile(filepath, content, 'utf8');
+
+            console.log(`[ResultsService] Successfully saved ${this.results.length} results to ${filepath}`);
         } catch (error) {
+            console.error(`[ResultsService] Failed to save results to ${filepath}:`, error);
             throw new Error(`Failed to save results to ${filepath}: ${error.message}`);
         }
     }

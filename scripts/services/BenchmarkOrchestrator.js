@@ -660,8 +660,6 @@ export class BenchmarkOrchestrator extends IBenchmarkOrchestrator {
         await this.resultsService.saveToFile(filepath, actualFormat, {
             saveMetadata: outputConfig.detailed || false
         });
-
-        this.logger.info(`Results saved to: ${filepath}`);
     }
 
     /**
