@@ -519,7 +519,7 @@ Generated in `reports/plots/`:
 - **`memory_usage_comparison.png`**: Memory consumption patterns with GC impact analysis
 - **`effect_size_heatmap.png`**: Cohen's d effect size visualization with color-coded significance levels
 - **`distribution_variance_analysis.png`**: Side-by-side box plots showing performance consistency and variance patterns
-- **`decision_summary.html`**: Interactive HTML dashboard with comprehensive analysis results
+- `decision_summary.html`: Interactive HTML dashboard with comprehensive analysis results - [View Online](https://alleninnz.github.io/wasm-benchmark-site/)
 
 ### 🔄 **Analysis Pipeline**
 
