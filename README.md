@@ -62,7 +62,7 @@ make all         # Complete research-grade pipeline
 | **Rust** | 1.90+ | WASM compilation with `wasm32-unknown-unknown` target |
 | **TinyGo** | 0.39+ | Go-to-WASM compilation |
 | **Node.js** | 24+ | Test harness and automation |
-| **Python** | 3.11+ | Statistical analysis with Poetry |
+| **Python** | 3.11+ | Statistical analysis with uv |
 | **Binaryen** | Latest | `wasm-opt` optimization |
 | **WABT** | Latest | `wasm-strip` binary processing |
 
@@ -121,7 +121,7 @@ For the easiest setup experience, use the provided Docker containerization that 
 The Docker container includes:
 
 - **Pre-installed toolchains**: Rust 1.90, TinyGo 0.39, Go 1.25.1, Node.js 24.7, Python 3.11+
-- **All dependencies**: Poetry, npm packages, system libraries
+- **All dependencies**: uv, npm packages, system libraries
 - **Isolated workspace**: Persistent data volumes for results and builds
 - **Development tools**: Full development environment with debugging capabilities
 
@@ -341,7 +341,7 @@ wasm-benchmark/
 │   └── tinygo/                # Optimized TinyGo WASM files
 ├── meta.json                  # Experiment metadata
 ├── versions.lock              # Toolchain version lock
-├── pyproject.toml            # Python dependencies (Poetry)
+├── pyproject.toml            # Python dependencies (uv)
 ├── package.json              # Node.js dependencies
 ├── vitest.config.js          # Test framework configuration
 ├── eslint.config.js          # Code quality configuration
@@ -456,7 +456,7 @@ The framework uses **FNV-1a Hash** algorithm to verify that both Rust and TinyGo
 **Locked Versions:**
 
 - All toolchain versions recorded (`versions.lock`)
-- Dependency versions pinned (`package-lock.json`, `poetry.lock`)
+- Dependency versions pinned (`package-lock.json`, `uv.lock`)
 - System information captured (`meta.json`)
 - Random seeds fixed for deterministic data generation
 

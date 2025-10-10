@@ -11,7 +11,7 @@
 - Node.js 测试工具链，使用 Puppeteer 浏览器自动化 (v24.22.0)
 - Python 统计分析管道，使用 NumPy 2.3+、SciPy 1.10+、Matplotlib 3.6+
 - 基于 Make 的自动化系统，具有面向服务的架构（5个核心服务）
-- Poetry 用于 Python 依赖管理
+- uv 用于 Python 依赖管理
 - Vitest 用于 JavaScript 测试框架（ConfigurationService、BrowserService、ResultsService）
 
 ### 📁 项目结构
@@ -201,10 +201,10 @@ make build → make run → make analyze
 **安装的依赖项**：
 
 - 通过 npm ci 安装 Node.js 包（chalk、puppeteer、yaml、eslint、express、vitest）
-- 通过 Poetry 安装 Python 包（numpy、matplotlib、scipy、pyyaml、black、ruff）
+- 通过 uv 安装 Python 包（numpy、matplotlib、scipy、pyyaml、black、ruff）
 - 环境指纹（versions.lock、meta.json）
 
-**常见问题**：网络连接、Poetry 未安装、权限问题
+**常见问题**：网络连接、uv 未安装、权限问题
 
 #### make build
 
@@ -250,7 +250,7 @@ make build → make run → make analyze
 - `make qc` - 完整质量控制分析
 - `make qc quick` - 开发快速质量控制
 
-**常见问题**：缺少 Python 依赖项、无结果数据、Poetry 环境问题
+**常见问题**：缺少 Python 依赖项、无结果数据、uv 环境问题
 
 #### make validate
 
@@ -276,7 +276,7 @@ make build → make run → make analyze
 - `make stats` - 完整统计分析
 - `make stats quick` - 开发快速统计分析
 
-**常见问题**：缺少 Python 依赖项、Poetry 未初始化
+**常见问题**：缺少 Python 依赖项、uv 未初始化
 
 #### make plots
 
@@ -303,7 +303,7 @@ make build → make run → make analyze
 - `make analyze` - 完整分析管道
 - `make analyze quick` - 开发快速分析
 
-**常见问题**：缺少 Python 依赖项、Poetry 未初始化、matplotlib 显示问题
+**常见问题**：缺少 Python 依赖项、uv 未初始化、matplotlib 显示问题
 
 #### make all
 
@@ -331,7 +331,7 @@ make build → make run → make analyze
 - 生成的配置文件（bench.json、bench-quick.json）
 - 报告和图表（除了 templates/）
 - 结果目录
-- 环境锁文件（versions.lock、poetry.lock、package-lock.json）
+- 环境锁文件（versions.lock、uv.lock、package-lock.json）
 - 元数据文件（meta.json）
 - 日志文件（*.log、dev-server.log）
 - 缓存文件（.cache.*）

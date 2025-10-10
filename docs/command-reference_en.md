@@ -11,7 +11,7 @@ This document provides a comprehensive guide for developers taking over the WebA
 - Node.js test harness with Puppeteer browser automation (v24.22.0)
 - Python statistical analysis pipeline with NumPy 2.3+, SciPy 1.10+, Matplotlib 3.6+
 - Make-based automation system with service-oriented architecture (5 core services)
-- Poetry for Python dependency management
+- uv for Python dependency management
 - Vitest for JavaScript testing framework (ConfigurationService, BrowserService, ResultsService)
 
 ### 📁 Project Structure
@@ -201,10 +201,10 @@ Detailed analysis of single benchmark task
 **Dependencies Installed**:
 
 - Node.js packages via npm ci (chalk, puppeteer, yaml, eslint, express, vitest)
-- Python packages via Poetry (numpy, matplotlib, scipy, pyyaml, black, ruff)
+- Python packages via uv (numpy, matplotlib, scipy, pyyaml, black, ruff)
 - Environment fingerprint (versions.lock, meta.json)
 
-**Common Issues**: Network connectivity, Poetry not installed, permission issues
+**Common Issues**: Network connectivity, uv not installed, permission issues
 
 #### make build
 
@@ -250,7 +250,7 @@ Detailed analysis of single benchmark task
 - `make qc` - Full quality control analysis
 - `make qc quick` - Quick quality control for development
 
-**Common Issues**: Missing Python dependencies, no results data, Poetry environment issues
+**Common Issues**: Missing Python dependencies, no results data, uv environment issues
 
 #### make validate
 
@@ -276,7 +276,7 @@ Detailed analysis of single benchmark task
 - `make stats` - Full statistical analysis
 - `make stats quick` - Quick statistical analysis for development
 
-**Common Issues**: Missing Python dependencies, Poetry not initialized
+**Common Issues**: Missing Python dependencies, uv not initialized
 
 #### make plots
 
@@ -303,7 +303,7 @@ Detailed analysis of single benchmark task
 - `make analyze` - Full analysis pipeline
 - `make analyze quick` - Quick analysis for development
 
-**Common Issues**: Missing Python dependencies, Poetry not initialized, matplotlib display issues
+**Common Issues**: Missing Python dependencies, uv not initialized, matplotlib display issues
 
 #### make all
 
@@ -331,7 +331,7 @@ Detailed analysis of single benchmark task
 - Generated configuration files (bench.json, bench-quick.json)
 - Reports and plots (except templates/)
 - Results directories
-- Environment locks (versions.lock, poetry.lock, package-lock.json)
+- Environment locks (versions.lock, uv.lock, package-lock.json)
 - Metadata files (meta.json)
 - Log files (*.log, dev-server.log)
 - Cache files (.cache.*)

@@ -49,7 +49,7 @@ run: $(NODE_MODULES) ## Run browser benchmark suite (use quick headed for option
 ifeq ($(QUICK_MODE),true)
  $(call log_step,Running quick benchmark suite for development feedback...)
  node scripts/run_bench.js --quick
- $(call log_success,⚡ Quick benchmarks completed - results saved with timestamp)
+ $(call log_success,⚡ Quick benchmarks completed)
 else
  ...
 endif
@@ -159,7 +159,7 @@ tasks:
 ```bash
  $(call check_script_exists,scripts/run_bench.js)
  node scripts/run_bench.js --quick
- $(call log_success,Quick benchmarks completed - results saved with timestamp)
+ $(call log_success,Quick benchmarks completed)
 
 ```
 
