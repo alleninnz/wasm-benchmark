@@ -296,13 +296,34 @@ main() {
     # Create build directory
     mkdir -p "${BUILDS_DIR}"
     
-    # Generate configuration JSON from YAML
-    log_info "Generating configuration JSON from YAML..."
-    if ! node "${SCRIPT_DIR}/build_config.js"; then
-        log_error "Failed to generate configuration JSON"
-        build_success=false
+    # Generate configuration JSONs from YAML (both normal and quick variants)
+    log_info "Generating configuration JSONs from YAML..."
+    local config_success=true
+
+    # Build both configurations in parallel for efficiency
+    node "${SCRIPT_DIR}/build_config.js" &
+    local pid_normal=$!
+    node "${SCRIPT_DIR}/build_config.js" --quick &
+    local pid_quick=$!
+
+    # Wait for both processes and check results
+    if wait "${pid_normal}"; then
+        log_success "✓ bench.json generated successfully"
     else
-        log_success "Configuration JSON generated successfully"
+        log_error "✗ Failed to generate bench.json"
+        config_success=false
+    fi
+
+    if wait "${pid_quick}"; then
+        log_success "✓ bench-quick.json generated successfully"
+    else
+        log_error "✗ Failed to generate bench-quick.json"
+        config_success=false
+    fi
+
+    if [[ "${config_success}" != "true" ]]; then
+        log_error "Configuration generation failed"
+        build_success=false
     fi
     
     # Build process

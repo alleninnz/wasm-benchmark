@@ -585,7 +585,7 @@ clean: ## Clean everything including dependencies, results, and caches
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		rm -rf $(NODE_MODULES) 2>/dev/null || true; \
 		rm -rf $(RESULTS_DIR)/* 2>/dev/null || true; \
-		rm -f $(CONFIGS_DIR)/bench.json $(CONFIGS_DIR)/bench-quick.json 2>/dev/null || true; \
+		rm -f $(CONFIGS_DIR)/*.json 2>/dev/null || true; \
 		rm -f versions.lock 2>/dev/null || true; \
 		rm -f package-lock.json 2>/dev/null || true; \
 		rm -f uv.lock 2>/dev/null || true; \
@@ -598,7 +598,7 @@ clean: ## Clean everything including dependencies, results, and caches
 		find $(TASKS_DIR) -name '*.wasm' -delete 2>/dev/null || true; \
 		find $(BUILDS_RUST_DIR) -type f ! -name '.gitkeep' -delete 2>/dev/null || true; \
 		find $(BUILDS_TINYGO_DIR) -type f ! -name '.gitkeep' -delete 2>/dev/null || true; \
-		rm -f $(BUILDS_DIR)/checksums.txt $(BUILDS_DIR)/sizes.csv $(BUILDS_DIR)/metrics.json 2>/dev/null || true; \
+		rm -f $(BUILDS_DIR)/*.txt $(BUILDS_DIR)/*.csv $(BUILDS_DIR)/*.json 2>/dev/null || true; \
 		find . -name "*.tmp" -delete 2>/dev/null || true; \
 		find . -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true; \
 		find . -name "*.pyc" -delete 2>/dev/null || true; \
