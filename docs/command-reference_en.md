@@ -200,7 +200,7 @@ Detailed analysis of single benchmark task
 
 **Dependencies Installed**:
 
-- Node.js packages via npm ci (chalk, puppeteer, yaml, eslint, express, vitest)
+- Node.js packages via pnpm install --frozen-lockfile (chalk, puppeteer, yaml, eslint, express, vitest)
 - Python packages via uv (numpy, matplotlib, scipy, pyyaml, black, ruff)
 - Environment fingerprint (versions.lock, meta.json)
 
@@ -331,7 +331,7 @@ Detailed analysis of single benchmark task
 - Generated configuration files (bench.json, bench-quick.json)
 - Reports and plots (except templates/)
 - Results directories
-- Environment locks (versions.lock, uv.lock, package-lock.json)
+- Environment locks (versions.lock, uv.lock, pnpm-lock.yaml)
 - Metadata files (meta.json)
 - Log files (*.log, dev-server.log)
 - Cache files (.cache.*)
@@ -413,7 +413,7 @@ Detailed analysis of single benchmark task
 
 - 🖥️ System Hardware: OS version, architecture, CPU cores, memory size
 - 🛠️ Compilation Toolchain: Make, Rust, Cargo, TinyGo, Go versions and availability
-- 🌍 Runtime Environment: Node.js, npm, Python versions, Puppeteer configuration status
+- 🌍 Runtime Environment: Node.js, pnpm, Python versions, Puppeteer configuration status
 - 🔧 WASM Tools: wasm-strip (wabt), wasm-opt (binaryen) availability status
 - 🧪 Benchmark Configuration: Config file location, available tasks, scales, quality settings (50 runs × 4 repetitions)
 - 📁 Project Info: Version, license, purpose, environment fingerprint hash
@@ -472,11 +472,11 @@ Detailed analysis of single benchmark task
 
 - `all` - Complete cleanup including images
 
-**Common Issues**: Docker not running, container startup failures, permission issues
+**Common Issues**: Docker not running, container start failure, permission issues
 
-### 📦 NPM Script Commands
+### 📦 PNPM Script Commands
 
-#### npm run dev
+#### pnpm run dev
 
 **Purpose**: Start development server with auto-opening browser
 **When to Use**: Interactive development and testing
@@ -484,15 +484,15 @@ Detailed analysis of single benchmark task
 **Server**: Runs on port 2025, logs to dev-server.log
 **Common Issues**: Port conflicts, browser opening failures
 
-#### npm run serve:port
+#### pnpm run serve:port
 
 **Purpose**: Start development server on specified port (uses PORT environment variable)
 **When to Use**: Server-only mode with custom port configuration
 **Prerequisites**: Dependencies installed
-**Example**: `PORT=3000 npm run serve:port`
+**Example**: `PORT=3000 pnpm run serve:port`
 **Common Issues**: Port already in use, environment variable issues
 
-#### npm run test
+#### pnpm run test
 
 **Purpose**: Run full test suite (JavaScript and Python) with verbose output
 **When to Use**: Comprehensive testing and validation
@@ -500,7 +500,7 @@ Detailed analysis of single benchmark task
 **Test Framework**: Vitest with 300s timeout
 **Common Issues**: Long execution time, environment dependencies
 
-#### npm run test:smoke
+#### pnpm run test:smoke
 
 **Purpose**: Quick validation tests for core functionality
 **When to Use**: Fast development feedback
@@ -508,7 +508,7 @@ Detailed analysis of single benchmark task
 **Test Framework**: Vitest with 10s timeout
 **Common Issues**: Browser automation setup issues
 
-#### npm run test:unit
+#### pnpm run test:unit
 
 **Purpose**: Run isolated unit tests
 **When to Use**: Testing specific components
@@ -516,7 +516,7 @@ Detailed analysis of single benchmark task
 **Test Framework**: Vitest with 5s timeout
 **Common Issues**: Test environment configuration
 
-#### npm run test:integration
+#### pnpm run test:integration
 
 **Purpose**: Run cross-language consistency tests
 **When to Use**: Validating language implementation consistency
@@ -568,7 +568,7 @@ make init
 
 # Development cycle
 make build config quick
-npm run dev &
+pnpm run dev &
 make run quick
 make qc quick
 make analyze quick

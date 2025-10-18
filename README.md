@@ -121,7 +121,7 @@ For the easiest setup experience, use the provided Docker containerization that 
 The Docker container includes:
 
 - **Pre-installed toolchains**: Rust 1.90, TinyGo 0.39, Go 1.25.1, Node.js 24.7, Python 3.11+
-- **All dependencies**: uv, npm packages, system libraries
+- **All dependencies**: uv, pnpm packages, system libraries
 - **Isolated workspace**: Persistent data volumes for results and builds
 - **Development tools**: Full development environment with debugging capabilities
 
@@ -442,7 +442,7 @@ The framework uses **FNV-1a Hash** algorithm to verify that both Rust and TinyGo
 **Locked Versions:**
 
 - All toolchain versions recorded (`versions.lock`)
-- Dependency versions pinned (`package-lock.json`, `uv.lock`)
+- Dependency versions pinned (`pnpm-lock.yaml`, `uv.lock`)
 - System information captured (`meta.json`)
 - Random seeds fixed for deterministic data generation
 

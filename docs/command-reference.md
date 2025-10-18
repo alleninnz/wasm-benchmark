@@ -200,7 +200,7 @@ make build → make run → make analyze
 
 **安装的依赖项**：
 
-- 通过 npm ci 安装 Node.js 包（chalk、puppeteer、yaml、eslint、express、vitest）
+- 通过 pnpm install --frozen-lockfile 安装 Node.js 包（chalk、puppeteer、yaml、eslint、express、vitest）
 - 通过 uv 安装 Python 包（numpy、matplotlib、scipy、pyyaml、black、ruff）
 - 环境指纹（versions.lock、meta.json）
 
@@ -331,7 +331,7 @@ make build → make run → make analyze
 - 生成的配置文件（bench.json、bench-quick.json）
 - 报告和图表（除了 templates/）
 - 结果目录
-- 环境锁文件（versions.lock、uv.lock、package-lock.json）
+- 环境锁文件（versions.lock、uv.lock、pnpm-lock.yaml）
 - 元数据文件（meta.json）
 - 日志文件（*.log、dev-server.log）
 - 缓存文件（.cache.*）
@@ -413,7 +413,7 @@ make build → make run → make analyze
 
 - 🖥️ 系统硬件：OS 版本、架构、CPU 核心数、内存大小
 - 🛠️ 编译工具链：Make、Rust、Cargo、TinyGo、Go 版本和可用性
-- 🌍 运行时环境：Node.js、npm、Python 版本、Puppeteer 配置状态
+- 🌍 运行时环境：Node.js、pnpm、Python 版本、Puppeteer 配置状态
 - 🔧 WASM 工具：wasm-strip (wabt)、wasm-opt (binaryen) 可用性状态
 - 🧪 基准测试配置：配置文件位置、可用任务、规模、质量设置（50 次运行 × 4 次重复）
 - 📁 项目信息：版本、许可证、目的、环境指纹哈希
@@ -474,9 +474,9 @@ make build → make run → make analyze
 
 **常见问题**：Docker 未运行、容器启动失败、权限问题
 
-### 📦 NPM 脚本命令
+### 📦 PNPM 脚本命令
 
-#### npm run dev
+#### pnpm run dev
 
 **目的**：启动开发服务器并自动打开浏览器
 **何时使用**：交互式开发和测试
@@ -484,15 +484,15 @@ make build → make run → make analyze
 **服务器**：在端口 2025 上运行，日志记录到 dev-server.log
 **常见问题**：端口冲突、浏览器打开失败
 
-#### npm run serve:port
+#### pnpm run serve:port
 
 **目的**：在指定端口上启动开发服务器（使用 PORT 环境变量）
 **何时使用**：仅服务器模式，使用自定义端口配置
 **先决条件**：依赖项已安装
-**示例**：`PORT=3000 npm run serve:port`
+**示例**：`PORT=3000 pnpm run serve:port`
 **常见问题**：端口已被使用、环境变量问题
 
-#### npm run test
+#### pnpm run test
 
 **目的**：运行完整测试套件（JavaScript 和 Python），带详细输出
 **何时使用**：全面测试和验证
@@ -500,7 +500,7 @@ make build → make run → make analyze
 **测试框架**：Vitest，300秒超时
 **常见问题**：执行时间长、环境依赖项
 
-#### npm run test:smoke
+#### pnpm run test:smoke
 
 **目的**：核心功能的快速验证测试
 **何时使用**：快速开发反馈
@@ -508,7 +508,7 @@ make build → make run → make analyze
 **测试框架**：Vitest，10秒超时
 **常见问题**：浏览器自动化设置问题
 
-#### npm run test:unit
+#### pnpm run test:unit
 
 **目的**：运行隔离的单元测试
 **何时使用**：测试特定组件
@@ -516,7 +516,7 @@ make build → make run → make analyze
 **测试框架**：Vitest，5秒超时
 **常见问题**：测试环境配置
 
-#### npm run test:integration
+#### pnpm run test:integration
 
 **目的**：运行跨语言一致性测试
 **何时使用**：验证语言实现一致性
@@ -568,7 +568,7 @@ make init
 
 # 开发周期
 make build config quick
-npm run dev &
+pnpm run dev &
 make run quick
 make qc quick
 make analyze quick

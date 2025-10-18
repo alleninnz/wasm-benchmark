@@ -187,7 +187,7 @@ sequenceDiagram
     participant WASM as WASM Module<br/>(Rust/TinyGo)
     participant Results as ResultsService
     
-    User->>CLI: npm run bench<br/>[--quick|--headed|--parallel]
+    User->>CLI: pnpm run bench<br/>[--quick|--headed|--parallel]
     
     rect rgb(240, 248, 255)
     Note over CLI,Orchestrator: ⚙️ Initialization Phase

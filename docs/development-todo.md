@@ -160,7 +160,7 @@
 - ✅ **重现性控制**
   - 固定随机种子确保确定性结果
   - 环境指纹识别 (`scripts/fingerprint.sh`)
-  - 版本锁定 (`versions.lock`, `package-lock.json`)
+  - 版本锁定 (`versions.lock`, `pnpm-lock.yaml`)
   - 完整系统配置记录
 
 - ✅ **质量保证**

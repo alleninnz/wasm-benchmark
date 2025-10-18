@@ -160,7 +160,7 @@
 - ✅ **Reproducibility Control**
   - Fixed random seeds for deterministic results
   - Environment fingerprinting (`scripts/fingerprint.sh`)
-  - Version locking (`versions.lock`, `package-lock.json`)
+  - Version locking (`versions.lock`, `pnpm-lock.yaml`)
   - Complete system configuration recording
 
 - ✅ **Quality Assurance**
