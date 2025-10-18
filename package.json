@@ -5,6 +5,7 @@
     "main": "harness/web/bench.js",
     "type": "module",
     "scripts": {
+        "preinstall": "npx only-allow pnpm",
         "dev": "node scripts/dev-server.js",
         "test": "WASM_BENCH_TEST_LEVEL=full vitest run tests --reporter=verbose --testTimeout=300000 && node tests/utils/prettify-test-results.js",
         "test:smoke": "WASM_BENCH_TEST_LEVEL=smoke vitest run tests/unit tests/integration/cross-language.test.js --testTimeout=10000 && node tests/utils/prettify-test-results.js",
@@ -45,8 +46,8 @@
         "vitest": "^3.2.4"
     },
     "engines": {
-        "node": ">=18.0.0",
-        "npm": ">=8.0.0"
+        "node": ">=18.18.0",
+        "pnpm": ">=9.0.0"
     },
     "homepage": "https://github.com/alleninnz/wasm-benchmark#readme"
 }
