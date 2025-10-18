@@ -3,9 +3,9 @@
  * Provides intelligent server status checking with test-level awareness
  */
 
-import http from 'http';
 import chalk from 'chalk';
 import { spawn } from 'child_process';
+import http from 'http';
 
 /**
  * Test levels that require a running server
@@ -86,7 +86,7 @@ async function startServer(port = null) {
         // In test environments, detach process to prevent signal inheritance
         const shouldDetach = isTestEnvironment();
 
-        serverProcess = spawn('npm', ['run', 'serve'], {
+        serverProcess = spawn('pnpm', ['run', 'serve'], {
             env: { ...process.env, PORT: targetPort.toString() },
             stdio: ['ignore', 'pipe', 'pipe'],
             detached: shouldDetach
@@ -313,9 +313,9 @@ async function validateServerIfNeeded(options = {}) {
         console.error('');
         console.error(chalk.yellow(`Error: ${error.message}`));
         console.error(chalk.yellow('Please start the server manually:'));
-        console.error(chalk.cyan('  npm run serve'));
+        console.error(chalk.cyan('  pnpm run serve'));
         console.error(chalk.gray('  # or with auto-open:'));
-        console.error(chalk.cyan('  npm run dev'));
+        console.error(chalk.cyan('  pnpm run dev'));
         console.error('');
 
         throw new Error(`Auto-start failed for ${testContext} tests: ${error.message}`);
@@ -325,10 +325,10 @@ async function validateServerIfNeeded(options = {}) {
 export {
     checkServerStatus,
     requiresServer,
-    validateServerIfNeeded,
+    SERVER_REQUIRED_LEVELS,
     startServer,
-    waitForServerReady,
-    SERVER_REQUIRED_LEVELS
+    validateServerIfNeeded,
+    waitForServerReady
 };
 
 // Default export for convenience
