@@ -172,7 +172,7 @@ Examples:
         // Ensure config exists
         if (!fs.existsSync(configPath)) {
             logger.error(`Configuration file not found: ${configPath}`);
-            logger.info(`Please run: npm run build:config${options.quick ? ' -- --quick' : ''}`);
+            logger.info(`Please run: pnpm run build:config${options.quick ? ' -- --quick' : ''}`);
             process.exit(1);
         }
 

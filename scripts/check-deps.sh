@@ -114,6 +114,7 @@ main() {
 
     check_dependency "tinygo"  "🐹" "0.39.0"  "tinygo version"     '[0-9]+\.[0-9]+\.[0-9]+' || all_deps_ok=false
     check_dependency "node"    "📜" "22.18.0" "node --version"     '[0-9]+\.[0-9]+\.[0-9]+' || all_deps_ok=false
+    check_dependency "pnpm"    "📦" "9.0.0"   "pnpm --version"     '[0-9]+\.[0-9]+\.[0-9]+' || all_deps_ok=false
     check_dependency "python3" "🐍" "3.11.0"  "python3 --version"  '[0-9]+\.[0-9]+\.[0-9]+' || all_deps_ok=false
 
     # Special handling for pip3 which has different output format
@@ -145,6 +146,7 @@ main() {
         log_error "❌ Some required dependencies are missing or below minimum version requirements."
         log_info "Install missing tools with:"
         log_info "  🍺 brew install rust go tinygo node python wabt binaryen"
+        log_info "  📦 npm install -g pnpm  # Install pnpm globally"
         return 1
     fi
 }

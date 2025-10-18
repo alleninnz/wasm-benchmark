@@ -161,7 +161,7 @@ check_prerequisites() {
     # Check Node.js dependencies
     if [[ "$SKIP_BUILD" == false && "$ANALYSIS_ONLY" == false ]]; then
         if [[ ! -f "${PROJECT_ROOT}/node_modules/.bin/puppeteer" ]] && [[ ! -f "${PROJECT_ROOT}/package.json" ]]; then
-            log_warning "Node.js dependencies not installed. Run 'npm install' first."
+            log_warning "Node.js dependencies not installed. Run 'pnpm install' first."
         fi
     fi
     

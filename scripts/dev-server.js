@@ -245,7 +245,7 @@ webAssets.forEach(asset => {
 // Block access to sensitive files and directories
 const blockedPaths = [
     '/package.json',
-    '/package-lock.json',
+    '/pnpm-lock.yaml',
     '/.env',
     '/.git',
     '/node_modules',

@@ -201,7 +201,7 @@ $(echo -e "${BOLD}What This Script Does:${NC}")
   $(echo -e "${YELLOW}Note:${NC}") This script does NOT test runtime behavior or cross-implementation
   consistency. For complete validation including actual WASM execution:
   
-  $(echo -e "${CYAN}make test${NC}")  or  $(echo -e "${CYAN}npm test${NC}")
+  $(echo -e "${CYAN}make test${NC}")  or  $(echo -e "${CYAN}pnpm test${NC}")
 
 $(echo -e "${BOLD}Return Codes:${NC}")
   0  All validations passed
@@ -423,7 +423,7 @@ generate_report() {
             echo ""
             log_info "📋 Next Steps:"
             log_info "   For complete cross-implementation validation with runtime testing:"
-            log_info "   ${CYAN}make test${NC}  or  ${CYAN}npm test${NC}"
+            log_info "   ${CYAN}make test${NC}  or  ${CYAN}pnpm test${NC}"
         fi
     else
         log_error "${CROSS} BUILD VALIDATION FAILED"

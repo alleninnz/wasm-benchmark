@@ -119,9 +119,9 @@ get_toolchain_versions() {
     GO_VERSION=$(get_version "go" "version")
     TINYGO_VERSION=$(get_version "tinygo" "version")
     
-    # Node.js and npm
+    # Node.js and pnpm
     NODE_VERSION=$(get_version "node")
-    NPM_VERSION=$(get_version "npm")
+    PNPM_VERSION=$(get_version "pnpm")
     
     # Python
     PYTHON_VERSION=$(get_version "python3")
@@ -207,7 +207,7 @@ wasm2wat_version=$WASM2WAT_VERSION
 
 # Runtime Environment
 nodejs_version=$NODE_VERSION
-npm_version=$NPM_VERSION
+pnpm_version=$PNPM_VERSION
 
 # Python Environment
 python_version=$PYTHON_VERSION
@@ -283,7 +283,7 @@ generate_meta_json() {
         },
         "node": {
             "node_version": "$NODE_VERSION",
-            "npm_version": "$NPM_VERSION"
+            "pnpm_version": "$PNPM_VERSION"
         },
         "python": {
             "python_version": "$PYTHON_VERSION",

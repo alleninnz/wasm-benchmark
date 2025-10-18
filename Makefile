@@ -232,7 +232,7 @@ endef
 define start_dev_server
 	@if ! lsof -ti:2025 > /dev/null 2>&1; then \
 		echo "[INFO] Starting development server..."; \
-		npm run dev > /dev/null 2>&1 & \
+		pnpm run dev > /dev/null 2>&1 & \
 		sleep 2; \
 	fi; \
 	echo "[SUCCESS] Development server ready"
@@ -365,12 +365,12 @@ endif
 $(NODE_MODULES): package.json
 	$(call require_file,package.json,Node.js project configuration missing - check repository integrity)
 	$(call log_step,Installing Node.js dependencies...)
-	@if [ -f package-lock.json ]; then \
-		$(call log_info,Using npm ci for clean install...); \
-		$(call safe_execute,npm ci,Clean installing Node.js dependencies,📦 Node.js dependencies installed); \
+	@if [ -f pnpm-lock.yaml ]; then \
+		$(call log_info,Using pnpm install with frozen lockfile...); \
+		$(call safe_execute,pnpm install --frozen-lockfile,Clean installing Node.js dependencies,📦 Node.js dependencies installed); \
 	else \
-		$(call log_info,No package-lock.json found, using npm install...); \
-		$(call safe_execute,npm install,Installing Node.js dependencies,📦 Node.js dependencies installed); \
+		$(call log_info,No pnpm-lock.yaml found, using pnpm install...); \
+		$(call safe_execute,pnpm install,Installing Node.js dependencies,📦 Node.js dependencies installed); \
 	fi
 
 versions.lock: scripts/fingerprint.sh
@@ -587,7 +587,7 @@ clean: ## Clean everything including dependencies, results, and caches
 		rm -rf $(RESULTS_DIR)/* 2>/dev/null || true; \
 		rm -f $(CONFIGS_DIR)/*.json 2>/dev/null || true; \
 		rm -f versions.lock 2>/dev/null || true; \
-		rm -f package-lock.json 2>/dev/null || true; \
+		rm -f pnpm-lock.yaml 2>/dev/null || true; \
 		rm -f uv.lock 2>/dev/null || true; \
 		rm -f meta.json 2>/dev/null || true; \
 		rm -f *.log 2>/dev/null || true; \
@@ -709,8 +709,7 @@ else ifeq ($(JS_MODE),true)
 			fi; \
 		else \
 			$(call log_warning,npx not found,shell); \
-			$(call log_info,Install Node.js 8.2+ or npm 5.2+ for npx support,shell); \
-			$(call log_info,Alternative: npm install,shell); \
+			$(call log_info,Install pnpm: npm install -g pnpm,shell); \
 		fi; \
 	else \
 		$(call log_warning,No JavaScript files found to lint,shell); \
@@ -780,8 +779,7 @@ else ifeq ($(JS_MODE),true)
 			$(call log_success,📜 JavaScript code formatted with Prettier,shell); \
 		else \
 			$(call log_warning,npx not found,shell); \
-			$(call log_info,Install Node.js 8.2+ or npm 5.2+ for npx support,shell); \
-			$(call log_info,Alternative: npm install,shell); \
+			$(call log_info,Install pnpm: npm install -g pnpm,shell); \
 		fi; \
 	else \
 		$(call log_warning,No JavaScript files found to format,shell); \
@@ -809,9 +807,9 @@ else
 	$(call log_step,Running all available tests...)
 	@TEST_RAN=false; \
 	if [ -d tests ]; then \
-		if command -v npm >/dev/null 2>&1 && [ -f package.json ]; then \
+		if command -v pnpm >/dev/null 2>&1 && [ -f package.json ]; then \
 			$(call log_step,Running JavaScript tests...,shell); \
-			npm test && TEST_RAN=true; \
+			pnpm test && TEST_RAN=true; \
 		fi; \
 		if command -v python3 >/dev/null 2>&1 && command -v pytest >/dev/null 2>&1; then \
 			$(call log_step,Running Python tests...,shell); \
@@ -820,8 +818,8 @@ else
 		if [ "$$TEST_RAN" = "true" ]; then \
 			$(call log_success,🧪 All tests completed,shell); \
 		else \
-			$(call log_warning,No suitable test runner found (npm or pytest),shell); \
-			$(call log_info,Install with: npm install or pip install pytest,shell); \
+			$(call log_warning,No suitable test runner found (pnpm or pytest),shell); \
+			$(call log_info,Install with: npm install -g pnpm or pip install pytest,shell); \
 		fi; \
 	else \
 		$(call log_warning,No tests directory found,shell); \
@@ -991,8 +989,8 @@ info: ## Show detailed system and benchmark environment information
 	@echo ""
 	$(call log_info,🌍 Runtime Environment:)
 	@printf "  Node.js: %s\n" "$$(node --version 2>/dev/null || echo 'not found')"
-	@if npm --version >/dev/null 2>&1; then \
-		printf "  npm: %s\n" "$$(npm --version)"; \
+	@if pnpm --version >/dev/null 2>&1; then \
+		printf "  pnpm: %s\n" "$$(pnpm --version)"; \
 	fi
 	@printf "  Python: %s\n" "$$(python3 --version 2>/dev/null || echo 'not found')"
 	@if python3 -c "import numpy, scipy, matplotlib" 2>/dev/null; then \

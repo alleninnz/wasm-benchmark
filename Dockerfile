@@ -145,7 +145,11 @@ RUN set -eux; \
     tar -C /usr/local --strip-components=1 -xJf /tmp/node.tar.xz; \
     rm -f /tmp/node.tar.xz; \
     # Verify installation
-    node --version && npm --version
+    node --version && npm --version; \
+    # Install pnpm globally
+    npm install -g pnpm@latest; \
+    # Verify pnpm installation
+    pnpm --version
 
 # Install Playwright and Chromium with proper user handling
 RUN set -eux; \
@@ -217,18 +221,18 @@ RUN set -eux; \
 FROM base AS development
 
 # Copy Node package files first (keep layer small so node deps cache is effective)
-COPY package*.json /app/
+COPY package*.json pnpm-lock.yaml /app/
 
-# Set working directory for npm operations
+# Set working directory for pnpm operations
 WORKDIR /app
 
 # Install Node dependencies including dev dependencies for development environment
-RUN if [ -f package-lock.json ]; then \
-    npm ci; \
+RUN if [ -f pnpm-lock.yaml ]; then \
+    pnpm install --frozen-lockfile; \
     elif [ -f package.json ]; then \
-    npm install; \
+    pnpm install; \
     else \
-    echo "no node package files found, skipping npm step"; \
+    echo "no node package files found, skipping pnpm step"; \
     fi
 
 # Copy Python packaging files separately so Python deps can cache independently
