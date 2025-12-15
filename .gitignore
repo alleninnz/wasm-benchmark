@@ -16,10 +16,7 @@ configs/*.json
 
 # Results and reports
 results/*.json
-reports/*/*.png
-reports/*/*.svg
 reports/*/*.json
-reports/*/*.html
 
 # Environment and AI assistant files
 .env

@@ -497,15 +497,37 @@ The framework uses **FNV-1a Hash** algorithm to verify that both Rust and TinyGo
 
 ## 📈 Results & Analysis
 
-### **Visualization Outputs**
+### 🎨 **Performance Visualizations**
 
-Generated in `reports/plots/`:
+The benchmark generates comprehensive statistical visualizations to support engineering decision-making. All charts are automatically generated in `reports/plots/`:
 
-- **`execution_time_comparison.png`**: Bar charts with means, medians, error bars, and significance markers
-- **`memory_usage_comparison.png`**: Memory consumption patterns with GC impact analysis
-- **`effect_size_heatmap.png`**: Cohen's d effect size visualization with color-coded significance levels
-- **`distribution_variance_analysis.png`**: Side-by-side box plots showing performance consistency and variance patterns
-- `decision_summary.html`: Interactive HTML dashboard with comprehensive analysis results - [View Online](https://alleninnz.github.io/wasm-benchmark-site/)
+**Execution Time Comparison**: Bar charts with means, medians, error bars, and statistical significance markers (p < 0.05) comparing Rust vs TinyGo performance.
+
+![Execution Time Comparison](reports/plots/execution_time_comparison.png)
+
+**Memory Usage Comparison**: Memory consumption patterns highlighting GC impact analysis and memory management efficiency differences between languages.
+
+![Memory Usage Comparison](reports/plots/memory_usage_comparison.png)
+
+**Distribution & Variance Analysis**: Box plots showing performance consistency, variance patterns, and outlier detection across all benchmark tasks and scales.
+
+![Distribution & Variance Analysis](reports/plots/distribution_variance_analysis.png)
+
+**Effect Size Heatmap**: Cohen's d visualization with color-coded significance levels showing practical significance of performance differences.
+
+![Cohen's d Effect Size Heatmap](reports/plots/effect_size_heatmap.png)
+
+### 📊 **Interactive Decision Dashboard**
+
+**[View Interactive Analysis Dashboard →](https://alleninnz.github.io/wasm-benchmark-site/)**
+
+The `decision_summary.html` provides an interactive engineering decision support system with:
+
+- Executive performance summary with stability scores
+- Statistical significance analysis (Welch's t-test, Cohen's d)
+- Interactive chart tabs for all visualizations
+- Detailed comparison tables with language recommendations
+- Methodology documentation and quality standards
 
 ### 🔄 **Analysis Pipeline**
 
