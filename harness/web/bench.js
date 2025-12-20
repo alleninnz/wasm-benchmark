@@ -907,7 +907,9 @@ export class BenchmarkRunner {
             timestamp: Date.now(),
             averageExecutionTime:
                 successfulResults.reduce((sum, r) => sum + r.executionTime, 0) / successfulResults.length,
-            averageMemoryUsage: successfulResults.reduce((sum, r) => sum + r.wasmMemoryBytes + r.memoryUsed, 0) / successfulResults.length,
+            averageMemoryUsage:
+                successfulResults.reduce((sum, r) => sum + r.wasmMemoryBytes + r.memoryUsed, 0) /
+                successfulResults.length,
             totalRuns: taskResults.length,
             successfulRuns: successfulResults.length
         };
